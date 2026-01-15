@@ -438,6 +438,47 @@ body {
     animation: pulse 1.5s infinite;
 }
 
+/* ========== 视图切换按钮组 ========== */
+.view-toggle-container {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    display: flex;
+    gap: 0;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    padding: 2px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.view-toggle-btn {
+    padding: 6px 16px;
+    background: transparent;
+    border: none;
+    color: #999999;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.view-toggle-btn:hover {
+    color: #cccccc;
+    background: #333333;
+}
+
+.view-toggle-btn.active {
+    background: #3a3a3a;
+    color: #ffffff;
+    border: 1px solid #4a4a4a;
+}
+
 /* ========== ComfyUI iframe 容器 ========== */
 .comfyui-container {
     flex: 1;
@@ -450,6 +491,77 @@ body {
     width: 100%;
     height: 100%;
     border: none;
+}
+
+/* ========== JSON 视图容器 ========== */
+.json-view-container {
+    width: 100%;
+    height: 100%;
+    display: none;
+    background: #1e1e1e;
+    overflow: auto;
+    padding: 20px;
+}
+
+.json-view-container.active {
+    display: block;
+}
+
+.json-view-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #3a3a3a;
+}
+
+.json-view-title {
+    font-size: 14px;
+    color: #cccccc;
+    font-weight: 500;
+}
+
+.json-copy-btn {
+    padding: 6px 12px;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    color: #cccccc;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.json-copy-btn:hover {
+    background: #333333;
+    border-color: #4a4a4a;
+}
+
+.json-content {
+    background: #252525;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    padding: 16px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #d4d4d4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.comfyui-view-container {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.comfyui-view-container.hidden {
+    display: none;
 }
 
 .comfyui-container.locked::after {
@@ -1112,6 +1224,21 @@ body {
     <symbol id="icon-edit" viewBox="0 0 24 24">
         <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
     </symbol>
+
+    <!-- 代码图标 -->
+    <symbol id="icon-code" viewBox="0 0 24 24">
+        <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
+    </symbol>
+
+    <!-- 视图图标 -->
+    <symbol id="icon-view" viewBox="0 0 24 24">
+        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+    </symbol>
+
+    <!-- 复制图标 -->
+    <symbol id="icon-copy" viewBox="0 0 24 24">
+        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+    </symbol>
 </svg>
 
 <!-- 左侧会话管理区域 -->
@@ -1213,17 +1340,52 @@ body {
 
     <!-- ComfyUI iframe 容器 -->
     <div class="comfyui-container" id="comfyuiContainer">
-        <!-- 实际项目中使用: <iframe class="comfyui-iframe" src="http://192.168.1.100:8188" id="comfyuiFrame"></iframe> -->
+        <!-- 视图切换按钮组 -->
+        <div class="view-toggle-container">
+            <button class="view-toggle-btn active" id="comfyuiViewBtn" onclick="switchView('comfyui')">
+                <svg class="icon">
+                    <use href="#icon-view"></use>
+                </svg>
+                <span>ComfyUI 视图</span>
+            </button>
+            <button class="view-toggle-btn" id="jsonViewBtn" onclick="switchView('json')">
+                <svg class="icon">
+                    <use href="#icon-code"></use>
+                </svg>
+                <span>JSON 原型</span>
+            </button>
+        </div>
 
-        <!-- 演示用：模拟 ComfyUI 界面 -->
-        <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #999999; font-size: 16px; flex-direction: column; gap: 16px;">
-            <svg class="icon" style="width: 64px; height: 64px; fill: #666666;">
-                <use href="#icon-workflow"></use>
-            </svg>
-            <div>ComfyUI 工作流编辑器</div>
-            <div style="font-size: 13px; opacity: 0.7;">实际项目中这里会嵌入 ComfyUI iframe</div>
-            <div style="font-size: 12px; font-family: monospace; background: #353535; padding: 8px 16px; border-radius: 4px; color: #cccccc; border: 1px solid #444444;">
-                &lt;iframe src="http://192.168.1.100:8188"&gt;&lt;/iframe&gt;
+        <!-- ComfyUI 视图容器 -->
+        <div class="comfyui-view-container" id="comfyuiView">
+            <!-- 实际项目中使用: <iframe class="comfyui-iframe" src="http://192.168.1.100:8188" id="comfyuiFrame"></iframe> -->
+
+            <!-- 演示用：模拟 ComfyUI 界面 -->
+            <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #999999; font-size: 16px; flex-direction: column; gap: 16px;">
+                <svg class="icon" style="width: 64px; height: 64px; fill: #666666;">
+                    <use href="#icon-workflow"></use>
+                </svg>
+                <div>ComfyUI 工作流编辑器</div>
+                <div style="font-size: 13px; opacity: 0.7;">实际项目中这里会嵌入 ComfyUI iframe</div>
+                <div style="font-size: 12px; font-family: monospace; background: #353535; padding: 8px 16px; border-radius: 4px; color: #cccccc; border: 1px solid #444444;">
+                    &lt;iframe src="http://192.168.1.100:8188"&gt;&lt;/iframe&gt;
+                </div>
+            </div>
+        </div>
+
+        <!-- JSON 视图容器 -->
+        <div class="json-view-container" id="jsonView">
+            <div class="json-view-header">
+                <div class="json-view-title">工作流 JSON 原型</div>
+                <button class="json-copy-btn" onclick="copyJsonToClipboard()">
+                    <svg class="icon">
+                        <use href="#icon-copy"></use>
+                    </svg>
+                    <span>复制 JSON</span>
+                </button>
+            </div>
+            <div class="json-content" id="jsonContent">
+                <!-- JSON 内容将通过 JavaScript 动态生成 -->
             </div>
         </div>
 
@@ -1343,6 +1505,7 @@ let isChatMinimized = false;
 let hasUnsavedChanges = false;
 let currentWorkflowName = 'SDXL 图像生成';
 let currentWorkflowId = 1;
+let currentView = 'comfyui'; // 'comfyui' 或 'json'
 
 // ========== 工作流数据 ==========
 const workflows = [
@@ -1351,6 +1514,72 @@ const workflows = [
     { id: 3, name: '视频帧插值', sessions: 2, versions: 5, lastUsed: '3 天前' },
     { id: 4, name: '图像超分辨率', sessions: 4, versions: 10, lastUsed: '5 天前' }
 ];
+
+// ========== 示例工作流 JSON 数据 ==========
+const workflowJsonData = {
+    "nodes": [
+        {
+            "id": 1,
+            "type": "CheckpointLoaderSimple",
+            "pos": [50, 100],
+            "size": [315, 98],
+            "flags": {},
+            "order": 0,
+            "mode": 0,
+            "outputs": [
+                {"name": "MODEL", "type": "MODEL", "links": [1]},
+                {"name": "CLIP", "type": "CLIP", "links": [2, 3]},
+                {"name": "VAE", "type": "VAE", "links": [4]}
+            ],
+            "properties": {},
+            "widgets_values": ["sd_xl_base_1.0.safetensors"]
+        },
+        {
+            "id": 2,
+            "type": "CLIPTextEncode",
+            "pos": [400, 50],
+            "size": [400, 200],
+            "flags": {},
+            "order": 1,
+            "mode": 0,
+            "inputs": [
+                {"name": "clip", "type": "CLIP", "link": 2}
+            ],
+            "outputs": [
+                {"name": "CONDITIONING", "type": "CONDITIONING", "links": [5]}
+            ],
+            "properties": {},
+            "widgets_values": ["a beautiful landscape"]
+        },
+        {
+            "id": 3,
+            "type": "CLIPTextEncode",
+            "pos": [400, 300],
+            "size": [400, 200],
+            "flags": {},
+            "order": 2,
+            "mode": 0,
+            "inputs": [
+                {"name": "clip", "type": "CLIP", "link": 3}
+            ],
+            "outputs": [
+                {"name": "CONDITIONING", "type": "CONDITIONING", "links": [6]}
+            ],
+            "properties": {},
+            "widgets_values": ["text, watermark"]
+        }
+    ],
+    "connections": [
+        {"id": 1, "origin_id": 1, "origin_slot": 0, "target_id": 4, "target_slot": 0},
+        {"id": 2, "origin_id": 1, "origin_slot": 1, "target_id": 2, "target_slot": 0},
+        {"id": 3, "origin_id": 1, "origin_slot": 1, "target_id": 3, "target_slot": 0}
+    ],
+    "metadata": {
+        "name": "SDXL 图像生成工作流",
+        "version": "1.0",
+        "description": "基础的 SDXL 图像生成工作流"
+    }
+};
 
 // ========== 会话数据 ==========
 const sessions = [
@@ -1926,6 +2155,74 @@ function goBack() {
     if (confirm('确定要返回服务选择页面吗？\n\n未保存的工作流可能会丢失。')) {
         window.location.href = '03-user-service-selection-ui.html';
     }
+}
+
+// ========== 视图切换功能 ==========
+function switchView(viewType) {
+    currentView = viewType;
+
+    const comfyuiView = document.getElementById('comfyuiView');
+    const jsonView = document.getElementById('jsonView');
+    const comfyuiBtn = document.getElementById('comfyuiViewBtn');
+    const jsonBtn = document.getElementById('jsonViewBtn');
+
+    if (viewType === 'comfyui') {
+        // 切换到 ComfyUI 视图
+        comfyuiView.classList.remove('hidden');
+        jsonView.classList.remove('active');
+        comfyuiBtn.classList.add('active');
+        jsonBtn.classList.remove('active');
+    } else if (viewType === 'json') {
+        // 切换到 JSON 视图
+        comfyuiView.classList.add('hidden');
+        jsonView.classList.add('active');
+        comfyuiBtn.classList.remove('active');
+        jsonBtn.classList.add('active');
+
+        // 渲染 JSON 内容
+        renderJsonContent();
+    }
+}
+
+function renderJsonContent() {
+    const jsonContent = document.getElementById('jsonContent');
+    jsonContent.textContent = JSON.stringify(workflowJsonData, null, 2);
+}
+
+function copyJsonToClipboard() {
+    const jsonText = JSON.stringify(workflowJsonData, null, 2);
+
+    // 使用 Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(jsonText).then(() => {
+            alert('✅ JSON 已复制到剪贴板！');
+        }).catch(err => {
+            console.error('复制失败:', err);
+            fallbackCopyToClipboard(jsonText);
+        });
+    } else {
+        fallbackCopyToClipboard(jsonText);
+    }
+}
+
+function fallbackCopyToClipboard(text) {
+    // 降级方案：使用 textarea
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    try {
+        document.execCommand('copy');
+        alert('✅ JSON 已复制到剪贴板！');
+    } catch (err) {
+        console.error('复制失败:', err);
+        alert('❌ 复制失败，请手动复制');
+    }
+
+    document.body.removeChild(textarea);
 }
 
 // ========== 键盘快捷键 ==========
