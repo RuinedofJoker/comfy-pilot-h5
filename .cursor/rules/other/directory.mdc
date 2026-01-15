@@ -1,0 +1,28 @@
+---
+description: 项目目录结构规范
+globs:
+alwaysApply: true
+---
+
+# 项目目录结构规范
+
+## 一、总体原则
+- 目录结构必须体现**业务语义**
+- 禁止以技术细节作为顶层目录划分
+- 目录结构必须稳定、可扩展
+
+---
+
+## 二、推荐目录结构（示例）
+```text
+src/
+├─ assets/        # 静态资源
+├─ components/    # 通用组件
+├─ views/         # 页面级组件
+├─ stores/        # Pinia stores
+├─ composables/   # 组合式逻辑（useXxx）
+├─ services/      # API / Axios 封装
+├─ router/        # 路由定义
+├─ styles/        # 全局样式 / 变量
+├─ utils/         # 小而明确的工具函数
+└─ types/         # 全局类型定义

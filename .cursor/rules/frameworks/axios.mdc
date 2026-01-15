@@ -1,0 +1,32 @@
+---
+description: Axios 请求规范
+globs: *.ts
+alwaysApply: false
+---
+
+# Axios 请求规范
+## 一、总体原则
+- 所有 HTTP 请求必须通过统一 Axios 实例
+- 组件中禁止直接发起 HTTP 请求
+- Claude 不得绕过请求封装层
+
+---
+
+## 二、Axios 实例规范
+- 必须集中创建 Axios 实例（如 `request.ts`）
+- 必须统一配置：
+  - baseURL
+  - timeout
+  - headers
+  - 请求 / 响应拦截器
+
+---
+
+## 三、请求封装规则
+- 每个接口必须封装为独立函数
+- API 函数必须返回 **明确的 TypeScript 类型**
+- 禁止在组件中处理 HTTP 状态码
+
+示例：
+```ts
+export function fetchUserList(): Promise<User[]> {}
