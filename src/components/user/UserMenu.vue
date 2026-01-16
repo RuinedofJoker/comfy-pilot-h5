@@ -32,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { showConfirmDialog } from 'vant'
 import { useAuthStore } from '@/stores/auth'
@@ -77,7 +77,7 @@ const menuActions = computed<ActionSheetAction[]>(() => [
 ])
 
 function onSelect(action: ActionSheetAction): void {
-  action.callback?.()
+  action.callback?.(action)
 }
 
 async function handleLogout(): Promise<void> {

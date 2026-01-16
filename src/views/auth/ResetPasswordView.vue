@@ -118,7 +118,10 @@ async function handleSubmit(): Promise<void> {
   loading.value = true
 
   try {
-    await resetPassword(token.value, formData.password)
+    await resetPassword({
+      token: token.value,
+      newPassword: formData.password
+    })
     resetSuccess.value = true
   } catch (error) {
     console.error('重置密码失败:', error)

@@ -12,7 +12,7 @@ import { showToast } from 'vant'
  * 设置认证守卫
  */
 export function setupAuthGuard(router: Router): void {
-  router.beforeEach(async (to, from, next) => {
+  router.beforeEach(async (to, _from, next) => {
     const token = getToken()
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
 

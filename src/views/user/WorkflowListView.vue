@@ -88,7 +88,7 @@
     >
       <div class="f-create-form">
         <van-field
-          v-model="createForm.name"
+          v-model="createForm.workflowName"
           label="工作流名称"
           placeholder="请输入工作流名称"
           required
@@ -109,24 +109,26 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import { showToast } from 'vant'
 import TopNavBar from '@/components/user/TopNavBar.vue'
 import UserMenu from '@/components/user/UserMenu.vue'
 import WorkflowCard from '@/components/user/WorkflowCard.vue'
 import { useWorkflowList } from '@/composables/useWorkflowList'
+import { useServiceStore } from '@/stores/service'
 import type { Workflow } from '@/types/workflow'
 
 const showUserMenu = ref(false)
 const showCreateDialog = ref(false)
+const serviceStore = useServiceStore()
 
 const createForm = reactive({
-  name: '',
+  workflowName: '',
   description: ''
 })
 
 const sortOptions = [
-  { text: '最近使用', value: 'lastUsed' },
-  { text: '创建时间', value: 'createdAt' },
-  { text: '更新时间', value: 'updatedAt' }
+  { text: '更新时间', value: 'updateTime' },
+  { text: '创建时间', value: 'createTime' }
 ]
 
 const {
@@ -153,19 +155,31 @@ function handleEditWorkflow(workflow: Workflow): void {
 }
 
 function handleDeleteWorkflow(workflow: Workflow): void {
-  deleteWorkflow(workflow.id, workflow.name)
+  deleteWorkflow(workflow.id, workflow.workflowName)
 }
 
 async function handleBeforeClose(action: string): Promise<boolean> {
   if (action === 'confirm') {
-    if (!createForm.name.trim()) {
+    if (!createForm.workflowName.trim()) {
       return false
     }
+
+    // 检查是否选择了服务
+    if (!serviceStore.selectedService) {
+      showToast({
+        type: 'fail',
+        message: '请先选择 ComfyUI 服务'
+      })
+      return false
+    }
+
     await createWorkflow({
-      name: createForm.name,
-      description: createForm.description || undefined
+      workflowName: createForm.workflowName,
+      description: createForm.description || undefined,
+      comfyuiServerId: serviceStore.selectedService.id,
+      comfyuiServerKey: serviceStore.selectedService.serverKey
     })
-    createForm.name = ''
+    createForm.workflowName = ''
     createForm.description = ''
   }
   return true

@@ -240,29 +240,33 @@ async function handleModalClose(action: string): Promise<boolean> {
       // 更新 Agent
       const index = agents.value.findIndex(a => a.id === editingAgent.value!.id)
       if (index !== -1) {
-        agents.value[index] = {
-          ...agents.value[index],
+        const currentAgent = agents.value[index]!
+        const updatedAgent: Agent = {
+          id: currentAgent.id,
           name: formData.name,
           type: formData.type,
-          systemPrompt: formData.systemPrompt,
           model: formData.model,
           temperature: formData.temperature,
-          maxTokens: formData.maxTokens
+          maxTokens: formData.maxTokens,
+          status: currentAgent.status,
+          systemPrompt: formData.systemPrompt
         }
+        agents.value[index] = updatedAgent
       }
       showToast({ type: 'success', message: '更新成功' })
     } else {
       // 创建 Agent
-      agents.value.unshift({
+      const newAgent: Agent = {
         id: Date.now().toString(),
         name: formData.name,
         type: formData.type,
-        systemPrompt: formData.systemPrompt,
         model: formData.model,
         temperature: formData.temperature,
         maxTokens: formData.maxTokens,
-        status: '活跃'
-      })
+        status: '活跃',
+        systemPrompt: formData.systemPrompt
+      }
+      agents.value.unshift(newAgent)
       showToast({ type: 'success', message: '创建成功' })
     }
 

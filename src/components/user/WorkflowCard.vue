@@ -1,7 +1,7 @@
 <template>
   <BaseCard :hoverable="true" class="f-workflow-card" @click="handleClick">
     <div class="f-workflow-card__header">
-      <h3 class="f-workflow-card__name">{{ workflow.name }}</h3>
+      <h3 class="f-workflow-card__name">{{ workflow.workflowName }}</h3>
       <div class="f-workflow-card__actions">
         <button
           class="f-workflow-card__action-btn"
@@ -28,7 +28,7 @@
       <div class="f-workflow-card__info">
         <span class="f-workflow-card__info-item">
           <BaseIcon name="clock" :size="14" />
-          {{ formatRelativeTime(workflow.updatedAt) }}
+          {{ formatRelativeTime(workflow.updateTime) }}
         </span>
       </div>
     </div>

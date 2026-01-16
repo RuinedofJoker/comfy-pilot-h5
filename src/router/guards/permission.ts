@@ -10,7 +10,7 @@ import { showToast } from 'vant'
  * 设置权限守卫
  */
 export function setupPermissionGuard(router: Router): void {
-  router.beforeEach(async (to, from, next) => {
+  router.beforeEach(async (to, _from, next) => {
     const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
 
     if (requiresAdmin) {

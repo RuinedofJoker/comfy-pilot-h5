@@ -87,7 +87,7 @@ async function handleSubmit(): Promise<void> {
   loading.value = true
 
   try {
-    await forgotPassword(formData.email)
+    await forgotPassword({ email: formData.email })
     emailSent.value = true
   } catch (error) {
     console.error('发送重置链接失败:', error)

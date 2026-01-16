@@ -137,7 +137,7 @@ async function loadServers(): Promise<void> {
 }
 
 // 测试连接
-async function handleTest(service: AdminComfyuiServer): Promise<void> {
+async function handleTest(_service: AdminComfyuiServer): Promise<void> {
   showToast({ type: 'loading', message: '测试连接中...', duration: 0 })
   // TODO: 实现测试连接逻辑
   setTimeout(() => {

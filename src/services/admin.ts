@@ -6,8 +6,7 @@ import http from './http'
 import type {
   ComfyUIService,
   CreateServiceParams,
-  UpdateServiceParams,
-  ServiceStats
+  UpdateServiceParams
 } from '@/types/service'
 import type {
   AgentConfig,
@@ -63,10 +62,11 @@ export function testServiceConnection(id: string): Promise<boolean> {
 
 /**
  * 获取服务统计
+ * TODO: 需要定义 ServiceStats 类型
  */
-export function getServiceStats(): Promise<ServiceStats> {
-  return http.get('/api/admin/services/stats')
-}
+// export function getServiceStats(): Promise<ServiceStats> {
+//   return http.get('/api/admin/services/stats')
+// }
 
 /**
  * ========== Agent 管理 ==========

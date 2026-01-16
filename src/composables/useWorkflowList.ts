@@ -6,13 +6,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { useWorkflowStore } from '@/stores/workflow'
-import type { CreateWorkflowParams } from '@/types/workflow'
+import type { CreateWorkflowRequest } from '@/types/workflow'
 
 export function useWorkflowList() {
   const router = useRouter()
   const workflowStore = useWorkflowStore()
   const searchKeyword = ref('')
-  const sortBy = ref<'lastUsed' | 'createdAt' | 'updatedAt'>('lastUsed')
+  const sortBy = ref<'createTime' | 'updateTime'>('updateTime')
 
   // 计算属性：过滤和排序后的工作流列表
   const filteredWorkflows = computed(() => {
@@ -23,7 +23,7 @@ export function useWorkflowList() {
       const keyword = searchKeyword.value.toLowerCase()
       list = list.filter(
         w =>
-          w.name.toLowerCase().includes(keyword) ||
+          w.workflowName.toLowerCase().includes(keyword) ||
           w.description?.toLowerCase().includes(keyword)
       )
     }
@@ -39,7 +39,7 @@ export function useWorkflowList() {
   /**
    * 创建新工作流
    */
-  async function createWorkflow(params: CreateWorkflowParams): Promise<void> {
+  async function createWorkflow(params: CreateWorkflowRequest): Promise<void> {
     try {
       const workflow = await workflowStore.createNewWorkflow(params)
       showToast({
@@ -87,7 +87,7 @@ export function useWorkflowList() {
    */
   async function loadWorkflows(): Promise<void> {
     try {
-      await workflowStore.fetchMyWorkflows()
+      await workflowStore.fetchWorkflows()
     } catch (error) {
       showToast({
         type: 'fail',

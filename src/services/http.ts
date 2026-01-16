@@ -2,7 +2,7 @@
  * Axios 实例配置
  */
 
-import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
+import axios, { type AxiosInstance, type AxiosResponse } from 'axios'
 import type { ApiResponse, ApiError } from '@/types/api'
 import { getToken, removeToken } from '@/utils/storage'
 import { toast } from '@/utils/toast'
@@ -44,7 +44,7 @@ http.interceptors.response.use(
 
     // 成功响应
     if (code === 200 || code === 0) {
-      return data
+      return data as any
     }
 
     // 业务错误 - 显示错误提示

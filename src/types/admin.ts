@@ -26,15 +26,15 @@ export interface AdminComfyuiServer {
   updateTime: string
   serverKey: string
   serverName: string
-  description?: string
+  description?: string | null
   baseUrl: string
-  authMode: AuthMode
-  apiKey?: string
+  authMode: AuthMode | null
+  apiKey?: string | null
   timeoutSeconds: number
   maxRetries: number
   sourceType: SourceType
   isEnabled: boolean
-  lastHealthCheckTime?: string
+  lastHealthCheckTime?: string | null
   healthStatus: HealthStatus
 }
 

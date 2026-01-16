@@ -5,12 +5,19 @@
 /**
  * 消息类型
  */
-export enum IframeMessageType {
-  WORKFLOW_UPDATED = 'workflow_updated',
-  WORKFLOW_SAVED = 'workflow_saved',
-  WORKFLOW_LOADED = 'workflow_loaded',
-  LOCK_WORKFLOW = 'lock_workflow',
-  UNLOCK_WORKFLOW = 'unlock_workflow'
+export type IframeMessageType =
+  | 'workflow_updated'
+  | 'workflow_saved'
+  | 'workflow_loaded'
+  | 'lock_workflow'
+  | 'unlock_workflow'
+
+export const IframeMessageTypeValues = {
+  WORKFLOW_UPDATED: 'workflow_updated' as const,
+  WORKFLOW_SAVED: 'workflow_saved' as const,
+  WORKFLOW_LOADED: 'workflow_loaded' as const,
+  LOCK_WORKFLOW: 'lock_workflow' as const,
+  UNLOCK_WORKFLOW: 'unlock_workflow' as const
 }
 
 /**

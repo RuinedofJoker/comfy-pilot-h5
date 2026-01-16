@@ -32,7 +32,7 @@ import BaseCard from '@/components/base/BaseCard.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import { formatRelativeTime } from '@/utils/format'
 import type { ComfyUIService } from '@/types/service'
-import { HealthStatus } from '@/types/service'
+import { HealthStatusValues } from '@/types/service'
 
 interface Props {
   service: ComfyUIService
@@ -45,18 +45,18 @@ const emit = defineEmits<{
 }>()
 
 const statusClass = computed(() => ({
-  'f-service-card__status--online': props.service.healthStatus === HealthStatus.HEALTHY,
-  'f-service-card__status--offline': props.service.healthStatus === HealthStatus.UNKNOWN,
-  'f-service-card__status--error': props.service.healthStatus === HealthStatus.UNHEALTHY
+  'f-service-card__status--online': props.service.healthStatus === HealthStatusValues.HEALTHY,
+  'f-service-card__status--offline': props.service.healthStatus === HealthStatusValues.UNKNOWN,
+  'f-service-card__status--error': props.service.healthStatus === HealthStatusValues.UNHEALTHY
 }))
 
 const statusText = computed(() => {
   switch (props.service.healthStatus) {
-    case HealthStatus.HEALTHY:
+    case HealthStatusValues.HEALTHY:
       return '健康'
-    case HealthStatus.UNHEALTHY:
+    case HealthStatusValues.UNHEALTHY:
       return '异常'
-    case HealthStatus.UNKNOWN:
+    case HealthStatusValues.UNKNOWN:
       return '未知'
     default:
       return '未知'

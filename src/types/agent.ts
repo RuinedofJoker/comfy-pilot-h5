@@ -5,10 +5,12 @@
 /**
  * Agent 类型
  */
-export enum AgentType {
-  WORKFLOW_EDITOR = 'workflow_editor',
-  WORKFLOW_ANALYZER = 'workflow_analyzer',
-  GENERAL_ASSISTANT = 'general_assistant'
+export type AgentType = 'workflow_editor' | 'workflow_analyzer' | 'general_assistant'
+
+export const AgentTypeValues = {
+  WORKFLOW_EDITOR: 'workflow_editor' as const,
+  WORKFLOW_ANALYZER: 'workflow_analyzer' as const,
+  GENERAL_ASSISTANT: 'general_assistant' as const
 }
 
 /**

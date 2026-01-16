@@ -5,18 +5,33 @@
 /**
  * 服务来源类型
  */
-export enum SourceType {
-  MANUAL = 'MANUAL',
-  CODE_BASED = 'CODE_BASED'
+export type SourceType = 'MANUAL' | 'CODE_BASED'
+
+export const SourceTypeValues = {
+  MANUAL: 'MANUAL' as const,
+  CODE_BASED: 'CODE_BASED' as const
 }
 
 /**
  * 健康状态
  */
-export enum HealthStatus {
-  HEALTHY = 'HEALTHY',
-  UNHEALTHY = 'UNHEALTHY',
-  UNKNOWN = 'UNKNOWN'
+export type HealthStatus = 'HEALTHY' | 'UNHEALTHY' | 'UNKNOWN'
+
+export const HealthStatusValues = {
+  HEALTHY: 'HEALTHY' as const,
+  UNHEALTHY: 'UNHEALTHY' as const,
+  UNKNOWN: 'UNKNOWN' as const
+}
+
+/**
+ * 认证模式
+ */
+export type AuthMode = 'NONE' | 'API_KEY' | 'BASIC_AUTH'
+
+export const AuthModeValues = {
+  NONE: 'NONE' as const,
+  API_KEY: 'API_KEY' as const,
+  BASIC_AUTH: 'BASIC_AUTH' as const
 }
 
 /**
@@ -30,7 +45,7 @@ export interface ComfyUIService {
   serverName: string
   description: string | null
   baseUrl: string
-  authMode: string | null
+  authMode: AuthMode | null
   apiKey: string | null
   timeoutSeconds: number
   maxRetries: number

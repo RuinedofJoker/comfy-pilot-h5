@@ -7,10 +7,12 @@ import type { AgentType } from './agent'
 /**
  * 会话状态
  */
-export enum SessionStatus {
-  ACTIVE = 'active',
-  IDLE = 'idle',
-  ARCHIVED = 'archived'
+export type SessionStatus = 'active' | 'idle' | 'archived'
+
+export const SessionStatusValues = {
+  ACTIVE: 'active' as const,
+  IDLE: 'idle' as const,
+  ARCHIVED: 'archived' as const
 }
 
 /**

@@ -68,12 +68,11 @@ export interface ForgotPasswordParams {
 }
 
 /**
- * 重置密码请求参数
+ * 重置密码请求参数（与后端 ResetPasswordRequest 对应）
  */
 export interface ResetPasswordParams {
   token: string
-  password: string
-  confirmPassword: string
+  newPassword: string
 }
 
 /**
