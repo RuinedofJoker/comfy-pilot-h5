@@ -4,8 +4,8 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { AdminComfyuiServer, CreateServerRequest, UpdateServerRequest } from '@/types/admin'
-import { comfyuiServerApi } from '@/services/comfyui-server'
+import type { ComfyUIService, CreateServiceParams, UpdateServiceParams, ListServicesParams } from '@/types/service'
+import * as serviceApi from '@/services/service'
 
 export const useAdminStore = defineStore('admin', () => {
   // ==================== 状态定义 ====================
@@ -13,7 +13,7 @@ export const useAdminStore = defineStore('admin', () => {
   /**
    * ComfyUI 服务列表
    */
-  const servers = ref<AdminComfyuiServer[]>([])
+  const servers = ref<ComfyUIService[]>([])
 
   /**
    * 加载状态
@@ -55,11 +55,10 @@ export const useAdminStore = defineStore('admin', () => {
   /**
    * 获取服务列表
    */
-  async function fetchServers(params?: { sourceType?: string; isEnabled?: boolean }): Promise<void> {
+  async function fetchServers(params?: ListServicesParams): Promise<void> {
     isLoading.value = true
     try {
-      const response = await comfyuiServerApi.listServers(params)
-      servers.value = response.data || []
+      servers.value = await serviceApi.listServers(params)
     } finally {
       isLoading.value = false
     }
@@ -68,10 +67,9 @@ export const useAdminStore = defineStore('admin', () => {
   /**
    * 根据 ID 获取服务详情
    */
-  async function fetchServerById(id: string): Promise<AdminComfyuiServer | null> {
+  async function fetchServerById(id: string): Promise<ComfyUIService | null> {
     try {
-      const response = await comfyuiServerApi.getServerById(id)
-      return response.data || null
+      return await serviceApi.getServerById(id)
     } catch (error) {
       return null
     }
@@ -80,9 +78,8 @@ export const useAdminStore = defineStore('admin', () => {
   /**
    * 创建服务
    */
-  async function createServer(data: CreateServerRequest): Promise<AdminComfyuiServer> {
-    const response = await comfyuiServerApi.createServer(data)
-    const newServer = response.data
+  async function createServer(data: CreateServiceParams): Promise<ComfyUIService> {
+    const newServer = await serviceApi.createServer(data)
 
     // 添加到列表
     servers.value.unshift(newServer)
@@ -93,9 +90,8 @@ export const useAdminStore = defineStore('admin', () => {
   /**
    * 更新服务
    */
-  async function updateServer(id: string, data: UpdateServerRequest): Promise<AdminComfyuiServer> {
-    const response = await comfyuiServerApi.updateServer(id, data)
-    const updatedServer = response.data
+  async function updateServer(id: string, data: UpdateServiceParams): Promise<ComfyUIService> {
+    const updatedServer = await serviceApi.updateServer(id, data)
 
     // 更新列表中的服务
     const index = servers.value.findIndex(s => s.id === id)
@@ -110,7 +106,7 @@ export const useAdminStore = defineStore('admin', () => {
    * 删除服务
    */
   async function deleteServer(id: string): Promise<void> {
-    await comfyuiServerApi.deleteServer(id)
+    await serviceApi.deleteServer(id)
 
     // 从列表中移除
     servers.value = servers.value.filter(s => s.id !== id)
