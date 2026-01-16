@@ -17,6 +17,8 @@ import {
   setUserInfo,
   removeUserInfo
 } from '@/utils/storage'
+import { useUserStore } from './user'
+import { usePermissionStore } from './permission'
 
 export const useAuthStore = defineStore('auth', () => {
   // 状态
@@ -27,8 +29,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 计算属性
   const isAuthenticated = computed(() => !!token.value)
-  // TODO: 后续需要根据后端返回的角色信息判断是否为管理员
-  const isAdmin = computed(() => false)
+  const isAdmin = computed(() => {
+    const permissionStore = usePermissionStore()
+    return permissionStore.isAdmin
+  })
 
   /**
    * 登录
@@ -47,6 +51,16 @@ export const useAuthStore = defineStore('auth', () => {
       // 保存用户信息
       userInfo.value = response.user
       setUserInfo(response.user)
+
+      // 加载用户详细信息、角色和权限
+      const userStore = useUserStore()
+      const permissionStore = usePermissionStore()
+
+      // 设置用户信息到 userStore
+      userStore.setUserInfo(response.user)
+
+      // 并行加载角色和权限
+      await permissionStore.fetchRolesAndPermissions()
     } finally {
       isLoading.value = false
     }
@@ -76,6 +90,12 @@ export const useAuthStore = defineStore('auth', () => {
     removeToken()
     removeRefreshToken()
     removeUserInfo()
+
+    // 清除用户和权限数据
+    const userStore = useUserStore()
+    const permissionStore = usePermissionStore()
+    userStore.clearUserData()
+    permissionStore.clearPermissionData()
   }
 
   /**

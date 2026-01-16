@@ -4,12 +4,15 @@
 
 import type { Router } from 'vue-router'
 import { getToken } from '@/utils/storage'
+import { useUserStore } from '@/stores/user'
+import { usePermissionStore } from '@/stores/permission'
+import { showToast } from 'vant'
 
 /**
  * 设置认证守卫
  */
 export function setupAuthGuard(router: Router): void {
-  router.beforeEach((to, from, next) => {
+  router.beforeEach(async (to, from, next) => {
     const token = getToken()
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
 
@@ -26,6 +29,36 @@ export function setupAuthGuard(router: Router): void {
     if (to.path === '/login' && token) {
       next('/services')
       return
+    }
+
+    // 如果已登录且需要认证，加载用户信息
+    if (token && requiresAuth) {
+      const userStore = useUserStore()
+      const permissionStore = usePermissionStore()
+
+      // 如果用户信息未加载，则加载
+      if (!userStore.userInfo) {
+        try {
+          // 并行加载用户信息、角色和权限
+          await Promise.all([
+            userStore.fetchUserInfo(),
+            permissionStore.fetchRolesAndPermissions()
+          ])
+        } catch (error) {
+          console.error('加载用户信息失败:', error)
+          showToast({ type: 'fail', message: '加载用户信息失败，请重新登录' })
+
+          // 清除 token 并跳转到登录页
+          userStore.clearUserData()
+          permissionStore.clearPermissionData()
+
+          next({
+            path: '/login',
+            query: { redirect: to.fullPath }
+          })
+          return
+        }
+      }
     }
 
     next()
