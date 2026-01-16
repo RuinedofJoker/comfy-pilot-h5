@@ -68,61 +68,71 @@
     </div>
 
     <!-- 创建/编辑 Agent 模态框 -->
-    <van-dialog
-      v-model:show="showCreateModal"
+    <BaseAdminModal
+      v-model="showCreateModal"
       :title="editingAgent ? '编辑 Agent' : '新建 Agent'"
-      show-cancel-button
-      :before-close="handleModalClose"
-      class-name="f-agent-modal"
+      @confirm="handleConfirm"
+      @cancel="handleCancel"
     >
-      <div class="f-form">
-        <van-field
+      <BaseFormGroup label="Agent 名称" required>
+        <BaseInput
           v-model="formData.name"
-          label="Agent 名称"
           placeholder="工作流编辑助手"
           required
         />
-        <van-field
+      </BaseFormGroup>
+
+      <BaseFormGroup label="类型" required>
+        <BaseInput
           v-model="formData.type"
-          label="类型"
           placeholder="工作流编辑"
           required
         />
-        <van-field
+      </BaseFormGroup>
+
+      <BaseFormGroup label="系统提示词" required>
+        <BaseTextarea
           v-model="formData.systemPrompt"
-          label="系统提示词"
-          type="textarea"
           placeholder="定义 Agent 的角色和行为..."
-          rows="4"
-          autosize
+          :rows="4"
           required
         />
-        <van-field
+      </BaseFormGroup>
+
+      <BaseFormGroup label="关联模型" required>
+        <BaseInput
           v-model="formData.model"
-          label="关联模型"
           placeholder="GPT-4 Turbo"
           required
         />
-        <van-field
+      </BaseFormGroup>
+
+      <BaseFormGroup label="温度参数">
+        <BaseInput
           v-model.number="formData.temperature"
-          label="温度参数"
           type="number"
           placeholder="0.7"
         />
-        <van-field
+      </BaseFormGroup>
+
+      <BaseFormGroup label="最大 Token">
+        <BaseInput
           v-model.number="formData.maxTokens"
-          label="最大 Token"
           type="number"
           placeholder="4096"
         />
-      </div>
-    </van-dialog>
+      </BaseFormGroup>
+    </BaseAdminModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { showToast, showConfirmDialog } from 'vant'
+import BaseAdminModal from '@/components/admin/BaseAdminModal.vue'
+import BaseFormGroup from '@/components/admin/BaseFormGroup.vue'
+import BaseInput from '@/components/admin/BaseInput.vue'
+import BaseTextarea from '@/components/admin/BaseTextarea.vue'
 
 // 模拟数据类型
 interface Agent {
@@ -228,60 +238,59 @@ async function handleDelete(agent: Agent): Promise<void> {
   }
 }
 
-// 模态框关闭处理
-async function handleModalClose(action: string): Promise<boolean> {
-  if (action === 'confirm') {
-    if (!formData.name.trim() || !formData.type.trim() || !formData.model.trim()) {
-      showToast({ type: 'fail', message: '请填写必填项' })
-      return false
-    }
+// 确认按钮处理
+async function handleConfirm(): Promise<void> {
+  if (!formData.name.trim() || !formData.type.trim() || !formData.model.trim()) {
+    showToast({ type: 'fail', message: '请填写必填项' })
+    return
+  }
 
-    if (editingAgent.value) {
-      // 更新 Agent
-      const index = agents.value.findIndex(a => a.id === editingAgent.value!.id)
-      if (index !== -1) {
-        const currentAgent = agents.value[index]!
-        const updatedAgent: Agent = {
-          id: currentAgent.id,
-          name: formData.name,
-          type: formData.type,
-          model: formData.model,
-          temperature: formData.temperature,
-          maxTokens: formData.maxTokens,
-          status: currentAgent.status,
-          systemPrompt: formData.systemPrompt
-        }
-        agents.value[index] = updatedAgent
-      }
-      showToast({ type: 'success', message: '更新成功' })
-    } else {
-      // 创建 Agent
-      const newAgent: Agent = {
-        id: Date.now().toString(),
+  if (editingAgent.value) {
+    // 更新 Agent
+    const index = agents.value.findIndex(a => a.id === editingAgent.value!.id)
+    if (index !== -1) {
+      const currentAgent = agents.value[index]!
+      const updatedAgent: Agent = {
+        id: currentAgent.id,
         name: formData.name,
         type: formData.type,
         model: formData.model,
         temperature: formData.temperature,
         maxTokens: formData.maxTokens,
-        status: '活跃',
+        status: currentAgent.status,
         systemPrompt: formData.systemPrompt
       }
-      agents.value.unshift(newAgent)
-      showToast({ type: 'success', message: '创建成功' })
+      agents.value[index] = updatedAgent
     }
-
-    // 重置表单
-    formData.name = ''
-    formData.type = ''
-    formData.systemPrompt = ''
-    formData.model = ''
-    formData.temperature = 0.7
-    formData.maxTokens = 4096
-    editingAgent.value = null
-    return true
+    showToast({ type: 'success', message: '更新成功' })
+  } else {
+    // 创建 Agent
+    const newAgent: Agent = {
+      id: Date.now().toString(),
+      name: formData.name,
+      type: formData.type,
+      model: formData.model,
+      temperature: formData.temperature,
+      maxTokens: formData.maxTokens,
+      status: '活跃',
+      systemPrompt: formData.systemPrompt
+    }
+    agents.value.unshift(newAgent)
+    showToast({ type: 'success', message: '创建成功' })
   }
 
-  // 取消时重置表单
+  // 重置表单并关闭模态框
+  resetForm()
+  showCreateModal.value = false
+}
+
+// 取消按钮处理
+function handleCancel(): void {
+  resetForm()
+}
+
+// 重置表单
+function resetForm(): void {
   formData.name = ''
   formData.type = ''
   formData.systemPrompt = ''
@@ -289,7 +298,6 @@ async function handleModalClose(action: string): Promise<boolean> {
   formData.temperature = 0.7
   formData.maxTokens = 4096
   editingAgent.value = null
-  return true
 }
 </script>
 
@@ -465,41 +473,6 @@ async function handleModalClose(action: string): Promise<boolean> {
   .f-btn {
     padding: 4px 8px;
     font-size: 11px;
-  }
-}
-
-// 模态框样式
-:deep(.f-agent-modal) {
-  .van-dialog__content {
-    padding: 0;
-  }
-}
-
-.f-form {
-  padding: 16px;
-  max-height: 60vh;
-  overflow-y: auto;
-
-  :deep(.van-cell) {
-    background: transparent;
-    color: #ffffff;
-    padding: 12px 0;
-
-    &::after {
-      border-color: #3a3a3a;
-    }
-  }
-
-  :deep(.van-field__label) {
-    color: #cccccc;
-  }
-
-  :deep(.van-field__control) {
-    color: #ffffff;
-
-    &::placeholder {
-      color: #666666;
-    }
   }
 }
 </style>

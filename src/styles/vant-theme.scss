@@ -1,0 +1,181 @@
+// Vant 组件深色主题覆盖样式 - ComfyUI 风格
+@use './variables.scss' as *;
+
+// ========== Dialog 弹窗样式 ==========
+.van-dialog {
+  background: #2b2b2b;
+  border-radius: 4px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+
+  // 标题样式
+  .van-dialog__header {
+    padding: 16px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #ffffff;
+    border-bottom: 1px solid #3a3a3a;
+  }
+
+  // 内容区域
+  .van-dialog__content {
+    padding: 20px;
+    color: #cccccc;
+    background: #2b2b2b;
+  }
+
+  // 底部按钮区域
+  .van-dialog__footer {
+    padding: 12px 20px;
+    border-top: 1px solid #3a3a3a;
+    background: #2b2b2b;
+  }
+
+  // 按钮样式
+  .van-dialog__cancel,
+  .van-dialog__confirm {
+    padding: 8px 16px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-weight: 400;
+    transition: all 0.15s;
+  }
+
+  // 取消按钮
+  .van-dialog__cancel {
+    background: #3a3a3a;
+    border: 1px solid #444444;
+    color: #cccccc;
+
+    &:hover {
+      background: #454545;
+      color: #ffffff;
+    }
+
+    &:active {
+      background: #333333;
+    }
+  }
+
+  // 确认按钮
+  .van-dialog__confirm {
+    background: $primary-color;
+    border: 1px solid $primary-color;
+    color: #ffffff;
+
+    &:hover {
+      background: #5aa8ff;
+      border-color: #5aa8ff;
+    }
+
+    &:active {
+      background: #3a8eef;
+    }
+  }
+}
+
+// ========== Field 表单输入框样式 ==========
+.van-cell {
+  background: transparent;
+  color: #ffffff;
+  padding: 0;
+  flex-direction: column;
+  align-items: flex-start;
+
+  &::after {
+    display: none;
+  }
+}
+
+.van-field {
+  padding: 0;
+  margin-bottom: 16px;
+
+  // 标签在上方
+  .van-field__label {
+    width: 100%;
+    margin-bottom: 6px;
+    color: #ffffff !important;
+    font-size: 13px;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+  }
+
+  // 必填星号样式（针对 required 属性）
+  &.van-field--required {
+    .van-field__label::before {
+      content: '* ';
+      color: #ff4d4f;
+      font-size: 14px;
+      margin-right: 2px;
+    }
+  }
+
+  // 输入框主体
+  .van-field__body {
+    width: 100%;
+  }
+
+  // 输入控件
+  .van-field__control {
+    width: 100%;
+    color: #ffffff;
+    background: #353535;
+    border: 1px solid #3a3a3a;
+    border-radius: 3px;
+    padding: 8px 12px;
+    font-size: 13px;
+    box-sizing: border-box;
+
+    &::placeholder {
+      color: #666666;
+    }
+
+    &:focus {
+      border-color: #555555;
+      outline: none;
+    }
+  }
+
+  // Textarea 样式
+  .van-field__control--textarea {
+    min-height: 80px;
+    resize: vertical;
+  }
+}
+
+// ========== Picker 选择器样式 ==========
+.van-picker {
+  background: #2b2b2b;
+
+  .van-picker__toolbar {
+    background: #2b2b2b;
+    border-bottom: 1px solid #3a3a3a;
+  }
+
+  .van-picker__cancel,
+  .van-picker__confirm {
+    color: $primary-color;
+  }
+
+  .van-picker__title {
+    color: #ffffff;
+  }
+
+  .van-picker-column__item {
+    color: #cccccc;
+
+    &--selected {
+      color: #ffffff;
+    }
+  }
+}
+
+// ========== 确认对话框样式 ==========
+.van-dialog--confirm {
+  .van-dialog__message {
+    color: #cccccc;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+}

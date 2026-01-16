@@ -66,38 +66,37 @@
     </div>
 
     <!-- 创建/编辑服务模态框 -->
-    <van-dialog
-      v-model:show="showCreateModal"
+    <BaseAdminModal
+      v-model="showCreateModal"
       :title="editingService ? '编辑服务' : '添加服务'"
-      show-cancel-button
-      :before-close="handleModalClose"
-      class-name="f-service-modal"
+      @confirm="handleConfirm"
+      @cancel="handleCancel"
     >
-      <div class="f-form">
-        <van-field
+      <BaseFormGroup label="服务名称" required>
+        <BaseInput
           v-model="formData.serverName"
-          label="服务名称"
           placeholder="生产环境 ComfyUI"
           required
-          :rules="[{ required: true, message: '请输入服务名称' }]"
         />
-        <van-field
+      </BaseFormGroup>
+
+      <BaseFormGroup label="服务地址" hint="完整的 ComfyUI 服务 URL" required>
+        <BaseInput
           v-model="formData.baseUrl"
-          label="服务地址"
+          type="url"
           placeholder="http://192.168.1.100:8188"
           required
-          :rules="[{ required: true, message: '请输入服务地址' }]"
         />
-        <van-field
+      </BaseFormGroup>
+
+      <BaseFormGroup label="描述">
+        <BaseTextarea
           v-model="formData.description"
-          label="描述"
-          type="textarea"
           placeholder="服务描述..."
-          rows="3"
-          autosize
+          :rows="3"
         />
-      </div>
-    </van-dialog>
+      </BaseFormGroup>
+    </BaseAdminModal>
   </div>
 </template>
 
@@ -106,6 +105,10 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { showToast, showConfirmDialog } from 'vant'
 import { useAdminStore } from '@/stores/admin'
 import type { AdminComfyuiServer } from '@/types/admin'
+import BaseAdminModal from '@/components/admin/BaseAdminModal.vue'
+import BaseFormGroup from '@/components/admin/BaseFormGroup.vue'
+import BaseInput from '@/components/admin/BaseInput.vue'
+import BaseTextarea from '@/components/admin/BaseTextarea.vue'
 
 const adminStore = useAdminStore()
 
@@ -174,52 +177,51 @@ async function handleDelete(service: AdminComfyuiServer): Promise<void> {
   }
 }
 
-// 模态框关闭处理
-async function handleModalClose(action: string): Promise<boolean> {
-  if (action === 'confirm') {
-    if (!formData.serverName.trim() || !formData.baseUrl.trim()) {
-      showToast({ type: 'fail', message: '请填写必填项' })
-      return false
-    }
-
-    try {
-      if (editingService.value) {
-        // 更新服务
-        await adminStore.updateServer(editingService.value.id, {
-          serverName: formData.serverName,
-          baseUrl: formData.baseUrl,
-          description: formData.description || undefined
-        })
-        showToast({ type: 'success', message: '更新成功' })
-      } else {
-        // 创建服务
-        await adminStore.createServer({
-          serverName: formData.serverName,
-          baseUrl: formData.baseUrl,
-          description: formData.description || undefined
-        })
-        showToast({ type: 'success', message: '创建成功' })
-      }
-
-      // 重置表单
-      formData.serverName = ''
-      formData.baseUrl = ''
-      formData.description = ''
-      editingService.value = null
-
-      return true
-    } catch (error) {
-      showToast({ type: 'fail', message: '操作失败' })
-      return false
-    }
+// 确认按钮处理
+async function handleConfirm(): Promise<void> {
+  if (!formData.serverName.trim() || !formData.baseUrl.trim()) {
+    showToast({ type: 'fail', message: '请填写必填项' })
+    return
   }
 
-  // 取消时重置表单
+  try {
+    if (editingService.value) {
+      // 更新服务
+      await adminStore.updateServer(editingService.value.id, {
+        serverName: formData.serverName,
+        baseUrl: formData.baseUrl,
+        description: formData.description || undefined
+      })
+      showToast({ type: 'success', message: '更新成功' })
+    } else {
+      // 创建服务
+      await adminStore.createServer({
+        serverName: formData.serverName,
+        baseUrl: formData.baseUrl,
+        description: formData.description || undefined
+      })
+      showToast({ type: 'success', message: '创建成功' })
+    }
+
+    // 重置表单并关闭模态框
+    resetForm()
+    showCreateModal.value = false
+  } catch (error) {
+    showToast({ type: 'fail', message: '操作失败' })
+  }
+}
+
+// 取消按钮处理
+function handleCancel(): void {
+  resetForm()
+}
+
+// 重置表单
+function resetForm(): void {
   formData.serverName = ''
   formData.baseUrl = ''
   formData.description = ''
   editingService.value = null
-  return true
 }
 
 // 页面加载时获取服务列表
@@ -396,39 +398,6 @@ onMounted(() => {
     flex: 1;
     padding: 4px 8px;
     font-size: 11px;
-  }
-}
-
-// 模态框样式
-:deep(.f-service-modal) {
-  .van-dialog__content {
-    padding: 0;
-  }
-}
-
-.f-form {
-  padding: 16px;
-
-  :deep(.van-cell) {
-    background: transparent;
-    color: #ffffff;
-    padding: 12px 0;
-
-    &::after {
-      border-color: #3a3a3a;
-    }
-  }
-
-  :deep(.van-field__label) {
-    color: #cccccc;
-  }
-
-  :deep(.van-field__control) {
-    color: #ffffff;
-
-    &::placeholder {
-      color: #666666;
-    }
   }
 }
 </style>

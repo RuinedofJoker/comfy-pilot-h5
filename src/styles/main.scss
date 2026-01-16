@@ -4,6 +4,9 @@
 // 导入全局变量
 @use './variables.scss' as *;
 
+// 导入 Vant 深色主题
+@use './vant-theme.scss';
+
 // 全局混合宏
 @mixin flex-center {
   display: flex;
