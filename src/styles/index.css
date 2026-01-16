@@ -2,22 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 全局样式变量 */
+/* 全局样式变量 - ComfyUI 深色主题 */
 :root {
-  --primary-color: #1989fa;
-  --text-color: #323233;
-  --background-color: #f7f8fa;
+  --primary-color: #4a9eff;
+  --text-color: #ffffff;
+  --background-color: #1a1a1a;
 }
 
-/* 重置样式 */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
+/* 项目特定的全局样式 */
+html,
 body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   color: var(--text-color);
   background-color: var(--background-color);
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
 }

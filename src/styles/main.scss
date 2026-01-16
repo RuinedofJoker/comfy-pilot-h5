@@ -1,0 +1,57 @@
+// 导入 CSS Reset
+@use '../assets/styles/reset';
+
+// 导入全局变量
+@use './variables.scss' as *;
+
+// 全局混合宏
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin scrollbar-dark {
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $background-color-secondary;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $background-color-tertiary;
+    border-radius: 4px;
+
+    &:hover {
+      background: #4a4a4a;
+    }
+  }
+}
+
+// 全局工具类
+.flex-center {
+  @include flex-center;
+}
+
+.flex-between {
+  @include flex-between;
+}
+
+.text-ellipsis {
+  @include text-ellipsis;
+}

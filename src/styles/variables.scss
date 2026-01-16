@@ -1,13 +1,22 @@
-// SCSS 全局变量
-$primary-color: #1989fa;
+// SCSS 全局变量 - ComfyUI 深色主题
+$primary-color: #4a9eff;
 $success-color: #07c160;
 $warning-color: #ff976a;
-$danger-color: #ee0a24;
+$danger-color: #e74c3c;
 
-$text-color: #323233;
-$text-color-secondary: #969799;
-$border-color: #ebedf0;
-$background-color: #f7f8fa;
+// 文字颜色
+$text-color: #ffffff;
+$text-color-secondary: #999999;
+$text-color-tertiary: #666666;
+
+// 背景颜色
+$background-color: #1a1a1a;
+$background-color-secondary: #2a2a2a;
+$background-color-tertiary: #3a3a3a;
+
+// 边框颜色
+$border-color: #3a3a3a;
+$border-color-light: #2a2a2a;
 
 // 间距
 $spacing-xs: 4px;
@@ -15,3 +24,15 @@ $spacing-sm: 8px;
 $spacing-md: 12px;
 $spacing-lg: 16px;
 $spacing-xl: 24px;
+$spacing-xxl: 32px;
+
+// 圆角
+$border-radius-sm: 4px;
+$border-radius-md: 8px;
+$border-radius-lg: 12px;
+
+// 阴影
+$shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+$shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+$shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+
