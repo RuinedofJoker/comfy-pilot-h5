@@ -4,8 +4,9 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { ComfyUIService } from '@/types/service'
-import { getAvailableServices, getRecentServices } from '@/services/service'
+import type { ComfyUIService, ListServicesParams } from '@/types/service'
+import { listServers } from '@/services/service'
+import { getStorageItem, setStorageItem, removeStorageItem } from '@/utils/storage'
 
 export const useServiceStore = defineStore('service', () => {
   // 状态
@@ -25,13 +26,23 @@ export const useServiceStore = defineStore('service', () => {
       .filter(Boolean) as ComfyUIService[]
   })
 
+  // 计算属性：启用的服务
+  const enabledServices = computed(() =>
+    services.value.filter(s => s.isEnabled)
+  )
+
+  // 计算属性：健康的服务
+  const healthyServices = computed(() =>
+    services.value.filter(s => s.healthStatus === 'HEALTHY' && s.isEnabled)
+  )
+
   /**
-   * 获取可用服务列表
+   * 获取服务列表
    */
-  async function fetchServices(): Promise<void> {
+  async function fetchServices(params?: ListServicesParams): Promise<void> {
     isLoading.value = true
     try {
-      services.value = await getAvailableServices()
+      services.value = await listServers(params)
     } finally {
       isLoading.value = false
     }
@@ -40,12 +51,10 @@ export const useServiceStore = defineStore('service', () => {
   /**
    * 获取最近使用的服务
    */
-  async function fetchRecentServices(): Promise<void> {
-    try {
-      const recent = await getRecentServices()
-      recentServiceIds.value = recent.map(s => s.id)
-    } catch (error) {
-      console.error('获取最近使用的服务失败:', error)
+  function fetchRecentServices(): void {
+    const savedRecentIds = getStorageItem<string[]>('recent_service_ids')
+    if (savedRecentIds) {
+      recentServiceIds.value = savedRecentIds
     }
   }
 
@@ -64,27 +73,23 @@ export const useServiceStore = defineStore('service', () => {
       }
     }
 
-    // 保存到 localStorage
-    localStorage.setItem('selected_service_id', serviceId)
-    localStorage.setItem('recent_service_ids', JSON.stringify(recentServiceIds.value))
+    // 保存到 storage
+    setStorageItem('selected_service_id', serviceId)
+    setStorageItem('recent_service_ids', recentServiceIds.value)
   }
 
   /**
-   * 从 localStorage 恢复选择的服务
+   * 从 storage 恢复选择的服务
    */
   function restoreSelectedService(): void {
-    const savedServiceId = localStorage.getItem('selected_service_id')
+    const savedServiceId = getStorageItem<string>('selected_service_id')
     if (savedServiceId) {
       selectedServiceId.value = savedServiceId
     }
 
-    const savedRecentIds = localStorage.getItem('recent_service_ids')
+    const savedRecentIds = getStorageItem<string[]>('recent_service_ids')
     if (savedRecentIds) {
-      try {
-        recentServiceIds.value = JSON.parse(savedRecentIds)
-      } catch (error) {
-        console.error('解析最近使用的服务失败:', error)
-      }
+      recentServiceIds.value = savedRecentIds
     }
   }
 
@@ -95,8 +100,8 @@ export const useServiceStore = defineStore('service', () => {
     services.value = []
     selectedServiceId.value = ''
     recentServiceIds.value = []
-    localStorage.removeItem('selected_service_id')
-    localStorage.removeItem('recent_service_ids')
+    removeStorageItem('selected_service_id')
+    removeStorageItem('recent_service_ids')
   }
 
   return {
@@ -108,6 +113,8 @@ export const useServiceStore = defineStore('service', () => {
     // 计算属性
     selectedService,
     recentServices,
+    enabledServices,
+    healthyServices,
     // 方法
     fetchServices,
     fetchRecentServices,

@@ -1,133 +1,174 @@
 <template>
   <div class="g-workflow-list-view">
-    <TopNavBar />
+    <!-- 顶部导航栏 -->
+    <TopNavBar
+      title="我的工作流"
+      :show-back="true"
+      :show-menu="true"
+      @menu-click="showUserMenu = true"
+    />
 
-    <div class="g-workflow-list-view__container">
-      <div class="g-workflow-list-view__header">
-        <div class="g-workflow-list-view__header-left">
-          <h1 class="g-workflow-list-view__title">我的工作流</h1>
-          <p class="g-workflow-list-view__description">
-            管理您的 ComfyUI 工作流
-          </p>
-        </div>
-        <div class="g-workflow-list-view__header-right">
-          <BaseButton variant="primary" @click="handleCreateWorkflow">
-            <BaseIcon name="plus" :size="16" />
-            新建工作流
-          </BaseButton>
-        </div>
-      </div>
+    <!-- 用户菜单 -->
+    <UserMenu v-model:show="showUserMenu" />
 
-      <div v-if="loading" class="g-workflow-list-view__loading">
-        <BaseIcon name="loading" :size="48" />
-        <p>加载工作流列表中...</p>
-      </div>
-
-      <div v-else-if="workflows.length === 0" class="g-workflow-list-view__empty">
-        <BaseIcon name="inbox" :size="64" />
-        <p>暂无工作流</p>
-        <BaseButton variant="primary" @click="handleCreateWorkflow">
-          创建第一个工作流
-        </BaseButton>
-      </div>
-
-      <div v-else class="g-workflow-list-view__grid">
-        <WorkflowCard
-          v-for="workflow in workflows"
-          :key="workflow.id"
-          :workflow="workflow"
-          @open="handleOpenWorkflow"
-          @edit="handleEditWorkflow"
-          @delete="handleDeleteWorkflow"
+    <!-- 主内容区 -->
+    <div class="g-workflow-list-view__content">
+      <!-- 搜索和排序栏 -->
+      <div class="m-toolbar">
+        <van-search
+          v-model="searchKeyword"
+          placeholder="搜索工作流名称或描述"
+          shape="round"
+          background="#2a2a2a"
         />
+        <div class="f-sort-section">
+          <van-dropdown-menu active-color="#4a9eff">
+            <van-dropdown-item v-model="sortBy" :options="sortOptions" />
+          </van-dropdown-menu>
+        </div>
+      </div>
+
+      <!-- 工作流列表 -->
+      <div class="m-workflow-list">
+        <!-- 加载状态 -->
+        <van-loading
+          v-if="isLoading"
+          class="f-loading"
+          type="spinner"
+          color="#4a9eff"
+          size="40"
+        >
+          加载中...
+        </van-loading>
+
+        <!-- 空状态 -->
+        <van-empty
+          v-else-if="!isLoading && filteredWorkflows.length === 0"
+          image="search"
+          :description="searchKeyword ? '未找到相关工作流' : '暂无工作流'"
+        >
+          <van-button
+            v-if="!searchKeyword"
+            type="primary"
+            round
+            @click="handleCreateWorkflow"
+          >
+            创建第一个工作流
+          </van-button>
+        </van-empty>
+
+        <!-- 工作流卡片列表 -->
+        <div v-else class="f-workflow-grid">
+          <WorkflowCard
+            v-for="workflow in filteredWorkflows"
+            :key="workflow.id"
+            :workflow="workflow"
+            @open="handleOpenWorkflow"
+            @edit="handleEditWorkflow"
+            @delete="handleDeleteWorkflow"
+          />
+        </div>
       </div>
     </div>
 
-    <!-- 删除确认模态框 -->
-    <BaseModal
-      v-model="showDeleteModal"
-      title="删除工作流"
-      width="400px"
+    <!-- 悬浮创建按钮 -->
+    <van-floating-bubble
+      v-if="hasWorkflows"
+      icon="plus"
+      magnetic="x"
+      @click="handleCreateWorkflow"
+    />
+
+    <!-- 创建工作流弹窗 -->
+    <van-dialog
+      v-model:show="showCreateDialog"
+      title="创建工作流"
+      show-cancel-button
+      :before-close="handleBeforeClose"
     >
-      <p style="color: #cccccc; margin: 0 0 20px 0;">
-        确定要删除工作流 "{{ workflowToDelete?.name }}" 吗？此操作无法撤销。
-      </p>
-      <template #footer>
-        <BaseButton variant="secondary" @click="showDeleteModal = false">
-          取消
-        </BaseButton>
-        <BaseButton variant="danger" :loading="deleting" @click="confirmDelete">
-          删除
-        </BaseButton>
-      </template>
-    </BaseModal>
+      <div class="f-create-form">
+        <van-field
+          v-model="createForm.name"
+          label="工作流名称"
+          placeholder="请输入工作流名称"
+          required
+          :rules="[{ required: true, message: '请输入工作流名称' }]"
+        />
+        <van-field
+          v-model="createForm.description"
+          label="描述"
+          type="textarea"
+          placeholder="请输入工作流描述（可选）"
+          rows="3"
+          autosize
+        />
+      </div>
+    </van-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive } from 'vue'
 import TopNavBar from '@/components/user/TopNavBar.vue'
+import UserMenu from '@/components/user/UserMenu.vue'
 import WorkflowCard from '@/components/user/WorkflowCard.vue'
-import BaseButton from '@/components/base/BaseButton.vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import BaseModal from '@/components/base/BaseModal.vue'
-import { getWorkflowList, deleteWorkflow } from '@/services/workflow'
+import { useWorkflowList } from '@/composables/useWorkflowList'
 import type { Workflow } from '@/types/workflow'
 
-const router = useRouter()
+const showUserMenu = ref(false)
+const showCreateDialog = ref(false)
 
-const workflows = ref<Workflow[]>([])
-const loading = ref(false)
-const showDeleteModal = ref(false)
-const workflowToDelete = ref<Workflow | null>(null)
-const deleting = ref(false)
-
-onMounted(async () => {
-  await loadWorkflows()
+const createForm = reactive({
+  name: '',
+  description: ''
 })
 
-async function loadWorkflows(): Promise<void> {
-  loading.value = true
-  try {
-    workflows.value = await getWorkflowList()
-  } catch (error) {
-    console.error('加载工作流列表失败:', error)
-  } finally {
-    loading.value = false
-  }
-}
+const sortOptions = [
+  { text: '最近使用', value: 'lastUsed' },
+  { text: '创建时间', value: 'createdAt' },
+  { text: '更新时间', value: 'updatedAt' }
+]
+
+const {
+  searchKeyword,
+  sortBy,
+  filteredWorkflows,
+  isLoading,
+  hasWorkflows,
+  createWorkflow,
+  deleteWorkflow,
+  openWorkflow
+} = useWorkflowList()
 
 function handleCreateWorkflow(): void {
-  router.push('/workflow/new')
+  showCreateDialog.value = true
 }
 
 function handleOpenWorkflow(workflow: Workflow): void {
-  router.push(`/workflow/${workflow.id}`)
+  openWorkflow(workflow.id)
 }
 
 function handleEditWorkflow(workflow: Workflow): void {
-  router.push(`/workflow/${workflow.id}`)
+  openWorkflow(workflow.id)
 }
 
 function handleDeleteWorkflow(workflow: Workflow): void {
-  workflowToDelete.value = workflow
-  showDeleteModal.value = true
+  deleteWorkflow(workflow.id, workflow.name)
 }
 
-async function confirmDelete(): Promise<void> {
-  if (!workflowToDelete.value) return
-
-  deleting.value = true
-  try {
-    await deleteWorkflow(workflowToDelete.value.id)
-    await loadWorkflows()
-    showDeleteModal.value = false
-  } catch (error) {
-    console.error('删除工作流失败:', error)
-  } finally {
-    deleting.value = false
+async function handleBeforeClose(action: string): Promise<boolean> {
+  if (action === 'confirm') {
+    if (!createForm.name.trim()) {
+      return false
+    }
+    await createWorkflow({
+      name: createForm.name,
+      description: createForm.description || undefined
+    })
+    createForm.name = ''
+    createForm.description = ''
   }
+  return true
 }
 </script>
 
@@ -135,62 +176,126 @@ async function confirmDelete(): Promise<void> {
 .g-workflow-list-view {
   min-height: 100vh;
   background: #1a1a1a;
+  display: flex;
+  flex-direction: column;
 
-  &__container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 40px 24px;
-  }
-
-  &__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 24px;
-    margin-bottom: 32px;
-  }
-
-  &__header-left {
+  &__content {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+}
+
+.m-toolbar {
+  background: #2a2a2a;
+  border-bottom: 1px solid #3a3a3a;
+
+  :deep(.van-search) {
+    padding: 16px 16px 0;
   }
 
-  &__title {
-    font-size: 32px;
-    font-weight: 600;
+  :deep(.van-search__content) {
+    background: #1a1a1a;
+    border: 1px solid #3a3a3a;
+  }
+
+  :deep(.van-field__control) {
     color: #ffffff;
-    margin: 0 0 8px 0;
+
+    &::placeholder {
+      color: #666666;
+    }
   }
 
-  &__description {
-    font-size: 16px;
-    color: #999999;
-    margin: 0;
-  }
+  .f-sort-section {
+    :deep(.van-dropdown-menu) {
+      background: #2a2a2a;
+    }
 
-  &__header-right {
-    flex-shrink: 0;
-  }
+    :deep(.van-dropdown-menu__bar) {
+      background: #2a2a2a;
+      box-shadow: none;
+    }
 
-  &__loading,
-  &__empty {
+    :deep(.van-dropdown-menu__title) {
+      color: #ffffff;
+    }
+  }
+}
+
+.m-workflow-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+
+  .f-loading {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 16px;
-    padding: 80px 20px;
+    padding: 60px 0;
     color: #999999;
+  }
 
-    p {
-      font-size: 16px;
-      margin: 0;
+  :deep(.van-empty) {
+    padding: 60px 0;
+  }
+
+  :deep(.van-empty__image) {
+    width: 120px;
+    height: 120px;
+  }
+
+  :deep(.van-empty__description) {
+    color: #999999;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+}
+
+.f-workflow-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.f-create-form {
+  padding: 20px 16px;
+
+  :deep(.van-cell) {
+    background: transparent;
+    color: #ffffff;
+    padding: 12px 0;
+
+    &::after {
+      border-color: #3a3a3a;
     }
   }
 
-  &__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 24px;
+  :deep(.van-field__label) {
+    color: #cccccc;
   }
+
+  :deep(.van-field__control) {
+    color: #ffffff;
+
+    &::placeholder {
+      color: #666666;
+    }
+  }
+}
+
+:deep(.van-floating-bubble) {
+  background: #4a9eff;
+  box-shadow: 0 4px 12px rgba(74, 158, 255, 0.4);
 }
 </style>

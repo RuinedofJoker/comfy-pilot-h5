@@ -1,167 +1,121 @@
 <template>
-  <div class="f-user-menu" v-click-outside="closeMenu">
-    <button class="f-user-menu__trigger" @click="toggleMenu">
-      <div class="f-user-menu__avatar">
-        <img v-if="userInfo?.avatar" :src="userInfo.avatar" alt="用户头像" />
-        <BaseIcon v-else name="user" :size="20" />
+  <van-action-sheet
+    v-model:show="isMenuOpen"
+    :actions="menuActions"
+    cancel-text="取消"
+    close-on-click-action
+    @select="onSelect"
+  >
+    <template #description>
+      <div class="m-user-menu-header">
+        <van-image
+          v-if="userInfo?.avatarUrl"
+          :src="userInfo.avatarUrl"
+          round
+          width="60"
+          height="60"
+          fit="cover"
+        />
+        <van-icon
+          v-else
+          name="user-circle-o"
+          size="60"
+          color="#999"
+        />
+        <div class="f-user-info">
+          <div class="f-username">{{ userInfo?.username || '用户' }}</div>
+          <div class="f-email">{{ userInfo?.email }}</div>
+        </div>
       </div>
-      <span class="f-user-menu__name">{{ userInfo?.username || '用户' }}</span>
-      <BaseIcon name="chevron-down" :size="16" />
-    </button>
-
-    <Transition name="menu-fade">
-      <div v-if="isMenuOpen" class="f-user-menu__dropdown">
-        <router-link to="/profile" class="f-user-menu__item" @click="closeMenu">
-          <BaseIcon name="user" :size="18" />
-          <span>个人信息</span>
-        </router-link>
-        <div class="f-user-menu__divider"></div>
-        <button class="f-user-menu__item" @click="handleLogout">
-          <BaseIcon name="logout" :size="18" />
-          <span>退出登录</span>
-        </button>
-      </div>
-    </Transition>
-  </div>
+    </template>
+  </van-action-sheet>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import BaseIcon from '@/components/base/BaseIcon.vue'
+import { showConfirmDialog } from 'vant'
 import { useAuthStore } from '@/stores/auth'
+import { useUserStore } from '@/stores/user'
+import type { ActionSheetAction } from 'vant'
+
+interface Props {
+  show?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  show: false
+})
+
+const emit = defineEmits<{
+  'update:show': [value: boolean]
+}>()
 
 const router = useRouter()
 const authStore = useAuthStore()
+const userStore = useUserStore()
 
-const isMenuOpen = ref(false)
+const isMenuOpen = computed({
+  get: () => props.show,
+  set: (value) => emit('update:show', value)
+})
 
-const userInfo = computed(() => authStore.userInfo)
+const userInfo = computed(() => userStore.userInfo)
 
-function toggleMenu(): void {
-  isMenuOpen.value = !isMenuOpen.value
-}
+const menuActions = computed<ActionSheetAction[]>(() => [
+  {
+    name: '个人信息',
+    icon: 'user-o',
+    callback: () => router.push('/user/profile')
+  },
+  {
+    name: '退出登录',
+    icon: 'sign',
+    color: '#ee0a24',
+    callback: handleLogout
+  }
+])
 
-function closeMenu(): void {
-  isMenuOpen.value = false
+function onSelect(action: ActionSheetAction): void {
+  action.callback?.()
 }
 
 async function handleLogout(): Promise<void> {
-  await authStore.logout()
-  router.push('/login')
-}
-
-// 点击外部关闭菜单的指令
-const vClickOutside = {
-  mounted(el: HTMLElement, binding: { value: () => void }) {
-    el.clickOutsideEvent = (event: Event) => {
-      if (!(el === event.target || el.contains(event.target as Node))) {
-        binding.value()
-      }
-    }
-    document.addEventListener('click', el.clickOutsideEvent)
-  },
-  unmounted(el: HTMLElement) {
-    document.removeEventListener('click', el.clickOutsideEvent)
+  try {
+    await showConfirmDialog({
+      title: '确认退出',
+      message: '确定要退出登录吗？'
+    })
+    await authStore.logout()
+    router.push('/auth/login')
+  } catch {
+    // 用户取消
   }
 }
 </script>
 
 <style scoped lang="scss">
-.f-user-menu {
-  position: relative;
+.m-user-menu-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  gap: 12px;
 
-  &__trigger {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background: transparent;
-    border: 1px solid #3a3a3a;
-    border-radius: 4px;
-    color: #ffffff;
-    cursor: pointer;
-    transition: all 0.2s;
-
-    &:hover {
-      background: #3a3a3a;
-      border-color: #4a9eff;
-    }
+  .f-user-info {
+    text-align: center;
   }
 
-  &__avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: #3a3a3a;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+  .f-username {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
   }
 
-  &__name {
+  .f-email {
     font-size: 14px;
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    color: #999;
   }
-
-  &__dropdown {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    min-width: 180px;
-    background: #2a2a2a;
-    border: 1px solid #3a3a3a;
-    border-radius: 4px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    padding: 8px 0;
-    z-index: 1000;
-  }
-
-  &__item {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    background: transparent;
-    border: none;
-    color: #cccccc;
-    font-size: 14px;
-    text-decoration: none;
-    cursor: pointer;
-    transition: all 0.2s;
-
-    &:hover {
-      background: #3a3a3a;
-      color: #ffffff;
-    }
-  }
-
-  &__divider {
-    height: 1px;
-    background: #3a3a3a;
-    margin: 8px 0;
-  }
-}
-
-.menu-fade-enter-active,
-.menu-fade-leave-active {
-  transition: opacity 0.2s, transform 0.2s;
-}
-
-.menu-fade-enter-from,
-.menu-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
 }
 </style>

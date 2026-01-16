@@ -3,38 +3,19 @@
  */
 
 import http from './http'
-import type { UserProfile, UpdateUserParams, ChangePasswordParams } from '@/types/user'
+import type { UserInfo } from '@/types/auth'
+import type { UpdateUserParams } from '@/types/user'
 
 /**
- * 获取用户信息
+ * 获取当前用户信息
  */
-export function getUserProfile(): Promise<UserProfile> {
-  return http.get('/api/user/profile')
+export function getCurrentUser(): Promise<UserInfo> {
+  return http.get('/api/v1/users/me')
 }
 
 /**
  * 更新用户信息
  */
-export function updateUserProfile(params: UpdateUserParams): Promise<UserProfile> {
-  return http.put('/api/user/profile', params)
-}
-
-/**
- * 修改密码
- */
-export function changePassword(params: ChangePasswordParams): Promise<void> {
-  return http.post('/api/user/change-password', params)
-}
-
-/**
- * 上传头像
- */
-export function uploadAvatar(file: File): Promise<string> {
-  const formData = new FormData()
-  formData.append('file', file)
-  return http.post('/api/user/avatar', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  })
+export function updateUser(params: UpdateUserParams): Promise<UserInfo> {
+  return http.put('/api/v1/users/me', params)
 }

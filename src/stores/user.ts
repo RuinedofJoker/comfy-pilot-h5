@@ -3,17 +3,22 @@
  */
 
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { UserInfo } from '@/types/user'
-import type { Workflow } from '@/types/workflow'
-import { getUserInfo as getUserInfoApi, updateUserInfo as updateUserInfoApi } from '@/services/user'
-import { getWorkflowList as getWorkflowListApi } from '@/services/workflow'
+import { ref, computed } from 'vue'
+import type { UserInfo } from '@/types/auth'
+import type { UpdateUserParams } from '@/types/user'
+import { getCurrentUser, updateUser } from '@/services/user'
 
 export const useUserStore = defineStore('user', () => {
   // 状态
   const userInfo = ref<UserInfo | null>(null)
-  const workflows = ref<Workflow[]>([])
   const isLoading = ref(false)
+
+  // 计算属性
+  const isLoggedIn = computed(() => userInfo.value !== null)
+  const userId = computed(() => userInfo.value?.id)
+  const username = computed(() => userInfo.value?.username)
+  const email = computed(() => userInfo.value?.email)
+  const avatarUrl = computed(() => userInfo.value?.avatarUrl)
 
   /**
    * 获取用户信息
@@ -21,7 +26,7 @@ export const useUserStore = defineStore('user', () => {
   async function fetchUserInfo(): Promise<void> {
     isLoading.value = true
     try {
-      userInfo.value = await getUserInfoApi()
+      userInfo.value = await getCurrentUser()
     } finally {
       isLoading.value = false
     }
@@ -30,47 +35,16 @@ export const useUserStore = defineStore('user', () => {
   /**
    * 更新用户信息
    */
-  async function updateUserInfo(data: Partial<UserInfo>): Promise<void> {
-    await updateUserInfoApi(data)
-    if (userInfo.value) {
-      userInfo.value = { ...userInfo.value, ...data }
-    }
+  async function updateUserInfo(params: UpdateUserParams): Promise<void> {
+    const updatedUser = await updateUser(params)
+    userInfo.value = updatedUser
   }
 
   /**
-   * 获取工作流列表
+   * 设置用户信息（登录后使用）
    */
-  async function fetchWorkflows(): Promise<void> {
-    isLoading.value = true
-    try {
-      workflows.value = await getWorkflowListApi()
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  /**
-   * 添加工作流
-   */
-  function addWorkflow(workflow: Workflow): void {
-    workflows.value.unshift(workflow)
-  }
-
-  /**
-   * 更新工作流
-   */
-  function updateWorkflow(id: string, data: Partial<Workflow>): void {
-    const index = workflows.value.findIndex(w => w.id === id)
-    if (index !== -1) {
-      workflows.value[index] = { ...workflows.value[index], ...data }
-    }
-  }
-
-  /**
-   * 删除工作流
-   */
-  function removeWorkflow(id: string): void {
-    workflows.value = workflows.value.filter(w => w.id !== id)
+  function setUserInfo(user: UserInfo): void {
+    userInfo.value = user
   }
 
   /**
@@ -78,21 +52,22 @@ export const useUserStore = defineStore('user', () => {
    */
   function clearUserData(): void {
     userInfo.value = null
-    workflows.value = []
   }
 
   return {
     // 状态
     userInfo,
-    workflows,
     isLoading,
+    // 计算属性
+    isLoggedIn,
+    userId,
+    username,
+    email,
+    avatarUrl,
     // 方法
     fetchUserInfo,
     updateUserInfo,
-    fetchWorkflows,
-    addWorkflow,
-    updateWorkflow,
-    removeWorkflow,
+    setUserInfo,
     clearUserData
   }
 })

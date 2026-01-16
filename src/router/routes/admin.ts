@@ -24,7 +24,9 @@ const adminRoutes: RouteRecordRaw[] = [
         name: 'AdminServices',
         component: () => import('@/views/admin/ServiceManagementView.vue'),
         meta: {
-          title: '服务管理'
+          title: '服务管理',
+          requiresAuth: true,
+          requiresAdmin: true
         }
       },
       {
@@ -32,7 +34,9 @@ const adminRoutes: RouteRecordRaw[] = [
         name: 'AdminAgents',
         component: () => import('@/views/admin/AgentManagementView.vue'),
         meta: {
-          title: 'Agent 配置'
+          title: 'Agent 配置',
+          requiresAuth: true,
+          requiresAdmin: true
         }
       },
       {
@@ -40,7 +44,9 @@ const adminRoutes: RouteRecordRaw[] = [
         name: 'AdminModels',
         component: () => import('@/views/admin/ModelManagementView.vue'),
         meta: {
-          title: '模型管理'
+          title: '模型管理',
+          requiresAuth: true,
+          requiresAdmin: true
         }
       }
     ]

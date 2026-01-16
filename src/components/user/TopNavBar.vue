@@ -1,121 +1,322 @@
 <template>
-  <nav class="f-top-nav-bar">
-    <div class="f-top-nav-bar__container">
-      <div class="f-top-nav-bar__left">
-        <router-link to="/services" class="f-top-nav-bar__logo">
-          <BaseIcon name="logo" :size="32" />
-          <span class="f-top-nav-bar__title">Comfy Pilot</span>
-        </router-link>
-      </div>
-
-      <div class="f-top-nav-bar__center">
-        <div class="f-top-nav-bar__nav">
-          <router-link
-            to="/services"
-            class="f-top-nav-bar__nav-item"
-            active-class="f-top-nav-bar__nav-item--active"
-          >
-            服务选择
-          </router-link>
-          <router-link
-            to="/workflows"
-            class="f-top-nav-bar__nav-item"
-            active-class="f-top-nav-bar__nav-item--active"
-          >
-            我的工作流
-          </router-link>
+  <div class="g-top-nav">
+    <!-- 左侧：Logo -->
+    <div class="m-nav-left">
+      <div class="f-logo">
+        <div class="f-logo-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 13H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-6c0-.55-.45-1-1-1zM7 19c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM20 3H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zM7 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
+          </svg>
         </div>
-      </div>
-
-      <div class="f-top-nav-bar__right">
-        <UserMenu />
+        <span>ComfyUI Pilot</span>
       </div>
     </div>
-  </nav>
+
+    <!-- 右侧：导航按钮 + 用户菜单 -->
+    <div class="m-nav-right">
+      <!-- 我的工作流按钮 -->
+      <button class="f-nav-btn" @click="goToWorkflows">
+        <svg class="f-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>我的工作流</span>
+      </button>
+
+      <!-- 用户菜单 -->
+      <div class="f-user-menu" :class="{ active: showDropdown }">
+        <div class="f-user-info" @click="toggleDropdown">
+          <div class="f-user-avatar">
+            {{ userInitial }}
+          </div>
+          <span>{{ userName }}</span>
+          <span class="f-dropdown-arrow">▼</span>
+        </div>
+
+        <!-- 下拉菜单 -->
+        <div v-if="showDropdown" class="f-user-dropdown">
+          <div class="f-dropdown-header">
+            <div class="f-dropdown-user-name">{{ userName }}</div>
+            <div class="f-dropdown-user-email">{{ userEmail }}</div>
+          </div>
+          <div class="f-dropdown-menu">
+            <div class="f-dropdown-item" @click="goToProfile">
+              <svg class="f-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              <span>个人信息</span>
+            </div>
+            <div class="f-dropdown-item" @click="goToWorkflows">
+              <svg class="f-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span>我的工作流</span>
+            </div>
+            <div class="f-dropdown-divider"></div>
+            <div class="f-dropdown-item danger" @click="handleLogout">
+              <svg class="f-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              <span>退出登录</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import UserMenu from './UserMenu.vue'
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { useAuthStore } from '@/stores/auth'
+import { showConfirmDialog } from 'vant'
+
+const router = useRouter()
+const userStore = useUserStore()
+const authStore = useAuthStore()
+
+const showDropdown = ref(false)
+
+// 计算属性：用户名
+const userName = computed(() => userStore.username || '用户')
+
+// 计算属性：用户邮箱
+const userEmail = computed(() => userStore.email || 'user@example.com')
+
+// 计算属性：用户名首字母
+const userInitial = computed(() => {
+  const name = userStore.username || 'U'
+  return name.charAt(0).toUpperCase()
+})
+
+// 切换下拉菜单
+function toggleDropdown(): void {
+  showDropdown.value = !showDropdown.value
+}
+
+// 跳转到工作流列表
+function goToWorkflows(): void {
+  showDropdown.value = false
+  router.push('/workflows')
+}
+
+// 跳转到个人信息
+function goToProfile(): void {
+  showDropdown.value = false
+  router.push('/profile')
+}
+
+// 退出登录
+async function handleLogout(): Promise<void> {
+  showDropdown.value = false
+
+  try {
+    await showConfirmDialog({
+      title: '确认退出',
+      message: '确定要退出登录吗？',
+      confirmButtonText: '退出',
+      cancelButtonText: '取消'
+    })
+
+    await authStore.logout()
+    router.push('/login')
+  } catch {
+    // 用户取消
+  }
+}
 </script>
 
 <style scoped lang="scss">
-.f-top-nav-bar {
+.g-top-nav {
+  background: #353535;
+  border-bottom: 1px solid #444444;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   position: sticky;
   top: 0;
   z-index: 100;
+}
+
+.m-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.f-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.f-logo-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4a9eff;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.m-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+// 图标通用样式
+.f-icon {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+  flex-shrink: 0;
+}
+
+// 导航按钮样式
+.f-nav-btn {
+  padding: 6px 12px;
   background: #2a2a2a;
-  border-bottom: 1px solid #3a3a3a;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  color: #cccccc;
+  border: 1px solid #444444;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
 
-  &__container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 24px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  &:hover {
+    background: #3a3a3a;
+    border-color: #555555;
+    color: #ffffff;
   }
+}
 
-  &__left {
-    flex-shrink: 0;
+// 用户菜单样式
+.f-user-menu {
+  position: relative;
+}
+
+.f-user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  background: #2a2a2a;
+  border: 1px solid #444444;
+  border-radius: 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #3a3a3a;
+    border-color: #555555;
   }
+}
 
-  &__logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    text-decoration: none;
-    transition: opacity 0.2s;
+.f-user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #4a9eff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 11px;
+}
 
-    &:hover {
-      opacity: 0.8;
-    }
-  }
+.f-dropdown-arrow {
+  font-size: 8px;
+  color: #888888;
+  transition: transform 0.2s;
+}
 
-  &__title {
-    font-size: 20px;
-    font-weight: 600;
+.f-user-menu.active .f-dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+// 下拉菜单样式
+.f-user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #353535;
+  border: 1px solid #444444;
+  border-radius: 6px;
+  min-width: 200px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+}
+
+.f-dropdown-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid #444444;
+}
+
+.f-dropdown-user-name {
+  font-weight: 500;
+  color: #ffffff;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.f-dropdown-user-email {
+  font-size: 11px;
+  color: #999999;
+}
+
+.f-dropdown-menu {
+  padding: 6px 0;
+}
+
+.f-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  color: #cccccc;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  font-size: 13px;
+
+  &:hover {
+    background: #2a2a2a;
     color: #ffffff;
   }
 
-  &__center {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-  }
-
-  &__nav {
-    display: flex;
-    gap: 8px;
-  }
-
-  &__nav-item {
-    padding: 8px 16px;
-    font-size: 14px;
-    color: #cccccc;
-    text-decoration: none;
-    border-radius: 4px;
-    transition: all 0.2s;
+  &.danger {
+    color: #ff6b6b;
 
     &:hover {
-      background: #3a3a3a;
-      color: #ffffff;
-    }
-
-    &--active {
-      background: #4a9eff;
-      color: #ffffff;
-
-      &:hover {
-        background: #6bb0ff;
-      }
+      background: rgba(255, 107, 107, 0.1);
     }
   }
+}
 
-  &__right {
-    flex-shrink: 0;
-  }
+.f-dropdown-divider {
+  height: 1px;
+  background: #444444;
+  margin: 6px 0;
 }
 </style>

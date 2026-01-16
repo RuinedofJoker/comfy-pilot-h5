@@ -3,20 +3,40 @@
  */
 
 import type { Router } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { showToast } from 'vant'
 
 /**
  * 设置权限守卫
  */
 export function setupPermissionGuard(router: Router): void {
-  router.beforeEach((to, from, next) => {
+  router.beforeEach(async (to, from, next) => {
     const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
 
     if (requiresAdmin) {
-      // TODO: 实现管理员权限检查
-      // 当前暂时允许所有已登录用户访问管理页面
-      // 后续需要根据后端返回的角色信息进行权限判断
-      next()
-      return
+      const userStore = useUserStore()
+
+      // 如果用户信息未加载，先尝试获取
+      if (!userStore.userInfo) {
+        try {
+          await userStore.fetchUserInfo()
+        } catch (error) {
+          showToast({ type: 'fail', message: '获取用户信息失败' })
+          next('/login')
+          return
+        }
+      }
+
+      // 检查用户是否有管理员角色
+      const hasAdminRole = userStore.userInfo?.roles?.some(
+        role => role.roleCode === 'ADMIN'
+      )
+
+      if (!hasAdminRole) {
+        showToast({ type: 'fail', message: '无权访问管理后台' })
+        next('/')
+        return
+      }
     }
 
     next()

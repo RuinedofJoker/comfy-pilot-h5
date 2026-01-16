@@ -38,6 +38,14 @@ export interface RegisterFormData extends RegisterParams {
 }
 
 /**
+ * 角色信息
+ */
+export interface RoleInfo {
+  roleCode: string
+  roleName: string
+}
+
+/**
  * 用户信息
  */
 export interface UserInfo {
@@ -49,6 +57,7 @@ export interface UserInfo {
   avatarUrl: string | null
   status: 'ACTIVE' | 'INACTIVE' | 'LOCKED' | 'DELETED'
   lastLoginTime: string | null
+  roles?: RoleInfo[]
 }
 
 /**

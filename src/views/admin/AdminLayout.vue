@@ -1,38 +1,31 @@
 <template>
   <div class="g-admin-layout">
-    <div class="g-admin-layout__placeholder">
-      <h1>管理后台</h1>
-      <p>此页面将在 Phase 6 实现</p>
+    <!-- 侧边栏 -->
+    <AdminSidebar />
+
+    <!-- 主内容区 -->
+    <div class="m-main">
       <router-view />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-// 占位组件，将在 Phase 6 实现
+import AdminSidebar from '@/components/admin/AdminSidebar.vue'
 </script>
 
 <style scoped lang="scss">
 .g-admin-layout {
-  min-height: 100vh;
-  background: #1a1a1a;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  height: 100vh;
+  background: #252525;
+  overflow: hidden;
+}
 
-  &__placeholder {
-    text-align: center;
-    color: #ffffff;
-
-    h1 {
-      font-size: 32px;
-      margin-bottom: 16px;
-    }
-
-    p {
-      font-size: 16px;
-      color: #999999;
-    }
-  }
+.m-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 </style>
