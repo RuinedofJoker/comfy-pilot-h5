@@ -8,35 +8,9 @@
 export type HealthStatus = 'HEALTHY' | 'UNHEALTHY' | 'UNKNOWN'
 
 /**
- * ComfyUI 服务来源类型
- */
-export type SourceType = 'MANUAL' | 'CODE_BASED'
-
-/**
  * ComfyUI 服务认证模式
  */
-export type AuthMode = 'NONE' | 'API_KEY' | 'BASIC_AUTH'
-
-/**
- * ComfyUI 服务信息（管理员视图）
- */
-export interface AdminComfyuiServer {
-  id: string
-  createTime: string
-  updateTime: string
-  serverKey: string
-  serverName: string
-  description?: string | null
-  baseUrl: string
-  authMode: AuthMode | null
-  apiKey?: string | null
-  timeoutSeconds: number
-  maxRetries: number
-  sourceType: SourceType
-  isEnabled: boolean
-  lastHealthCheckTime?: string | null
-  healthStatus: HealthStatus
-}
+export type AuthMode = 'NULL' | 'BASIC_AUTH'
 
 /**
  * 创建 ComfyUI 服务请求

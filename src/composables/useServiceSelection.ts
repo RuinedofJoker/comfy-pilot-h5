@@ -43,7 +43,7 @@ export function useServiceSelection() {
    */
   async function loadServices(): Promise<void> {
     try {
-      await serviceStore.fetchServices({ isEnabled: true })
+      await serviceStore.fetchEnabledServices()
     } catch (error) {
       showToast({
         type: 'fail',

@@ -5,7 +5,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { ComfyUIService, ListServicesParams } from '@/types/service'
-import { listServers } from '@/services/service'
+import { listServers, listEnabledServers } from '@/services/service'
 import { getStorageItem, setStorageItem, removeStorageItem } from '@/utils/storage'
 
 export const useServiceStore = defineStore('service', () => {
@@ -43,6 +43,18 @@ export const useServiceStore = defineStore('service', () => {
     isLoading.value = true
     try {
       services.value = await listServers(params)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
+   * 获取已启用的服务列表（前台用户使用）
+   */
+  async function fetchEnabledServices(): Promise<void> {
+    isLoading.value = true
+    try {
+      services.value = await listEnabledServers()
     } finally {
       isLoading.value = false
     }
@@ -117,6 +129,7 @@ export const useServiceStore = defineStore('service', () => {
     healthyServices,
     // 方法
     fetchServices,
+    fetchEnabledServices,
     fetchRecentServices,
     selectService,
     restoreSelectedService,

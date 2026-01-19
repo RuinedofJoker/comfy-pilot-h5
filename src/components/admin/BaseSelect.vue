@@ -1,21 +1,31 @@
 <template>
-  <input
-    :type="type"
+  <select
     :value="modelValue"
-    :placeholder="placeholder"
-    :required="required"
+    class="f-base-select"
     :disabled="disabled"
-    class="f-input"
-    @input="handleInput"
-  />
+    @change="handleChange"
+  >
+    <option v-if="placeholder" value="" disabled>{{ placeholder }}</option>
+    <option
+      v-for="option in options"
+      :key="option.value"
+      :value="option.value"
+    >
+      {{ option.label }}
+    </option>
+  </select>
 </template>
 
 <script setup lang="ts">
+interface Option {
+  label: string
+  value: string | number
+}
+
 interface Props {
   modelValue: string | number
-  type?: string
+  options: Option[]
   placeholder?: string
-  required?: boolean
   disabled?: boolean
 }
 
@@ -23,28 +33,17 @@ interface Emits {
   (e: 'update:modelValue', value: string | number): void
 }
 
-withDefaults(defineProps<Props>(), {
-  type: 'text'
-})
-
+defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-function handleInput(event: Event): void {
-  const target = event.target as HTMLInputElement
-  const value = target.value
-
-  // 如果是 number 类型的输入框，转换为数字
-  if (target.type === 'number') {
-    const numValue = value === '' ? 0 : Number(value)
-    emit('update:modelValue', numValue)
-  } else {
-    emit('update:modelValue', value)
-  }
+function handleChange(event: Event): void {
+  const target = event.target as HTMLSelectElement
+  emit('update:modelValue', target.value)
 }
 </script>
 
 <style scoped lang="scss">
-.f-input {
+.f-base-select {
   width: 100%;
   padding: 8px 12px;
   background: #1e1e1e;
@@ -54,10 +53,7 @@ function handleInput(event: Event): void {
   color: #cccccc;
   outline: none;
   transition: border-color 0.2s;
-
-  &::placeholder {
-    color: #666666;
-  }
+  cursor: pointer;
 
   &:focus {
     border-color: #555555;
@@ -66,6 +62,11 @@ function handleInput(event: Event): void {
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  option {
+    background: #1e1e1e;
+    color: #cccccc;
   }
 }
 </style>

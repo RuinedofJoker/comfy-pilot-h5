@@ -18,6 +18,13 @@ export function listServers(params?: ListServicesParams): Promise<ComfyUIService
 }
 
 /**
+ * 查询已启用的服务列表（前台用户使用）
+ */
+export function listEnabledServers(): Promise<ComfyUIService[]> {
+  return http.get('/api/v1/comfyui-servers/enabled')
+}
+
+/**
  * 根据 ID 查询服务详情
  */
 export function getServerById(id: string): Promise<ComfyUIService> {

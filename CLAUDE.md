@@ -62,10 +62,7 @@ src/
 4. **路由懒加载**: 所有页面组件必须使用懒加载
 5. **类型安全**: 启用 TypeScript 严格模式，避免使用 `any`
 
-项目后端使用了swagger开放API接口文档，地址`http://localhost:8080/v3/api-docs`，后端id字段使用的是Long类型，后端返回的所有Long类型都会解析成string防止前端溢出，内容：
-```json
-{"openapi":"3.0.1","info":{"title":"ComfyUI Pilot API","description":"ComfyUI Pilot 后端API文档","contact":{"name":"ComfyUI Pilot Team","email":"support@comfypilot.com"},"license":{"name":"Apache 2.0","url":"https://www.apache.org/licenses/LICENSE-2.0.html"},"version":"1.0.0"},"servers":[{"url":"http://localhost:8080","description":"Generated server url"}],"security":[{"bearer-jwt":[]}],"tags":[{"name":"认证管理","description":"用户认证相关接口"},{"name":"ComfyUI服务管理","description":"ComfyUI服务配置、查询、管理相关接口"},{"name":"用户管理","description":"用户信息管理接口"},{"name":"文件资源","description":"文件上传、下载、管理相关接口"},{"name":"工作流管理","description":"工作流创建、查询、编辑、锁定相关接口"},{"name":"权限管理","description":"权限相关接口"},{"name":"工作流版本管理","description":"工作流版本创建、查询相关接口"}],"paths":{"/api/v1/workflows/{id}":{"get":{"tags":["工作流管理"],"summary":"查询工作流详情","description":"根据工作流ID查询详细信息","operationId":"getWorkflowById","parameters":[{"name":"id","in":"path","description":"工作流ID","required":true,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultWorkflowDTO"}}}}}},"put":{"tags":["工作流管理"],"summary":"更新工作流信息","description":"更新工作流的基本信息（名称、描述、缩略图）","operationId":"updateWorkflow","parameters":[{"name":"id","in":"path","description":"工作流ID","required":true,"schema":{"type":"integer","format":"int64"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UpdateWorkflowRequest"}}},"required":true},"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultWorkflowDTO"}}}}}},"delete":{"tags":["工作流管理"],"summary":"删除工作流","description":"删除指定的工作流","operationId":"deleteWorkflow","parameters":[{"name":"id","in":"path","description":"工作流ID","required":true,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}}}}},"/api/v1/users/me":{"get":{"tags":["用户管理"],"summary":"获取当前用户信息","description":"获取当前登录用户的详细信息","operationId":"getCurrentUser","responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultUserDTO"}}}}}},"put":{"tags":["用户管理"],"summary":"更新用户信息","description":"更新当前用户的基本信息（用户名、头像等）","operationId":"updateUser","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UpdateUserRequest"}}},"required":true},"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultUserDTO"}}}}}}},"/api/v1/comfyui-servers/{id}":{"get":{"tags":["ComfyUI服务管理"],"summary":"查询服务详情","description":"根据服务ID查询详细信息","operationId":"getServerById","parameters":[{"name":"id","in":"path","description":"服务ID","required":true,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultComfyuiServerDTO"}}}}}},"put":{"tags":["ComfyUI服务管理"],"summary":"更新服务信息","description":"更新ComfyUI服务信息，权限根据来源类型自动控制","operationId":"updateServer","parameters":[{"name":"id","in":"path","description":"服务ID","required":true,"schema":{"type":"integer","format":"int64"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UpdateServerRequest"}}},"required":true},"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultComfyuiServerDTO"}}}}}},"delete":{"tags":["ComfyUI服务管理"],"summary":"删除服务","description":"删除ComfyUI服务（代码注册的服务不允许删除）","operationId":"deleteServer","parameters":[{"name":"id","in":"path","description":"服务ID","required":true,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}}}}},"/api/v1/workflows":{"get":{"tags":["工作流管理"],"summary":"查询工作流列表","description":"查询工作流列表，支持按ComfyUI服务、锁定状态、创建人过滤","operationId":"listWorkflows","parameters":[{"name":"comfyuiServerId","in":"query","description":"ComfyUI服务ID","required":false,"schema":{"type":"integer","format":"int64"}},{"name":"isLocked","in":"query","description":"是否锁定","required":false,"schema":{"type":"boolean"}},{"name":"createBy","in":"query","description":"创建人ID","required":false,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultListWorkflowDTO"}}}}}},"post":{"tags":["工作流管理"],"summary":"创建工作流","description":"创建新的工作流","operationId":"createWorkflow","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CreateWorkflowRequest"}}},"required":true},"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultWorkflowDTO"}}}}}}},"/api/v1/workflows/{workflowId}/versions":{"get":{"tags":["工作流版本管理"],"summary":"查询版本列表","description":"查询指定工作流的所有版本（按版本号降序）","operationId":"listVersions","parameters":[{"name":"workflowId","in":"path","description":"工作流ID","required":true,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultListWorkflowVersionDTO"}}}}}},"post":{"tags":["工作流版本管理"],"summary":"创建工作流版本","description":"创建新的工作流版本（Agent对话时调用）","operationId":"createVersion","parameters":[{"name":"workflowId","in":"path","description":"工作流ID","required":true,"schema":{"type":"integer","format":"int64"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CreateVersionRequest"}}},"required":true},"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultWorkflowVersionDTO"}}}}}}},"/api/v1/workflows/{id}/unlock":{"post":{"tags":["工作流管理"],"summary":"解锁工作流","description":"解锁工作流，允许其他用户编辑","operationId":"unlockWorkflow","parameters":[{"name":"id","in":"path","description":"工作流ID","required":true,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultWorkflowDTO"}}}}}}},"/api/v1/workflows/{id}/lock":{"post":{"tags":["工作流管理"],"summary":"锁定工作流","description":"锁定工作流，防止其他用户编辑","operationId":"lockWorkflow","parameters":[{"name":"id","in":"path","description":"工作流ID","required":true,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultWorkflowDTO"}}}}}}},"/api/v1/workflows/{id}/content":{"get":{"tags":["工作流管理"],"summary":"获取工作流内容","description":"获取工作流的激活内容（JSON格式）","operationId":"getContent","parameters":[{"name":"id","in":"path","description":"工作流ID","required":true,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultString"}}}}}},"post":{"tags":["工作流管理"],"summary":"保存工作流内容","description":"保存工作流的激活内容（用户手动保存或Ctrl+S）","operationId":"saveContent","parameters":[{"name":"id","in":"path","description":"工作流ID","required":true,"schema":{"type":"integer","format":"int64"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SaveWorkflowContentRequest"}}},"required":true},"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultWorkflowDTO"}}}}}}},"/api/v1/files/upload":{"post":{"tags":["文件资源"],"summary":"上传单个文件","description":"上传单个文件到服务器，支持关联业务类型和业务ID","operationId":"uploadFile","parameters":[{"name":"businessType","in":"query","description":"业务类型","required":false,"schema":{"type":"string"}},{"name":"businessId","in":"query","description":"业务ID","required":false,"schema":{"type":"integer","format":"int64"}}],"requestBody":{"content":{"application/json":{"schema":{"required":["file"],"type":"object","properties":{"file":{"type":"string","description":"上传的文件","format":"binary"}}}}}},"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultFileResourceDTO"}}}}}}},"/api/v1/files/upload/batch":{"post":{"tags":["文件资源"],"summary":"批量上传文件","description":"批量上传多个文件到服务器","operationId":"uploadFiles","parameters":[{"name":"files","in":"query","description":"上传的文件列表","required":true,"schema":{"type":"array","items":{"type":"string","format":"binary"}}},{"name":"businessType","in":"query","description":"业务类型","required":false,"schema":{"type":"string"}},{"name":"businessId","in":"query","description":"业务ID","required":false,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultListFileResourceDTO"}}}}}}},"/api/v1/comfyui-servers":{"get":{"tags":["ComfyUI服务管理"],"summary":"查询服务列表","description":"查询ComfyUI服务列表，支持按来源类型和启用状态过滤","operationId":"listServers","parameters":[{"name":"sourceType","in":"query","description":"来源类型：MANUAL/CODE_BASED","required":false,"schema":{"type":"string","enum":["MANUAL","CODE_BASED"]}},{"name":"isEnabled","in":"query","description":"是否启用","required":false,"schema":{"type":"boolean"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultListComfyuiServerDTO"}}}}}},"post":{"tags":["ComfyUI服务管理"],"summary":"创建ComfyUI服务","description":"管理员手动创建ComfyUI服务","operationId":"createServer","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CreateServerRequest"}}},"required":true},"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultComfyuiServerDTO"}}}}}}},"/api/v1/auth/reset-password":{"post":{"tags":["认证管理"],"summary":"确认密码重置","description":"使用重置令牌设置新密码","operationId":"resetPassword","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ResetPasswordRequest"}}},"required":true},"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}}}}},"/api/v1/auth/register":{"post":{"tags":["认证管理"],"summary":"用户注册","description":"新用户注册账户","operationId":"register","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RegisterRequest"}}},"required":true},"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultRegisterResponse"}}}}}}},"/api/v1/auth/refresh":{"post":{"tags":["认证管理"],"summary":"刷新Token","description":"使用刷新令牌获取新的访问令牌","operationId":"refreshToken","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RefreshTokenRequest"}}},"required":true},"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultRefreshTokenResponse"}}}}}}},"/api/v1/auth/logout":{"post":{"tags":["认证管理"],"summary":"用户登出","description":"用户登出，撤销当前Token","operationId":"logout","responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}}}}},"/api/v1/auth/login":{"post":{"tags":["认证管理"],"summary":"用户登录","description":"用户邮箱密码登录","operationId":"login","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/LoginRequest"}}},"required":true},"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultLoginResponse"}}}}}}},"/api/v1/auth/forgot-password":{"post":{"tags":["认证管理"],"summary":"请求密码重置","description":"发送密码重置邮件","operationId":"forgotPassword","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ForgotPasswordRequest"}}},"required":true},"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}}}}},"/api/v1/workflows/{workflowId}/versions/{versionId}":{"get":{"tags":["工作流版本管理"],"summary":"查询版本详情","description":"查询指定版本的详细信息","operationId":"getVersionById","parameters":[{"name":"workflowId","in":"path","description":"工作流ID","required":true,"schema":{"type":"integer","format":"int64"}},{"name":"versionId","in":"path","description":"版本ID","required":true,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultWorkflowVersionDTO"}}}}}}},"/api/v1/permissions/my-roles":{"get":{"tags":["权限管理"],"summary":"获取当前用户角色","operationId":"getCurrentUserRoles","responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultListRoleDTO"}}}}}}},"/api/v1/permissions/my-permissions":{"get":{"tags":["权限管理"],"summary":"获取当前用户权限","operationId":"getCurrentUserPermissions","responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultListString"}}}}}}},"/api/v1/files/user":{"get":{"tags":["文件资源"],"summary":"查询用户文件列表","description":"获取当前用户上传的所有文件列表","operationId":"listUserFiles","responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultListFileResourceDTO"}}}}}}},"/api/v1/files/download/{fileId}":{"get":{"tags":["文件资源"],"summary":"下载文件","description":"根据文件ID下载文件","operationId":"downloadFile","parameters":[{"name":"fileId","in":"path","description":"文件ID","required":true,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"type":"string","format":"binary"}}}}}}},"/api/v1/files/business":{"get":{"tags":["文件资源"],"summary":"查询业务关联文件","description":"根据业务类型和业务ID查询关联的文件列表","operationId":"listBusinessFiles","parameters":[{"name":"businessType","in":"query","description":"业务类型","required":true,"schema":{"type":"string"}},{"name":"businessId","in":"query","description":"业务ID","required":true,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultListFileResourceDTO"}}}}}}},"/api/v1/comfyui-servers/key/{serverKey}":{"get":{"tags":["ComfyUI服务管理"],"summary":"根据标识符查询","description":"根据服务唯一标识符查询服务信息","operationId":"getServerByKey","parameters":[{"name":"serverKey","in":"path","description":"服务唯一标识符","required":true,"schema":{"type":"string"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultComfyuiServerDTO"}}}}}}},"/api/v1/files/{fileId}":{"delete":{"tags":["文件资源"],"summary":"删除文件","description":"根据文件ID删除文件（逻辑删除）","operationId":"deleteFile","parameters":[{"name":"fileId","in":"path","description":"文件ID","required":true,"schema":{"type":"integer","format":"int64"}}],"responses":{"404":{"description":"Not Found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"401":{"description":"Unauthorized","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"400":{"description":"Bad Request","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"500":{"description":"Internal Server Error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}},"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResultVoid"}}}}}}}},"components":{"schemas":{"ResultVoid":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"type":"object"},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"UpdateWorkflowRequest":{"type":"object","properties":{"workflowName":{"maxLength":100,"minLength":2,"type":"string","description":"工作流名称","example":"更新后的工作流名称"},"description":{"maxLength":500,"minLength":0,"type":"string","description":"工作流描述","example":"更新后的描述"},"thumbnailUrl":{"maxLength":500,"minLength":0,"type":"string","description":"工作流缩略图URL","example":"https://example.com/thumbnail.png"}},"description":"更新工作流请求"},"ResultWorkflowDTO":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"$ref":"#/components/schemas/WorkflowDTO"},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"WorkflowDTO":{"type":"object","properties":{"id":{"type":"integer","format":"int64"},"createTime":{"type":"string","format":"date-time"},"updateTime":{"type":"string","format":"date-time"},"workflowName":{"type":"string","description":"工作流名称"},"description":{"type":"string","description":"工作流描述"},"comfyuiServerId":{"type":"integer","description":"所属ComfyUI服务ID","format":"int64"},"comfyuiServerKey":{"type":"string","description":"所属ComfyUI服务唯一标识符"},"activeContent":{"type":"string","description":"当前激活版本的内容（JSON格式）"},"activeContentHash":{"type":"string","description":"激活内容的SHA-256哈希值"},"thumbnailUrl":{"type":"string","description":"工作流缩略图URL"},"isLocked":{"type":"boolean","description":"是否锁定"},"lockedBy":{"type":"integer","description":"锁定人ID","format":"int64"},"lockedAt":{"type":"string","description":"锁定时间","format":"date-time"}},"description":"工作流信息"},"UpdateUserRequest":{"type":"object","properties":{"username":{"maxLength":50,"minLength":1,"type":"string","description":"用户名","example":"张三"},"avatarUrl":{"type":"string","description":"头像URL","example":"https://example.com/avatar.jpg"}},"description":"更新用户信息请求"},"ResultUserDTO":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"$ref":"#/components/schemas/UserDTO"},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"UserDTO":{"type":"object","properties":{"id":{"type":"integer","format":"int64"},"createTime":{"type":"string","format":"date-time"},"updateTime":{"type":"string","format":"date-time"},"email":{"type":"string","description":"邮箱地址"},"username":{"type":"string","description":"用户名"},"avatarUrl":{"type":"string","description":"头像URL"},"status":{"type":"string","description":"用户状态","enum":["ACTIVE","INACTIVE","LOCKED","DELETED"]},"lastLoginTime":{"type":"string","description":"最后登录时间","format":"date-time"}},"description":"用户信息"},"UpdateServerRequest":{"type":"object","properties":{"serverName":{"maxLength":100,"minLength":0,"type":"string","description":"服务名称"},"description":{"maxLength":500,"minLength":0,"type":"string","description":"服务描述"},"baseUrl":{"maxLength":255,"minLength":0,"type":"string","description":"ComfyUI服务地址（仅MANUAL类型可修改）"},"authMode":{"maxLength":20,"minLength":0,"type":"string","description":"认证模式（仅MANUAL类型可修改）"},"apiKey":{"maxLength":255,"minLength":0,"type":"string","description":"API密钥（仅MANUAL类型可修改）"},"timeoutSeconds":{"type":"integer","description":"请求超时时间（秒）（仅MANUAL类型可修改）","format":"int32"},"maxRetries":{"type":"integer","description":"最大重试次数（仅MANUAL类型可修改）","format":"int32"},"isEnabled":{"type":"boolean","description":"是否启用（仅MANUAL类型可修改）"}},"description":"更新ComfyUI服务请求"},"ComfyuiServerDTO":{"type":"object","properties":{"id":{"type":"integer","format":"int64"},"createTime":{"type":"string","format":"date-time"},"updateTime":{"type":"string","format":"date-time"},"serverKey":{"type":"string","description":"服务唯一标识符"},"serverName":{"type":"string","description":"服务名称"},"description":{"type":"string","description":"服务描述"},"baseUrl":{"type":"string","description":"ComfyUI服务地址"},"authMode":{"type":"string","description":"认证模式"},"apiKey":{"type":"string","description":"API密钥"},"timeoutSeconds":{"type":"integer","description":"请求超时时间（秒）","format":"int32"},"maxRetries":{"type":"integer","description":"最大重试次数","format":"int32"},"sourceType":{"type":"string","description":"注册来源：MANUAL/CODE_BASED"},"isEnabled":{"type":"boolean","description":"是否启用"},"lastHealthCheckTime":{"type":"string","description":"最后健康检查时间","format":"date-time"},"healthStatus":{"type":"string","description":"健康状态：HEALTHY/UNHEALTHY/UNKNOWN"}},"description":"ComfyUI服务信息"},"ResultComfyuiServerDTO":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"$ref":"#/components/schemas/ComfyuiServerDTO"},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"CreateWorkflowRequest":{"required":["comfyuiServerId","comfyuiServerKey","workflowName"],"type":"object","properties":{"workflowName":{"maxLength":100,"minLength":2,"type":"string","description":"工作流名称","example":"我的工作流"},"description":{"maxLength":500,"minLength":0,"type":"string","description":"工作流描述","example":"这是一个测试工作流"},"comfyuiServerId":{"type":"integer","description":"所属ComfyUI服务ID","format":"int64","example":1234567890},"comfyuiServerKey":{"type":"string","description":"所属ComfyUI服务唯一标识符","example":"my-comfyui-server"}},"description":"创建工作流请求"},"CreateVersionRequest":{"required":["content"],"type":"object","properties":{"content":{"type":"string","description":"版本内容（JSON格式）","example":"{\"nodes\":[],\"links\":[]}"},"changeSummary":{"maxLength":500,"minLength":0,"type":"string","description":"变更摘要","example":"添加了图像处理节点"},"sessionId":{"type":"integer","description":"关联的会话ID","format":"int64","example":5555555555}},"description":"创建工作流版本请求"},"ResultWorkflowVersionDTO":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"$ref":"#/components/schemas/WorkflowVersionDTO"},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"WorkflowVersionDTO":{"type":"object","properties":{"id":{"type":"integer","format":"int64"},"createTime":{"type":"string","format":"date-time"},"updateTime":{"type":"string","format":"date-time"},"workflowId":{"type":"integer","description":"所属工作流ID","format":"int64"},"versionNumber":{"type":"integer","description":"版本号","format":"int32"},"content":{"type":"string","description":"版本内容（JSON格式）"},"contentHash":{"type":"string","description":"内容的SHA-256哈希值"},"changeSummary":{"type":"string","description":"变更摘要"},"sessionId":{"type":"integer","description":"关联的会话ID","format":"int64"}},"description":"工作流版本信息"},"SaveWorkflowContentRequest":{"required":["content"],"type":"object","properties":{"content":{"type":"string","description":"工作流内容（JSON格式）","example":"{\"nodes\":[],\"links\":[]}"}},"description":"保存工作流内容请求"},"FileResourceDTO":{"type":"object","properties":{"id":{"type":"integer","format":"int64"},"createTime":{"type":"string","format":"date-time"},"updateTime":{"type":"string","format":"date-time"},"fileName":{"type":"string","description":"原始文件名"},"storedName":{"type":"string","description":"存储文件名"},"fileSize":{"type":"integer","description":"文件大小（字节）","format":"int64"},"fileType":{"type":"string","description":"文件MIME类型"},"fileExtension":{"type":"string","description":"文件扩展名"},"businessType":{"type":"string","description":"业务类型"},"businessId":{"type":"integer","description":"业务关联ID","format":"int64"},"downloadCount":{"type":"integer","description":"下载次数","format":"int32"}},"description":"文件资源信息"},"ResultFileResourceDTO":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"$ref":"#/components/schemas/FileResourceDTO"},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"ResultListFileResourceDTO":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"type":"array","items":{"$ref":"#/components/schemas/FileResourceDTO"}},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"CreateServerRequest":{"required":["baseUrl","serverName"],"type":"object","properties":{"serverKey":{"maxLength":100,"minLength":0,"type":"string","description":"服务唯一标识符（可选，不填则自动生成UUID）"},"serverName":{"maxLength":100,"minLength":0,"type":"string","description":"服务名称"},"description":{"maxLength":500,"minLength":0,"type":"string","description":"服务描述"},"baseUrl":{"maxLength":255,"minLength":0,"type":"string","description":"ComfyUI服务地址"},"authMode":{"maxLength":20,"minLength":0,"type":"string","description":"认证模式"},"apiKey":{"maxLength":255,"minLength":0,"type":"string","description":"API密钥"},"timeoutSeconds":{"type":"integer","description":"请求超时时间（秒）","format":"int32","example":30},"maxRetries":{"type":"integer","description":"最大重试次数","format":"int32","example":3}},"description":"创建ComfyUI服务请求"},"ResetPasswordRequest":{"required":["newPassword","token"],"type":"object","properties":{"token":{"type":"string","description":"重置令牌"},"newPassword":{"maxLength":2147483647,"minLength":8,"pattern":"^(?=.*[A-Za-z])(?=.*\\d).+$","type":"string","description":"新密码（最小8位，包含字母和数字）","example":"newpassword123"}},"description":"重置密码请求"},"RegisterRequest":{"required":["email","password","username"],"type":"object","properties":{"email":{"type":"string","description":"邮箱地址","example":"user@example.com"},"username":{"maxLength":50,"minLength":2,"type":"string","description":"用户名","example":"张三"},"password":{"maxLength":2147483647,"minLength":8,"pattern":"^(?=.*[A-Za-z])(?=.*\\d).+$","type":"string","description":"密码（最小8位，包含字母和数字）","example":"password123"}},"description":"用户注册请求"},"RegisterResponse":{"type":"object","properties":{"userId":{"type":"integer","description":"用户ID","format":"int64"},"email":{"type":"string","description":"邮箱地址"}},"description":"注册响应"},"ResultRegisterResponse":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"$ref":"#/components/schemas/RegisterResponse"},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"RefreshTokenRequest":{"required":["refreshToken"],"type":"object","properties":{"refreshToken":{"type":"string","description":"刷新令牌"}},"description":"刷新Token请求"},"RefreshTokenResponse":{"type":"object","properties":{"accessToken":{"type":"string","description":"新的访问令牌"},"expiresIn":{"type":"integer","description":"访问令牌过期时间（秒）","format":"int64"}},"description":"刷新Token响应"},"ResultRefreshTokenResponse":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"$ref":"#/components/schemas/RefreshTokenResponse"},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"LoginRequest":{"required":["email","password"],"type":"object","properties":{"email":{"type":"string","description":"邮箱地址","example":"user@example.com"},"password":{"type":"string","description":"密码","example":"password123"}},"description":"用户登录请求"},"LoginResponse":{"type":"object","properties":{"accessToken":{"type":"string","description":"访问令牌"},"refreshToken":{"type":"string","description":"刷新令牌"},"expiresIn":{"type":"integer","description":"访问令牌过期时间（秒）","format":"int64"},"user":{"$ref":"#/components/schemas/UserDTO"}},"description":"登录响应"},"ResultLoginResponse":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"$ref":"#/components/schemas/LoginResponse"},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"ForgotPasswordRequest":{"required":["email"],"type":"object","properties":{"email":{"type":"string","description":"邮箱地址","example":"user@example.com"}},"description":"忘记密码请求"},"ResultListWorkflowDTO":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"type":"array","items":{"$ref":"#/components/schemas/WorkflowDTO"}},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"ResultListWorkflowVersionDTO":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"type":"array","items":{"$ref":"#/components/schemas/WorkflowVersionDTO"}},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"ResultString":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"type":"string"},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"ResultListRoleDTO":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"type":"array","items":{"$ref":"#/components/schemas/RoleDTO"}},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"RoleDTO":{"type":"object","properties":{"roleCode":{"type":"string","description":"角色编码"},"roleName":{"type":"string","description":"角色名称"}},"description":"角色信息"},"ResultListString":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"type":"array","items":{"type":"string"}},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}},"ResultListComfyuiServerDTO":{"type":"object","properties":{"code":{"type":"integer","format":"int32"},"message":{"type":"string"},"data":{"type":"array","items":{"$ref":"#/components/schemas/ComfyuiServerDTO"}},"traceId":{"type":"string"},"timestamp":{"type":"integer","format":"int64"}}}},"securitySchemes":{"bearer-jwt":{"type":"http","description":"JWT认证Token","scheme":"bearer","bearerFormat":"JWT"}}}}
-```
+项目后端使用了swagger开放API接口文档，地址`http://localhost:8080/v3/api-docs`，后端id字段使用的是Long类型，后端返回的所有Long类型都会解析成string防止前端溢出
 
 当前阶段为模块实现阶段：
 据UI设计图里的页面和需求文档设计指定模块的文档和代码
@@ -395,3 +392,734 @@ services/
 ---
 
 **说明**: 以上模块划分基于 `docs/uis/` 目录下的 UI 设计图和项目需求分析得出，严格遵循项目编码规范。在实现每个模块时，请参考对应的 UI 设计图文件和 `.cursor/rules/` 中的规范文件。
+
+---
+
+## 后端 API 接口文档
+
+### API 基本信息
+
+- **API 标题**: ComfyUI Pilot API
+- **API 版本**: 1.0.0
+- **服务器地址**: http://localhost:8080
+- **认证方式**: JWT Bearer Token
+- **文档地址**: http://localhost:8080/v3/api-docs
+
+### 通用响应格式
+
+```typescript
+interface Result<T> {
+  code: number        // 状态码
+  message: string     // 响应消息
+  data: T            // 响应数据
+  traceId: string    // 追踪ID
+  timestamp: number  // 时间戳
+}
+```
+
+**注意**: 后端所有 ID 字段使用 Long 类型 (int64)，前端接收时会自动转换为 string 类型防止溢出。
+
+---
+
+### 1️⃣ 认证管理 API
+
+#### 用户登录
+- **接口**: `POST /api/v1/auth/login`
+- **描述**: 用户邮箱密码登录
+- **请求体**: `{ email: string, password: string }`
+- **响应**: `{ accessToken: string, refreshToken: string, expiresIn: number, user: UserDTO }`
+
+#### 用户注册
+- **接口**: `POST /api/v1/auth/register`
+- **描述**: 新用户注册账户
+- **请求体**: `{ email: string, username: string, password: string }`
+- **响应**: `{ userId: string, email: string }`
+
+#### 用户登出
+- **接口**: `POST /api/v1/auth/logout`
+- **描述**: 用户登出，撤销当前Token
+- **需要认证**: 是
+
+#### 刷新Token
+- **接口**: `POST /api/v1/auth/refresh`
+- **描述**: 使用刷新令牌获取新的访问令牌
+- **请求体**: `{ refreshToken: string }`
+- **响应**: `{ accessToken: string, expiresIn: number }`
+
+#### 请求密码重置
+- **接口**: `POST /api/v1/auth/forgot-password`
+- **描述**: 发送密码重置邮件
+- **请求体**: `{ email: string }`
+
+#### 确认密码重置
+- **接口**: `POST /api/v1/auth/reset-password`
+- **描述**: 使用重置令牌设置新密码
+- **请求体**: `{ token: string, newPassword: string }`
+
+---
+
+### 2️⃣ 用户管理 API
+
+#### 获取当前用户信息
+- **接口**: `GET /api/v1/users/me`
+- **描述**: 获取当前登录用户的详细信息
+- **需要认证**: 是
+- **响应**: `UserDTO`
+
+#### 更新用户信息
+- **接口**: `PUT /api/v1/users/me`
+- **描述**: 更新当前用户的基本信息
+- **需要认证**: 是
+- **请求体**: `{ username?: string, avatarUrl?: string }`
+- **响应**: `UserDTO`
+
+---
+
+### 3️⃣ 工作流管理 API
+
+#### 查询工作流列表
+- **接口**: `GET /api/v1/workflows`
+- **描述**: 查询工作流列表，支持按服务、锁定状态、创建人过滤
+- **需要认证**: 是
+- **查询参数**: `comfyuiServerId?: string, isLocked?: boolean, createBy?: string`
+- **响应**: `WorkflowDTO[]`
+
+#### 创建工作流
+- **接口**: `POST /api/v1/workflows`
+- **描述**: 创建新的工作流
+- **需要认证**: 是
+- **请求体**: `{ workflowName: string, description?: string, comfyuiServerId: string, comfyuiServerKey: string }`
+- **响应**: `WorkflowDTO`
+
+#### 查询工作流详情
+- **接口**: `GET /api/v1/workflows/{id}`
+- **描述**: 根据工作流ID查询详细信息
+- **需要认证**: 是
+- **响应**: `WorkflowDTO`
+
+#### 更新工作流信息
+- **接口**: `PUT /api/v1/workflows/{id}`
+- **描述**: 更新工作流的基本信息（名称、描述、缩略图）
+- **需要认证**: 是
+- **请求体**: `{ workflowName?: string, description?: string, thumbnailUrl?: string }`
+- **响应**: `WorkflowDTO`
+
+#### 删除工作流
+- **接口**: `DELETE /api/v1/workflows/{id}`
+- **描述**: 删除指定的工作流
+- **需要认证**: 是
+- **查询参数**: `messageId: string` (必需) - 消息ID
+
+#### 锁定工作流
+- **接口**: `POST /api/v1/workflows/{id}/lock`
+- **描述**: 锁定工作流，防止其他消息编辑
+- **需要认证**: 是
+- **查询参数**: `messageId: string` (必需) - 消息ID
+- **响应**: `WorkflowDTO`
+
+#### 解锁工作流
+- **接口**: `POST /api/v1/workflows/{id}/unlock`
+- **描述**: 解锁工作流，允许其他消息编辑
+- **需要认证**: 是
+- **查询参数**: `messageId: string` (必需) - 消息ID
+- **响应**: `WorkflowDTO`
+
+#### 获取工作流内容
+- **接口**: `GET /api/v1/workflows/{id}/content`
+- **描述**: 获取工作流的激活内容（JSON格式）
+- **需要认证**: 是
+- **响应**: `string` (JSON字符串)
+
+#### 保存工作流内容
+- **接口**: `POST /api/v1/workflows/{id}/content`
+- **描述**: 保存工作流的激活内容（用户手动保存或Ctrl+S）
+- **需要认证**: 是
+- **查询参数**: `messageId: string` (必需) - 消息ID
+- **请求体**: `{ content: string }`
+- **响应**: `WorkflowDTO`
+
+---
+
+### 4️⃣ 工作流版本管理 API
+
+#### 查询版本列表
+- **接口**: `GET /api/v1/workflows/{workflowId}/versions`
+- **描述**: 查询指定工作流的所有版本（按版本号降序）
+- **需要认证**: 是
+- **响应**: `WorkflowVersionDTO[]`
+
+#### 创建工作流版本
+- **接口**: `POST /api/v1/workflows/{workflowId}/versions`
+- **描述**: 创建新的工作流版本（Agent对话时调用）
+- **需要认证**: 是
+- **请求体**: `{ content: string, changeSummary?: string, sessionId?: string }`
+- **响应**: `WorkflowVersionDTO`
+
+#### 查询版本详情
+- **接口**: `GET /api/v1/workflows/{workflowId}/versions/{versionId}`
+- **描述**: 查询指定版本的详细信息
+- **需要认证**: 是
+- **响应**: `WorkflowVersionDTO`
+
+---
+
+### 5️⃣ 会话管理 API（新增模块）
+
+#### 创建会话
+- **接口**: `POST /api/v1/sessions`
+- **描述**: 创建一个新的对话会话（返回会话编码）
+- **需要认证**: 是
+- **请求体**: `{ title?: string }`
+- **响应**: `string` (会话编码)
+
+#### 查询用户会话列表
+- **接口**: `GET /api/v1/sessions`
+- **描述**: 查询当前用户的所有会话
+- **需要认证**: 是
+- **响应**: `ChatSessionDTO[]`
+
+#### 查询会话详情
+- **接口**: `GET /api/v1/sessions/{sessionCode}`
+- **描述**: 根据会话编码查询会话详情
+- **需要认证**: 是
+- **响应**: `ChatSessionDTO`
+
+#### 查询消息历史
+- **接口**: `GET /api/v1/sessions/{sessionCode}/messages`
+- **描述**: 查询会话的所有消息历史
+- **需要认证**: 是
+- **响应**: `ChatMessageDTO[]`
+
+#### 归档会话
+- **接口**: `POST /api/v1/sessions/{sessionCode}/archive`
+- **描述**: 归档指定的会话
+- **需要认证**: 是
+
+---
+
+### 6️⃣ Agent 管理 API（新增模块）
+
+#### 获取所有Agent
+- **接口**: `GET /api/v1/agents`
+- **描述**: 获取系统中所有Agent配置列表
+- **需要认证**: 是
+- **响应**: `AgentConfigDTO[]`
+
+#### 获取已启用的Agent
+- **接口**: `GET /api/v1/agents/enabled`
+- **描述**: 获取系统中所有已启用的Agent配置列表，供用户页面使用
+- **需要认证**: 是
+- **响应**: `AgentConfigDTO[]`
+
+#### 根据ID获取Agent
+- **接口**: `GET /api/v1/agents/{id}`
+- **描述**: 根据Agent ID获取详细配置信息
+- **需要认证**: 是
+- **响应**: `AgentConfigDTO`
+
+#### 根据编码获取Agent
+- **接口**: `GET /api/v1/agents/code/{agentCode}`
+- **描述**: 根据Agent编码获取详细配置信息
+- **需要认证**: 是
+- **响应**: `AgentConfigDTO`
+
+#### 更新Agent信息
+- **接口**: `PUT /api/v1/agents/{id}`
+- **描述**: 更新Agent的名称和描述（仅管理员可编辑）
+- **需要认证**: 是（需要管理员权限）
+- **查询参数**: `name: string, description: string`
+- **响应**: `AgentConfigDTO`
+
+#### 启用Agent
+- **接口**: `POST /api/v1/agents/{id}/enable`
+- **描述**: 启用指定的Agent
+- **需要认证**: 是（需要管理员权限）
+
+#### 禁用Agent
+- **接口**: `POST /api/v1/agents/{id}/disable`
+- **描述**: 禁用指定的Agent
+- **需要认证**: 是（需要管理员权限）
+
+#### 执行Agent
+- **接口**: `POST /api/v1/agents/{agentCode}/execute`
+- **描述**: 执行指定的Agent并返回结果
+- **需要认证**: 是
+- **请求体**: `{ sessionId?: string, input: string, userId?: string, isStreamable?: boolean }`
+- **响应**: `AgentExecutionResponse`
+
+---
+
+### 7️⃣ ComfyUI 服务管理 API
+
+#### 查询服务列表
+- **接口**: `GET /api/v1/comfyui-servers`
+- **描述**: 查询ComfyUI服务列表,支持按启用状态过滤（管理员使用）
+- **需要认证**: 是
+- **查询参数**: `isEnabled?: boolean`
+- **响应**: `ComfyuiServerDTO[]`
+
+#### 查询已启用的服务列表
+- **接口**: `GET /api/v1/comfyui-servers/enabled`
+- **描述**: 查询所有已启用的ComfyUI服务列表（前台用户使用）
+- **需要认证**: 是
+- **查询参数**: 无
+- **响应**: `ComfyuiServerDTO[]`
+
+#### 创建ComfyUI服务
+- **接口**: `POST /api/v1/comfyui-servers`
+- **描述**: 管理员手动创建ComfyUI服务
+- **需要认证**: 是（需要管理员权限）
+- **请求体**: `{ serverKey?: string, serverName: string, description?: string, baseUrl: string, authMode?: string, apiKey?: string, timeoutSeconds?: number, maxRetries?: number, advancedFeaturesEnabled?: boolean, advancedFeatures?: ComfyuiServerAdvancedFeaturesDTO }`
+- **响应**: `ComfyuiServerDTO`
+
+#### 查询服务详情
+- **接口**: `GET /api/v1/comfyui-servers/{id}`
+- **描述**: 根据服务ID查询详细信息
+- **需要认证**: 是
+- **响应**: `ComfyuiServerDTO`
+
+#### 根据标识符查询服务
+- **接口**: `GET /api/v1/comfyui-servers/key/{serverKey}`
+- **描述**: 根据服务唯一标识符查询服务信息
+- **需要认证**: 是
+- **响应**: `ComfyuiServerDTO`
+
+#### 更新服务信息
+- **接口**: `PUT /api/v1/comfyui-servers/{id}`
+- **描述**: 更新ComfyUI服务信息
+- **需要认证**: 是（需要管理员权限）
+- **请求体**: `{ serverName?: string, description?: string, baseUrl?: string, authMode?: string, apiKey?: string, timeoutSeconds?: number, maxRetries?: number, isEnabled?: boolean, advancedFeaturesEnabled?: boolean, advancedFeatures?: ComfyuiServerAdvancedFeaturesDTO }`
+- **响应**: `ComfyuiServerDTO`
+
+#### 删除服务
+- **接口**: `DELETE /api/v1/comfyui-servers/{id}`
+- **描述**: 删除ComfyUI服务
+- **需要认证**: 是（需要管理员权限）
+
+---
+
+### 8️⃣ AI 模型管理 API
+
+#### 查询所有AI模型
+- **接口**: `GET /api/v1/models`
+- **描述**: 查询系统中所有的AI模型列表
+- **需要认证**: 是
+- **响应**: `AiModelDTO[]`
+
+#### 创建AI模型
+- **接口**: `POST /api/v1/models`
+- **描述**: 创建新的AI模型（通过API创建的模型标记为远程API来源）
+- **需要认证**: 是（需要管理员权限）
+- **请求体**: `{ modelName: string, modelIdentifier: string, accessType: string, modelType: string, providerId?: string, modelConfig?: string, description?: string }`
+- **响应**: `AiModelDTO`
+
+#### 根据ID查询AI模型
+- **接口**: `GET /api/v1/models/{id}`
+- **描述**: 根据模型ID查询模型详细信息
+- **需要认证**: 是
+- **响应**: `AiModelDTO`
+
+#### 更新AI模型
+- **接口**: `PUT /api/v1/models/{id}`
+- **描述**: 更新AI模型信息（代码预定义的模型只能更新基本信息）
+- **需要认证**: 是（需要管理员权限）
+- **请求体**: `{ modelName?: string, modelConfig?: string, description?: string }`
+- **响应**: `AiModelDTO`
+
+#### 删除AI模型
+- **接口**: `DELETE /api/v1/models/{id}`
+- **描述**: 删除AI模型（只能删除远程API创建的模型）
+- **需要认证**: 是（需要管理员权限）
+
+#### 启用AI模型
+- **接口**: `POST /api/v1/models/{id}/enable`
+- **描述**: 启用指定的AI模型
+- **需要认证**: 是（需要管理员权限）
+
+#### 禁用AI模型
+- **接口**: `POST /api/v1/models/{id}/disable`
+- **描述**: 禁用指定的AI模型
+- **需要认证**: 是（需要管理员权限）
+
+---
+
+### 9️⃣ 模型提供商管理 API
+
+#### 查询所有提供商
+- **接口**: `GET /api/v1/model-providers`
+- **描述**: 查询系统中所有的模型提供商列表
+- **需要认证**: 是
+- **响应**: `ModelProviderDTO[]`
+
+#### 创建模型提供商
+- **接口**: `POST /api/v1/model-providers`
+- **描述**: 创建新的模型提供商
+- **需要认证**: 是（需要管理员权限）
+- **请求体**: `{ providerName: string, providerType: string, apiBaseUrl?: string, description?: string }`
+- **响应**: `ModelProviderDTO`
+
+#### 根据ID查询提供商
+- **接口**: `GET /api/v1/model-providers/{id}`
+- **描述**: 根据提供商ID查询详细信息
+- **需要认证**: 是
+- **响应**: `ModelProviderDTO`
+
+#### 更新提供商
+- **接口**: `PUT /api/v1/model-providers/{id}`
+- **描述**: 更新模型提供商信息
+- **需要认证**: 是（需要管理员权限）
+- **请求体**: `{ providerName?: string, apiBaseUrl?: string, description?: string }`
+- **响应**: `ModelProviderDTO`
+
+#### 删除提供商
+- **接口**: `DELETE /api/v1/model-providers/{id}`
+- **描述**: 删除模型提供商
+- **需要认证**: 是（需要管理员权限）
+
+---
+
+### 🔟 模型 API 密钥管理 API
+
+#### 创建API密钥
+- **接口**: `POST /api/v1/model-api-keys`
+- **描述**: 为指定提供商创建新的API密钥
+- **需要认证**: 是（需要管理员权限）
+- **请求体**: `{ providerId: string, keyName: string, apiKey: string }`
+- **响应**: `ModelApiKeyDTO`
+
+#### 查询提供商的所有密钥
+- **接口**: `GET /api/v1/model-api-keys/provider/{providerId}`
+- **描述**: 查询指定提供商的所有API密钥
+- **需要认证**: 是
+- **响应**: `ModelApiKeyDTO[]`
+
+#### 根据ID查询API密钥
+- **接口**: `GET /api/v1/model-api-keys/{id}`
+- **描述**: 根据密钥ID查询详细信息
+- **需要认证**: 是
+- **响应**: `ModelApiKeyDTO`
+
+#### 更新API密钥
+- **接口**: `PUT /api/v1/model-api-keys/{id}`
+- **描述**: 更新API密钥信息
+- **需要认证**: 是（需要管理员权限）
+- **请求体**: `{ keyName?: string }`
+- **响应**: `ModelApiKeyDTO`
+
+#### 删除API密钥
+- **接口**: `DELETE /api/v1/model-api-keys/{id}`
+- **描述**: 删除指定的API密钥
+- **需要认证**: 是（需要管理员权限）
+
+---
+
+### 1️⃣1️⃣ 文件资源管理 API
+
+#### 上传单个文件
+- **接口**: `POST /api/v1/files/upload`
+- **描述**: 上传单个文件到服务器，支持关联业务类型和业务ID
+- **需要认证**: 是
+- **请求**: `multipart/form-data`
+- **查询参数**: `businessType?: string, businessId?: string`
+- **响应**: `FileResourceDTO`
+
+#### 批量上传文件
+- **接口**: `POST /api/v1/files/upload/batch`
+- **描述**: 批量上传多个文件到服务器
+- **需要认证**: 是
+- **请求**: `multipart/form-data`
+- **查询参数**: `businessType?: string, businessId?: string`
+- **响应**: `FileResourceDTO[]`
+
+#### 下载文件
+- **接口**: `GET /api/v1/files/download/{fileId}`
+- **描述**: 根据文件ID下载文件
+- **需要认证**: 是
+- **响应**: 文件流
+
+#### 查询用户文件列表
+- **接口**: `GET /api/v1/files/user`
+- **描述**: 获取当前用户上传的所有文件列表
+- **需要认证**: 是
+- **响应**: `FileResourceDTO[]`
+
+#### 查询业务关联文件
+- **接口**: `GET /api/v1/files/business`
+- **描述**: 根据业务类型和业务ID查询关联的文件列表
+- **需要认证**: 是
+- **查询参数**: `businessType: string, businessId: string`
+- **响应**: `FileResourceDTO[]`
+
+#### 删除文件
+- **接口**: `DELETE /api/v1/files/{fileId}`
+- **描述**: 根据文件ID删除文件（逻辑删除）
+- **需要认证**: 是
+
+---
+
+### 1️⃣2️⃣ 权限管理 API
+
+#### 获取当前用户角色
+- **接口**: `GET /api/v1/permissions/my-roles`
+- **描述**: 获取当前登录用户的所有角色
+- **需要认证**: 是
+- **响应**: `RoleDTO[]`
+
+#### 获取当前用户权限
+- **接口**: `GET /api/v1/permissions/my-permissions`
+- **描述**: 获取当前登录用户的所有权限
+- **需要认证**: 是
+- **响应**: `string[]` (权限代码列表)
+
+---
+
+## 数据模型定义
+
+### UserDTO
+```typescript
+{
+  id: string
+  createTime: string
+  updateTime: string
+  email: string
+  username: string
+  avatarUrl?: string
+  status: 'ACTIVE' | 'INACTIVE' | 'LOCKED' | 'DELETED'
+  lastLoginTime?: string
+}
+```
+
+### WorkflowDTO
+```typescript
+{
+  id: string
+  createTime: string
+  updateTime: string
+  workflowName: string
+  description?: string
+  comfyuiServerId: string
+  comfyuiServerKey: string
+  activeContent?: string        // JSON格式
+  activeContentHash?: string
+  thumbnailUrl?: string
+  lockedByMessageId?: string    // 锁定消息ID（在哪个消息里被锁定）
+  lockedAt?: string
+}
+```
+
+### ComfyuiServerDTO
+```typescript
+{
+  id: string
+  createTime: string
+  updateTime: string
+  serverKey: string
+  serverName: string
+  description?: string
+  baseUrl: string
+  authMode?: string
+  apiKey?: string
+  timeoutSeconds: number
+  maxRetries: number
+  isEnabled: boolean
+  lastHealthCheckTime?: string
+  healthStatus: 'HEALTHY' | 'UNHEALTHY' | 'UNKNOWN'
+  advancedFeaturesEnabled: boolean
+  advancedFeatures?: ComfyuiServerAdvancedFeaturesDTO
+}
+```
+
+### AiModelDTO（新增）
+```typescript
+{
+  id: string
+  createTime: string
+  updateTime: string
+  modelName: string
+  modelIdentifier: string
+  accessType: string           // remote_api/local
+  modelType: string            // llm/embedding等
+  modelSource: string          // remote_api/code_defined
+  providerId?: string
+  modelConfig?: string         // JSON格式
+  description?: string
+  isEnabled: boolean
+}
+```
+
+### ModelProviderDTO（新增）
+```typescript
+{
+  id: string
+  createTime: string
+  updateTime: string
+  providerName: string
+  providerType: string
+  apiBaseUrl?: string
+  apiKey?: string             // API密钥
+  description?: string
+  isEnabled: boolean
+}
+```
+
+### ModelApiKeyDTO（新增）
+```typescript
+{
+  id: string
+  createTime: string
+  updateTime: string
+  providerId: string
+  keyName: string
+  apiKey: string              // 脱敏显示
+  isEnabled: boolean
+}
+```
+
+### WorkflowVersionDTO
+```typescript
+{
+  id: string
+  createTime: string
+  updateTime: string
+  workflowId: string
+  versionNumber: number
+  content: string             // JSON格式
+  contentHash: string
+  changeSummary?: string
+  sessionId?: string
+}
+```
+
+### FileResourceDTO
+```typescript
+{
+  id: string
+  createTime: string
+  updateTime: string
+  fileName: string
+  storedName: string
+  fileSize: number
+  fileType: string
+  fileExtension: string
+  businessType?: string
+  businessId?: string
+  downloadCount: number
+}
+```
+
+### RoleDTO
+```typescript
+{
+  roleCode: string
+  roleName: string
+}
+```
+
+### ChatSessionDTO（新增）
+```typescript
+{
+  id: string
+  createTime: string
+  updateTime: string
+  sessionCode: string
+  userId: string
+  agentId: string
+  title?: string
+  status: 'ACTIVE' | 'ARCHIVED'
+}
+```
+
+### ChatMessageDTO（新增）
+```typescript
+{
+  id: string
+  createTime: string
+  updateTime: string
+  sessionId: string
+  role: 'USER' | 'ASSISTANT' | 'SYSTEM'
+  content: string
+  metadata?: Record<string, any>
+}
+```
+
+### AgentConfigDTO（新增）
+```typescript
+{
+  id: string
+  createTime: string
+  updateTime: string
+  agentCode: string
+  agentName: string
+  description?: string
+  version: string
+  agentScopeConfig?: Record<string, any>
+  config?: Record<string, any>
+  status: string
+}
+```
+
+### AgentExecutionResponse（新增）
+```typescript
+{
+  logId: string
+  output: string
+  status: string
+  errorMessage?: string
+  executionTimeMs: number
+  executionStartMs: number
+}
+```
+
+### ComfyuiServerAdvancedFeaturesDTO（新增）
+```typescript
+{
+  connectionType: string           // 连接方式类型（LOCAL/SSH）
+  sshConfig?: SshConnectionConfigDTO
+  osType?: string                  // 服务器操作系统类型
+  workingDirectory?: string        // 工作目录路径
+  environmentInitScript?: string   // 环境初始化脚本
+  pythonCommand?: string           // Python命令路径
+  directoryConfig?: ComfyuiDirectoryConfigDTO
+  lastConnectionTestTime?: string  // 最后连接测试时间
+  connectionStatus?: string        // 连接状态
+}
+```
+
+### SshConnectionConfigDTO（新增）
+```typescript
+{
+  enabled: boolean                 // 是否启用SSH连接
+  host?: string                    // SSH主机地址
+  port?: number                    // SSH端口
+  username?: string                // SSH用户名
+  authType?: string                // SSH认证方式（PASSWORD/KEY）
+  password?: string                // SSH密码（加密存储）
+  privateKeyPath?: string          // SSH私钥路径
+}
+```
+
+### ComfyuiDirectoryConfigDTO（新增）
+```typescript
+{
+  comfyuiInstallPath?: string      // ComfyUI安装目录路径
+  baseDirectory?: string           // 基础目录路径（--base-directory）
+  outputDirectory?: string         // 输出目录路径（--output-directory）
+  tempDirectory?: string           // 临时目录路径（--temp-directory）
+  inputDirectory?: string          // 输入目录路径（--input-directory）
+  userDirectory?: string           // 用户目录路径（--user-directory）
+  frontEndRoot?: string            // 前端根目录路径（--front-end-root）
+  extraModelPathsConfig?: string   // 额外模型路径配置文件列表
+}
+```
+
+---
+
+**更新日期**: 2026-01-18
+**API 版本**: 1.0.0
+**新增模块**: 会话管理、Agent管理、AI模型管理、模型提供商管理、模型API密钥管理
+**重要变更**:
+- 工作流锁定机制改为基于消息ID（`lockedByMessageId`）
+- 工作流操作（锁定/解锁/保存/删除）需要传递 `messageId` 参数
+- ComfyUI服务新增高级功能配置支持（SSH连接、目录配置等）
+- ComfyUI服务移除 `sourceType` 字段，新增 `advancedFeaturesEnabled` 和 `advancedFeatures` 字段
+- 模型提供商新增 `apiKey` 字段
