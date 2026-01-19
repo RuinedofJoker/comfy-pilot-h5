@@ -7,7 +7,7 @@
         <button class="f-btn f-btn-primary" @click="handleCreateProvider">
           + 新建提供商
         </button>
-        <button class="f-btn f-btn-primary" @click="showModelModal = true">
+        <button class="f-btn f-btn-primary" @click="handleCreateModel">
           + 新建模型
         </button>
       </div>
@@ -102,8 +102,9 @@
                 </td>
                 <td>
                   <div class="f-actions">
-                    <button class="f-btn">查看</button>
-                    <button class="f-btn">编辑</button>
+                    <button class="f-btn" @click="handleViewModel(model.id)">查看</button>
+                    <button class="f-btn" @click="handleEditModel(model.id)">编辑</button>
+                    <button class="f-btn f-btn-danger" @click="handleDeleteModel(model.id)">删除</button>
                   </div>
                 </td>
               </tr>
@@ -120,6 +121,14 @@
       :provider-id="currentProviderId"
       @success="handleProviderSuccess"
     />
+
+    <!-- 模型弹窗 -->
+    <ModelModal
+      v-model:visible="modelModalVisible"
+      :mode="modelModalMode"
+      :model-id="currentModelId"
+      @success="handleModelSuccess"
+    />
   </div>
 </template>
 
@@ -130,6 +139,7 @@ import { ModelCallingType, AccessType, ModelType } from '@/types/model'
 import { modelProviderApi, aiModelApi } from '@/services/model'
 import { showToast, showConfirmDialog } from 'vant'
 import ProviderModal from '@/components/admin/ProviderModal.vue'
+import ModelModal from '@/components/admin/ModelModal.vue'
 
 // 辅助函数 - 获取模型调用方式标签
 const getModelCallingTypeLabel = (type: ModelCallingType): string => {
@@ -175,7 +185,9 @@ const providerModalMode = ref<'create' | 'edit' | 'view'>('create')
 const currentProviderId = ref<string>()
 
 // 模型弹窗状态
-const showModelModal = ref(false)
+const modelModalVisible = ref(false)
+const modelModalMode = ref<'create' | 'edit' | 'view'>('create')
+const currentModelId = ref<string>()
 
 // 数据列表
 const providers = ref<ModelProvider[]>([])
@@ -268,6 +280,55 @@ const handleDeleteProvider = async (providerId: string) => {
 // 提供商操作成功回调
 const handleProviderSuccess = () => {
   loadProviders()
+}
+
+// 模型操作函数
+const handleCreateModel = () => {
+  modelModalMode.value = 'create'
+  currentModelId.value = undefined
+  modelModalVisible.value = true
+}
+
+const handleViewModel = (modelId: string) => {
+  modelModalMode.value = 'view'
+  currentModelId.value = modelId
+  modelModalVisible.value = true
+}
+
+const handleEditModel = (modelId: string) => {
+  modelModalMode.value = 'edit'
+  currentModelId.value = modelId
+  modelModalVisible.value = true
+}
+
+const handleDeleteModel = async (modelId: string) => {
+  try {
+    await showConfirmDialog({
+      title: '确认删除',
+      message: '确定要删除该模型吗？删除后无法恢复。',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      className: 'custom-confirm-dialog'
+    })
+
+    loading.value = true
+    await aiModelApi.deleteModel(modelId)
+    showToast('删除成功')
+    loadModels()
+  } catch (error) {
+    // 用户取消删除时不显示错误
+    if (error !== 'cancel') {
+      showToast('删除失败')
+      console.error('删除模型失败:', error)
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+// 模型操作成功回调
+const handleModelSuccess = () => {
+  loadModels()
 }
 
 // 生命周期钩子

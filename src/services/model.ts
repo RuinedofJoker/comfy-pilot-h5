@@ -102,5 +102,12 @@ export const aiModelApi = {
    */
   disableModel: (id: string): Promise<void> => {
     return request.post(`/api/v1/models/${id}/disable`)
+  },
+
+  /**
+   * 获取模型配置格式说明
+   */
+  getModelConfigFormat: (callingType: string): Promise<string> => {
+    return request.get('/api/v1/models/config-format', { params: { modelCallingType: callingType } })
   }
 }

@@ -60,6 +60,21 @@ export const ModelType = {
 } as const
 
 /**
+ * 提供协议类型
+ */
+export type ProviderType =
+  | 'openai'      // OpenAI
+  | 'anthropic'   // Anthropic
+
+/**
+ * 提供协议类型常量
+ */
+export const ProviderType = {
+  OPENAI: 'openai' as const,
+  ANTHROPIC: 'anthropic' as const
+} as const
+
+/**
  * AI模型信息
  */
 export interface AiModel {
@@ -81,10 +96,12 @@ export interface AiModel {
   modelCallingType: ModelCallingType
   /** API基础URL */
   apiBaseUrl?: string
+  /** API Key */
+  apiKey?: string
   /** 提供商ID */
   providerId?: string
   /** 提供协议类型 */
-  providerType?: string
+  providerType?: ProviderType
   /** 模型配置(JSON格式) */
   modelConfig?: string
   /** 描述信息 */
@@ -106,7 +123,7 @@ export interface ModelProvider {
   /** 提供商名称 */
   providerName: string
   /** 提供商类型 */
-  providerType: string
+  providerType: ProviderType
   /** API基础URL */
   apiBaseUrl?: string
   /** API密钥 */
@@ -129,10 +146,12 @@ export interface CreateModelRequest {
   modelCallingType: ModelCallingType
   /** API基础URL */
   apiBaseUrl?: string
+  /** API Key */
+  apiKey?: string
   /** 提供商ID */
   providerId?: string
   /** 提供协议类型 */
-  providerType?: string
+  providerType?: ProviderType
   /** 模型配置(JSON格式) */
   modelConfig?: string
   /** 描述信息 */
@@ -151,10 +170,12 @@ export interface UpdateModelRequest {
   modelCallingType: ModelCallingType
   /** API基础URL */
   apiBaseUrl?: string
+  /** API Key */
+  apiKey?: string
   /** 提供商ID */
   providerId?: string
   /** 提供协议类型 */
-  providerType?: string
+  providerType?: ProviderType
   /** 模型配置(JSON格式) */
   modelConfig?: string
   /** 描述信息 */
@@ -170,7 +191,7 @@ export interface CreateProviderRequest {
   /** 提供商名称 */
   providerName: string
   /** 提供商类型 */
-  providerType: string
+  providerType: ProviderType
   /** API基础URL */
   apiBaseUrl?: string
   /** API密钥 */
@@ -188,7 +209,7 @@ export interface UpdateProviderRequest {
   /** 提供商名称 */
   providerName: string
   /** 提供商类型 */
-  providerType: string
+  providerType: ProviderType
   /** API基础URL */
   apiBaseUrl?: string
   /** API密钥 */
