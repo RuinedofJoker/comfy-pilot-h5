@@ -1,5 +1,9 @@
 <template>
-  <BaseCard :hoverable="true" class="f-service-card" @click="handleClick">
+  <BaseCard
+    :hoverable="isHealthy"
+    :class="['f-service-card', { 'f-service-card--disabled': !isHealthy }]"
+    @click="handleClick"
+  >
     <div class="f-service-card__header">
       <div class="f-service-card__status" :class="statusClass">
         <span class="f-service-card__status-dot"></span>
@@ -10,6 +14,13 @@
     <div class="f-service-card__body">
       <h3 class="f-service-card__name">{{ service.serverName }}</h3>
       <p class="f-service-card__url">{{ service.baseUrl }}</p>
+      <button
+        class="f-service-card__test-btn"
+        :disabled="isTesting"
+        @click.stop="handleTest"
+      >
+        {{ isTesting ? '测试中...' : '测试连接' }}
+      </button>
       <p v-if="service.description" class="f-service-card__description">
         {{ service.description }}
       </p>
@@ -27,12 +38,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { showToast } from 'vant'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import { formatRelativeTime } from '@/utils/format'
 import type { ComfyUIService } from '@/types/service'
 import { HealthStatusValues } from '@/types/service'
+import { testServerConnection } from '@/services/service'
 
 interface Props {
   service: ComfyUIService
@@ -42,6 +55,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   select: [service: ComfyUIService]
+  update: [service: ComfyUIService]
 }>()
 
 const statusClass = computed(() => ({
@@ -63,14 +77,51 @@ const statusText = computed(() => {
   }
 })
 
+// 判断服务是否健康
+const isHealthy = computed(() => props.service.healthStatus === HealthStatusValues.HEALTHY)
+
+// 测试状态
+const isTesting = ref(false)
+
+// 测试连接
+async function handleTest(): Promise<void> {
+  isTesting.value = true
+  try {
+    const updatedService = await testServerConnection(props.service.id)
+    showToast({
+      type: updatedService.healthStatus === HealthStatusValues.HEALTHY ? 'success' : 'fail',
+      message: updatedService.healthStatus === HealthStatusValues.HEALTHY ? '连接测试成功' : '连接测试失败'
+    })
+    // 更新服务状态
+    emit('update', updatedService)
+  } catch (error) {
+    showToast({ type: 'fail', message: '连接测试失败' })
+  } finally {
+    isTesting.value = false
+  }
+}
+
 function handleClick(): void {
-  emit('select', props.service)
+  // 只有健康的服务才能被选择
+  if (isHealthy.value) {
+    emit('select', props.service)
+  }
 }
 </script>
 
 <style scoped lang="scss">
 .f-service-card {
   cursor: pointer;
+
+  // 不健康的服务卡片样式
+  &--disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+
+    &:hover {
+      transform: none;
+    }
+  }
 
   &__header {
     margin-bottom: 16px;
@@ -135,6 +186,29 @@ function handleClick(): void {
     color: #4a9eff;
     margin: 0 0 12px 0;
     word-break: break-all;
+  }
+
+  &__test-btn {
+    padding: 6px 16px;
+    background: #3a3a3a;
+    border: 1px solid #4a4a4a;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #cccccc;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+
+    &:hover:not(:disabled) {
+      background: #454545;
+      border-color: #4a9eff;
+      color: #4a9eff;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
   }
 
   &__description {

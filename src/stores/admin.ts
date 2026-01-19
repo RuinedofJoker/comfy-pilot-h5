@@ -112,6 +112,21 @@ export const useAdminStore = defineStore('admin', () => {
     servers.value = servers.value.filter(s => s.id !== id)
   }
 
+  /**
+   * 测试服务连接（手动健康检查）
+   */
+  async function testServerConnection(id: string): Promise<ComfyUIService> {
+    const updatedServer = await serviceApi.testServerConnection(id)
+
+    // 更新列表中的服务健康状态
+    const index = servers.value.findIndex(s => s.id === id)
+    if (index !== -1) {
+      servers.value[index] = updatedServer
+    }
+
+    return updatedServer
+  }
+
   return {
     // 状态
     servers,
@@ -128,6 +143,7 @@ export const useAdminStore = defineStore('admin', () => {
     fetchServerById,
     createServer,
     updateServer,
-    deleteServer
+    deleteServer,
+    testServerConnection
   }
 })

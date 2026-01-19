@@ -54,9 +54,9 @@ export function deleteService(id: string): Promise<void> {
 }
 
 /**
- * 测试服务连接
+ * 测试服务连接（手动健康检查）
  */
-export function testServiceConnection(id: string): Promise<boolean> {
+export function testServiceConnection(id: string): Promise<ComfyUIService> {
   return http.post(`/api/admin/services/${id}/test`)
 }
 

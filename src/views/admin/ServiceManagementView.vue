@@ -37,6 +37,13 @@
           </div>
           <div class="f-service-desc">{{ service.description || '暂无描述' }}</div>
           <div class="f-service-actions">
+            <button
+              class="f-btn"
+              :disabled="testingServiceId === service.id"
+              @click="handleTest(service)"
+            >
+              {{ testingServiceId === service.id ? '测试中...' : '测试' }}
+            </button>
             <button class="f-btn" @click="handleEdit(service)">编辑</button>
             <button class="f-btn" @click="handleDelete(service)">删除</button>
           </div>
@@ -330,6 +337,7 @@ const adminStore = useAdminStore()
 const showCreateModal = ref(false)
 const editingService = ref<ComfyUIService | null>(null)
 const isLoading = ref(false)
+const testingServiceId = ref<string | null>(null)
 
 // 表单数据
 const formData = reactive({
@@ -377,6 +385,22 @@ async function loadServers(): Promise<void> {
     showToast({ type: 'fail', message: '加载服务列表失败' })
   } finally {
     isLoading.value = false
+  }
+}
+
+// 测试服务连接
+async function handleTest(service: ComfyUIService): Promise<void> {
+  testingServiceId.value = service.id
+  try {
+    const updatedService = await adminStore.testServerConnection(service.id)
+    showToast({
+      type: updatedService.healthStatus === 'HEALTHY' ? 'success' : 'fail',
+      message: updatedService.healthStatus === 'HEALTHY' ? '连接测试成功' : '连接测试失败'
+    })
+  } catch (error) {
+    showToast({ type: 'fail', message: '连接测试失败' })
+  } finally {
+    testingServiceId.value = null
   }
 }
 

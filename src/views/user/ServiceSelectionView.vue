@@ -36,6 +36,7 @@
             :key="service.id"
             :service="service"
             @select="selectService"
+            @update="updateService"
           />
         </div>
       </div>
@@ -51,7 +52,8 @@ import { useServiceSelection } from '@/composables/useServiceSelection'
 const {
   filteredServices,
   isLoading,
-  selectService
+  selectService,
+  updateService
 } = useServiceSelection()
 </script>
 

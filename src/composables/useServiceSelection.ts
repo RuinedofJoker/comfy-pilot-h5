@@ -39,6 +39,13 @@ export function useServiceSelection() {
   }
 
   /**
+   * 更新服务信息（测试连接后）
+   */
+  function updateService(service: ComfyUIService): void {
+    serviceStore.updateServiceInList(service)
+  }
+
+  /**
    * 初始化加载服务列表
    */
   async function loadServices(): Promise<void> {
@@ -62,6 +69,7 @@ export function useServiceSelection() {
     filteredServices,
     isLoading: computed(() => serviceStore.isLoading),
     selectService,
+    updateService,
     loadServices
   }
 }

@@ -106,6 +106,16 @@ export const useServiceStore = defineStore('service', () => {
   }
 
   /**
+   * 更新服务列表中的某个服务（测试连接后）
+   */
+  function updateServiceInList(service: ComfyUIService): void {
+    const index = services.value.findIndex(s => s.id === service.id)
+    if (index !== -1) {
+      services.value[index] = service
+    }
+  }
+
+  /**
    * 清除服务数据
    */
   function clearServiceData(): void {
@@ -133,6 +143,7 @@ export const useServiceStore = defineStore('service', () => {
     fetchRecentServices,
     selectService,
     restoreSelectedService,
+    updateServiceInList,
     clearServiceData
   }
 })

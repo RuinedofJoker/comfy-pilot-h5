@@ -58,3 +58,10 @@ export function updateServer(id: string, data: UpdateServiceParams): Promise<Com
 export function deleteServer(id: string): Promise<void> {
   return http.delete(`/api/v1/comfyui-servers/${id}`)
 }
+
+/**
+ * 测试服务连接（手动健康检查）
+ */
+export function testServerConnection(id: string): Promise<ComfyUIService> {
+  return http.post(`/api/v1/comfyui-servers/${id}/health-check`)
+}
