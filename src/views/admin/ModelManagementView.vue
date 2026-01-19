@@ -4,7 +4,7 @@
     <div class="m-header">
       <h1>AI 模型管理</h1>
       <div class="f-header-actions">
-        <button class="f-btn f-btn-primary" @click="showProviderModal = true">
+        <button class="f-btn f-btn-primary" @click="handleCreateProvider">
           + 新建提供商
         </button>
         <button class="f-btn f-btn-primary" @click="showModelModal = true">
@@ -38,33 +38,19 @@
         <div class="f-providers">
           <div
             v-for="provider in providers"
-            :key="provider.code"
+            :key="provider.id"
             class="f-provider-card"
           >
             <div class="f-provider-header">
               <div>
-                <div class="f-provider-name">{{ provider.name }}</div>
-                <div class="f-provider-code">{{ provider.code }}</div>
-              </div>
-              <span class="f-status active">
-                <span class="f-status-dot"></span>
-                活跃
-              </span>
-            </div>
-            <div class="f-provider-stats">
-              <div class="f-stat">
-                <div class="f-stat-value">{{ provider.models }}</div>
-                模型数
-              </div>
-              <div class="f-stat">
-                <div class="f-stat-value">{{ provider.calls }}</div>
-                今日调用
+                <div class="f-provider-name">{{ provider.providerName }}</div>
+                <div class="f-provider-code">{{ provider.providerType }}</div>
               </div>
             </div>
             <div class="f-provider-actions">
-              <button class="f-btn">查看</button>
-              <button class="f-btn">编辑</button>
-              <button class="f-btn">测试</button>
+              <button class="f-btn" @click="handleViewProvider(provider.id)">查看</button>
+              <button class="f-btn" @click="handleEditProvider(provider.id)">编辑</button>
+              <button class="f-btn f-btn-danger" @click="handleDeleteProvider(provider.id)">删除</button>
             </div>
           </div>
         </div>
@@ -88,26 +74,32 @@
             <thead>
               <tr>
                 <th>模型名称</th>
-                <th>提供商</th>
-                <th>类型</th>
-                <th>最大 Token</th>
-                <th>输入价格</th>
-                <th>输出价格</th>
+                <th>模型标识符</th>
+                <th>调用方式</th>
+                <th>接入方式</th>
+                <th>模型类型</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="model in filteredModels" :key="model.id">
-                <td><span class="f-model-name">{{ model.name }}</span></td>
-                <td>{{ model.provider }}</td>
+                <td><span class="f-model-name">{{ model.modelName }}</span></td>
+                <td>{{ model.modelIdentifier }}</td>
                 <td>
-                  <span class="f-tag" :class="model.type.toLowerCase()">
-                    {{ model.type }}
+                  <span class="f-tag" :class="`calling-${model.modelCallingType}`">
+                    {{ getModelCallingTypeLabel(model.modelCallingType) }}
                   </span>
                 </td>
-                <td>{{ model.tokens.toLocaleString() }}</td>
-                <td>¥{{ model.input }}/1K</td>
-                <td>¥{{ model.output }}/1K</td>
+                <td>
+                  <span class="f-tag" :class="`access-${model.accessType}`">
+                    {{ getAccessTypeLabel(model.accessType) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="f-tag" :class="`type-${model.modelType}`">
+                    {{ getModelTypeLabel(model.modelType) }}
+                  </span>
+                </td>
                 <td>
                   <div class="f-actions">
                     <button class="f-btn">查看</button>
@@ -120,53 +112,102 @@
         </div>
       </div>
     </div>
+
+    <!-- 提供商弹窗 -->
+    <ProviderModal
+      v-model:visible="providerModalVisible"
+      :mode="providerModalMode"
+      :provider-id="currentProviderId"
+      @success="handleProviderSuccess"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import type { ModelProvider, AiModel } from '@/types/model'
+import { ModelCallingType, AccessType, ModelType } from '@/types/model'
+import { modelProviderApi, aiModelApi } from '@/services/model'
+import { showToast, showConfirmDialog } from 'vant'
+import ProviderModal from '@/components/admin/ProviderModal.vue'
 
-// 模拟数据类型
-interface Provider {
-  code: string
-  name: string
-  models: number
-  calls: number
+// 辅助函数 - 获取模型调用方式标签
+const getModelCallingTypeLabel = (type: ModelCallingType): string => {
+  const labels: Record<ModelCallingType, string> = {
+    [ModelCallingType.API_LLM]: 'API LLM',
+    [ModelCallingType.API_EMBEDDING]: 'API Embedding',
+    [ModelCallingType.SENTENCE_TRANSFORMERS_EMBEDDING]: 'Sentence Transformers'
+  }
+  return labels[type] || type
 }
 
-interface Model {
-  id: string
-  name: string
-  provider: string
-  type: string
-  tokens: number
-  input: number
-  output: number
+// 辅助函数 - 获取接入方式标签
+const getAccessTypeLabel = (type: AccessType): string => {
+  const labels: Record<AccessType, string> = {
+    [AccessType.REMOTE_API]: '远程API',
+    [AccessType.LOCAL]: '本地部署'
+  }
+  return labels[type] || type
+}
+
+// 辅助函数 - 获取模型类型标签
+const getModelTypeLabel = (type: ModelType): string => {
+  const labels: Record<ModelType, string> = {
+    [ModelType.LLM]: '大语言模型',
+    [ModelType.EMBEDDING]: '嵌入模型',
+    [ModelType.SENTIMENT_CLASSIFICATION]: '情感分类',
+    [ModelType.TOKEN_CLASSIFICATION]: '标记分类',
+    [ModelType.IMAGE_GENERATION]: '图像生成',
+    [ModelType.SPEECH_RECOGNITION]: '语音识别',
+    [ModelType.TEXT_TO_SPEECH]: '文本转语音'
+  }
+  return labels[type] || type
 }
 
 // 状态
 const activeTab = ref<'providers' | 'models'>('providers')
-const showProviderModal = ref(false)
-const showModelModal = ref(false)
 const searchKeyword = ref('')
+const loading = ref(false)
 
-// 模拟数据 - 提供商
-const providers = ref<Provider[]>([
-  { code: 'OPENAI', name: 'OpenAI', models: 8, calls: 1247 },
-  { code: 'ANTHROPIC', name: 'Anthropic', models: 4, calls: 856 },
-  { code: 'ZHIPU', name: '智谱AI', models: 5, calls: 623 },
-  { code: 'QWEN', name: '通义千问', models: 4, calls: 512 },
-  { code: 'DEEPSEEK', name: 'DeepSeek', models: 2, calls: 234 }
-])
+// 提供商弹窗状态
+const providerModalVisible = ref(false)
+const providerModalMode = ref<'create' | 'edit' | 'view'>('create')
+const currentProviderId = ref<string>()
 
-// 模拟数据 - 模型
-const models = ref<Model[]>([
-  { id: '1', name: 'GPT-4 Turbo', provider: 'OpenAI', type: 'LLM', tokens: 128000, input: 0.01, output: 0.03 },
-  { id: '2', name: 'GPT-3.5 Turbo', provider: 'OpenAI', type: 'LLM', tokens: 16385, input: 0.0005, output: 0.0015 },
-  { id: '3', name: 'Claude 3 Opus', provider: 'Anthropic', type: 'LLM', tokens: 200000, input: 0.015, output: 0.075 },
-  { id: '4', name: 'GLM-4', provider: '智谱AI', type: 'LLM', tokens: 128000, input: 0.01, output: 0.01 },
-  { id: '5', name: 'text-embedding-3-large', provider: 'OpenAI', type: 'EMBEDDING', tokens: 8191, input: 0.00013, output: 0 }
-])
+// 模型弹窗状态
+const showModelModal = ref(false)
+
+// 数据列表
+const providers = ref<ModelProvider[]>([])
+const models = ref<AiModel[]>([])
+
+// 加载提供商列表
+const loadProviders = async () => {
+  try {
+    loading.value = true
+    const data = await modelProviderApi.listProviders()
+    providers.value = data || []
+  } catch (error) {
+    showToast('加载提供商列表失败')
+    console.error('加载提供商列表失败:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 加载模型列表
+const loadModels = async () => {
+  try {
+    loading.value = true
+    const data = await aiModelApi.listModels()
+    models.value = data || []
+  } catch (error) {
+    showToast('加载模型列表失败')
+    console.error('加载模型列表失败:', error)
+  } finally {
+    loading.value = false
+  }
+}
 
 // 计算属性 - 过滤后的模型列表
 const filteredModels = computed(() => {
@@ -175,8 +216,64 @@ const filteredModels = computed(() => {
   }
   const keyword = searchKeyword.value.toLowerCase()
   return models.value.filter(
-    m => m.name.toLowerCase().includes(keyword) || m.provider.toLowerCase().includes(keyword)
+    m => m.modelName.toLowerCase().includes(keyword) ||
+         m.modelIdentifier.toLowerCase().includes(keyword)
   )
+})
+
+// 提供商操作函数
+const handleCreateProvider = () => {
+  providerModalMode.value = 'create'
+  currentProviderId.value = undefined
+  providerModalVisible.value = true
+}
+
+const handleViewProvider = (providerId: string) => {
+  providerModalMode.value = 'view'
+  currentProviderId.value = providerId
+  providerModalVisible.value = true
+}
+
+const handleEditProvider = (providerId: string) => {
+  providerModalMode.value = 'edit'
+  currentProviderId.value = providerId
+  providerModalVisible.value = true
+}
+
+const handleDeleteProvider = async (providerId: string) => {
+  try {
+    await showConfirmDialog({
+      title: '确认删除',
+      message: '确定要删除该提供商吗？删除后无法恢复。',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      className: 'custom-confirm-dialog'
+    })
+
+    loading.value = true
+    await modelProviderApi.deleteProvider(providerId)
+    showToast('删除成功')
+    loadProviders()
+  } catch (error) {
+    // 用户取消删除时不显示错误
+    if (error !== 'cancel') {
+      showToast('删除失败')
+      console.error('删除提供商失败:', error)
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+// 提供商操作成功回调
+const handleProviderSuccess = () => {
+  loadProviders()
+}
+
+// 生命周期钩子
+onMounted(() => {
+  loadProviders()
+  loadModels()
 })
 </script>
 
@@ -231,6 +328,17 @@ const filteredModels = computed(() => {
 
     &:hover {
       background: #5aa8ff;
+    }
+  }
+
+  &-danger {
+    background: #3a3a3a;
+    border-color: #d9534f;
+    color: #d9534f;
+
+    &:hover {
+      background: #d9534f;
+      color: #ffffff;
     }
   }
 }
@@ -293,10 +401,7 @@ const filteredModels = computed(() => {
 }
 
 .f-provider-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .f-provider-name {
@@ -310,46 +415,6 @@ const filteredModels = computed(() => {
   color: #777777;
   margin-top: 2px;
   font-family: 'Consolas', monospace;
-}
-
-.f-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 3px;
-  font-size: 11px;
-
-  &.active {
-    background: rgba(39, 174, 96, 0.15);
-    color: #27ae60;
-  }
-}
-
-.f-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.f-provider-stats {
-  display: flex;
-  gap: 16px;
-  padding: 8px 0;
-  border-top: 1px solid #3a3a3a;
-  margin-bottom: 10px;
-}
-
-.f-stat {
-  font-size: 11px;
-  color: #777777;
-}
-
-.f-stat-value {
-  font-size: 13px;
-  color: #cccccc;
-  font-weight: 500;
 }
 
 .f-provider-actions {
@@ -449,14 +514,67 @@ const filteredModels = computed(() => {
   border-radius: 3px;
   font-size: 11px;
 
-  &.llm {
+  // 模型调用方式样式
+  &.calling-api_llm {
     background: rgba(74, 158, 255, 0.15);
     color: #4a9eff;
   }
 
-  &.embedding {
+  &.calling-api_embedding {
     background: rgba(156, 39, 176, 0.15);
     color: #9c27b0;
+  }
+
+  &.calling-sentence_transformers_embedding {
+    background: rgba(233, 30, 99, 0.15);
+    color: #e91e63;
+  }
+
+  // 接入方式样式
+  &.access-remote_api {
+    background: rgba(76, 175, 80, 0.15);
+    color: #4caf50;
+  }
+
+  &.access-local {
+    background: rgba(255, 152, 0, 0.15);
+    color: #ff9800;
+  }
+
+  // 模型类型样式
+  &.type-llm {
+    background: rgba(74, 158, 255, 0.15);
+    color: #4a9eff;
+  }
+
+  &.type-embedding {
+    background: rgba(156, 39, 176, 0.15);
+    color: #9c27b0;
+  }
+
+  &.type-sentiment_classification {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffc107;
+  }
+
+  &.type-token_classification {
+    background: rgba(0, 188, 212, 0.15);
+    color: #00bcd4;
+  }
+
+  &.type-image_generation {
+    background: rgba(233, 30, 99, 0.15);
+    color: #e91e63;
+  }
+
+  &.type-speech_recognition {
+    background: rgba(103, 58, 183, 0.15);
+    color: #673ab7;
+  }
+
+  &.type-text_to_speech {
+    background: rgba(63, 81, 181, 0.15);
+    color: #3f51b5;
   }
 }
 
@@ -467,6 +585,49 @@ const filteredModels = computed(() => {
   .f-btn {
     padding: 4px 8px;
     font-size: 11px;
+  }
+}
+</style>
+
+<style lang="scss">
+// 自定义确认对话框样式（全局样式）
+.custom-confirm-dialog {
+  .van-dialog__header {
+    padding-top: 20px;
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .van-dialog__message {
+    padding: 16px 24px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .van-dialog__footer {
+    padding: 12px 16px;
+    display: flex;
+    gap: 12px;
+  }
+
+  .van-dialog__cancel,
+  .van-dialog__confirm {
+    flex: 1;
+    height: 36px;
+    font-size: 14px;
+    border-radius: 4px;
+  }
+
+  .van-dialog__cancel {
+    background: #3a3a3a;
+    border: 1px solid #555555;
+    color: #cccccc;
+  }
+
+  .van-dialog__confirm {
+    background: #d9534f !important;
+    border: none;
+    color: #ffffff !important;
   }
 }
 </style>
