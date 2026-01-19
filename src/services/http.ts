@@ -7,6 +7,9 @@ import type { ApiResponse, ApiError } from '@/types/api'
 import { getToken, removeToken } from '@/utils/storage'
 import { toast } from '@/utils/toast'
 
+// 是否正在跳转到登录页的标志
+let isRedirectingToLogin = false
+
 /**
  * 创建 Axios 实例
  */
@@ -23,6 +26,13 @@ const http: AxiosInstance = axios.create({
  */
 http.interceptors.request.use(
   (config) => {
+    // 调试日志：记录请求信息
+    console.log('[HTTP Request]', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      timestamp: new Date().toISOString()
+    })
+
     // 添加 Token
     const token = getToken()
     if (token) {
@@ -31,6 +41,7 @@ http.interceptors.request.use(
     return config
   },
   (error) => {
+    console.error('[HTTP Request Error]', error)
     return Promise.reject(error)
   }
 )
@@ -55,6 +66,14 @@ http.interceptors.response.use(
   (error) => {
     let errorMessage = '请求失败'
 
+    // 调试日志：记录错误信息
+    console.error('[HTTP Response Error]', {
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.message,
+      timestamp: new Date().toISOString()
+    })
+
     // 处理 HTTP 错误
     if (error.response) {
       const { status, data, config } = error.response
@@ -76,12 +95,16 @@ http.interceptors.response.use(
         }
 
         // 其他接口的 401 错误，说明 Token 过期
-        removeToken()
-        errorMessage = '登录已过期，请重新登录'
-        toast.error(errorMessage)
-        setTimeout(() => {
-          window.location.href = '/login'
-        }, 1000)
+        // 使用标志位防止重复跳转
+        if (!isRedirectingToLogin) {
+          isRedirectingToLogin = true
+          removeToken()
+          errorMessage = '登录已过期，请重新登录'
+          toast.error(errorMessage)
+          setTimeout(() => {
+            window.location.href = '/login'
+          }, 1000)
+        }
         return Promise.reject(new Error(errorMessage))
       }
 

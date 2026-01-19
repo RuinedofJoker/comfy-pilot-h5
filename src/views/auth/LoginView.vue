@@ -8,7 +8,7 @@
         <BaseInput
           v-model="formData.email"
           label="邮箱"
-          type="email"
+          type="text"
           placeholder="请输入邮箱"
           required
           :error="errors.email"
@@ -62,7 +62,6 @@ import AuthLayout from '@/components/auth/AuthLayout.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import PasswordInput from '@/components/auth/PasswordInput.vue'
-import { validateEmail as isValidEmail, validatePassword as isValidPassword } from '@/utils/validator'
 import { login } from '@/services/auth'
 import { setToken, setRefreshToken } from '@/utils/storage'
 import type { LoginParams } from '@/types/auth'
@@ -85,8 +84,6 @@ const loading = ref(false)
 function validateEmail(): void {
   if (!formData.email) {
     errors.email = '请输入邮箱'
-  } else if (!isValidEmail(formData.email)) {
-    errors.email = '邮箱格式不正确'
   } else {
     errors.email = ''
   }
@@ -95,8 +92,6 @@ function validateEmail(): void {
 function validatePassword(): void {
   if (!formData.password) {
     errors.password = '请输入密码'
-  } else if (!isValidPassword(formData.password)) {
-    errors.password = '密码至少8位，包含字母和数字'
   } else {
     errors.password = ''
   }

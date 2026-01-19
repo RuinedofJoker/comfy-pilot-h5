@@ -7,6 +7,7 @@ import { ref, computed } from 'vue'
 import type { UserInfo } from '@/types/auth'
 import type { UpdateUserParams } from '@/types/user'
 import { getCurrentUser, updateUser } from '@/services/user'
+import { removeToken, removeUserInfo } from '@/utils/storage'
 
 export const useUserStore = defineStore('user', () => {
   // 状态
@@ -48,10 +49,12 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * 清除用户数据
+   * 清除用户数据（包括 token 和用户信息）
    */
   function clearUserData(): void {
     userInfo.value = null
+    removeToken()
+    removeUserInfo()
   }
 
   return {
