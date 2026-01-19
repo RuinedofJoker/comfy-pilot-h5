@@ -55,6 +55,7 @@
     <BaseAdminModal
       v-model="showCreateModal"
       :title="editingService ? '编辑服务' : '添加服务'"
+      :close-on-mask="false"
       @confirm="handleConfirm"
       @cancel="handleCancel"
     >

@@ -1,6 +1,6 @@
 <template>
-  <div v-if="visible" class="g-provider-modal-overlay" @click.self="handleCancel">
-    <div class="m-provider-modal">
+  <div v-if="visible" class="g-provider-modal-overlay">
+    <div class="m-provider-modal" @click.stop>
       <!-- 标题栏 -->
       <div class="m-modal-header">
         <h3>{{ modalTitle }}</h3>

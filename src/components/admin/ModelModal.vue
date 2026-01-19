@@ -1,6 +1,6 @@
 <template>
-  <div v-if="visible" class="f-modal-overlay" @click.self="handleCancel">
-    <div class="f-modal">
+  <div v-if="visible" class="f-modal-overlay">
+    <div class="f-modal" @click.stop>
       <!-- 模态框头部 -->
       <div class="f-modal-header">
         <h3 class="f-modal-title">
@@ -217,7 +217,7 @@
 import { ref, watch, computed } from 'vue'
 import { showToast } from 'vant'
 import { modelProviderApi, aiModelApi } from '@/services/model'
-import type { ModelProvider, AiModel, ModelCallingType } from '@/types/model'
+import type { ModelProvider, AiModel, ModelCallingType, ProviderType } from '@/types/model'
 
 // Props 定义
 interface Props {
@@ -252,7 +252,7 @@ const formData = ref({
   providerId: '',
   apiBaseUrl: '',
   apiKey: '',
-  providerType: '',
+  providerType: '' as ProviderType | '',
   modelConfig: '',
   description: '',
   isEnabled: true
@@ -398,7 +398,7 @@ const handleSubmit = async () => {
         providerId: formData.value.providerId || undefined,
         apiBaseUrl: formData.value.apiBaseUrl || undefined,
         apiKey: formData.value.apiKey || undefined,
-        providerType: formData.value.providerType || undefined,
+        providerType: (formData.value.providerType || undefined) as ProviderType | undefined,
         modelConfig: formData.value.modelConfig,
         description: formData.value.description || undefined,
         isEnabled: formData.value.isEnabled
@@ -416,7 +416,7 @@ const handleSubmit = async () => {
         providerId: formData.value.providerId || undefined,
         apiBaseUrl: formData.value.apiBaseUrl || undefined,
         apiKey: formData.value.apiKey || undefined,
-        providerType: formData.value.providerType || undefined,
+        providerType: (formData.value.providerType || undefined) as ProviderType | undefined,
         modelConfig: formData.value.modelConfig,
         description: formData.value.description || undefined,
         isEnabled: formData.value.isEnabled
