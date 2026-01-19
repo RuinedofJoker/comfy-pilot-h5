@@ -35,7 +35,7 @@ export function useServiceSelection() {
       type: 'success',
       message: `已选择 ${service.serverName}`
     })
-    router.push('/user/workflows')
+    router.push('/comfy/workflows')
   }
 
   /**

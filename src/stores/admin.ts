@@ -36,20 +36,6 @@ export const useAdminStore = defineStore('admin', () => {
     servers.value.filter(s => s.healthStatus === 'HEALTHY')
   )
 
-  /**
-   * 手动创建的服务列表
-   */
-  const manualServers = computed(() =>
-    servers.value.filter(s => s.sourceType === 'MANUAL')
-  )
-
-  /**
-   * 代码注册的服务列表
-   */
-  const codeBasedServers = computed(() =>
-    servers.value.filter(s => s.sourceType === 'CODE_BASED')
-  )
-
   // ==================== Actions ====================
 
   /**
@@ -135,8 +121,6 @@ export const useAdminStore = defineStore('admin', () => {
     // 计算属性
     enabledServers,
     healthyServers,
-    manualServers,
-    codeBasedServers,
 
     // Actions
     fetchServers,
