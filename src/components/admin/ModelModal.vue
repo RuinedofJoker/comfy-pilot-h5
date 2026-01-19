@@ -6,12 +6,7 @@
         <h3 class="f-modal-title">
           {{ mode === 'create' ? '新建模型' : mode === 'edit' ? '编辑模型' : '查看模型' }}
         </h3>
-        <button class="f-modal-close" @click="handleCancel">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+        <button class="f-modal-close" @click="handleCancel">×</button>
       </div>
 
       <!-- 模态框内容 -->
@@ -506,19 +501,17 @@ const handleCancel = () => {
 .f-modal-close {
   background: none;
   border: none;
-  padding: 4px;
+  padding: 0;
   cursor: pointer;
   color: #999999;
+  font-size: 24px;
+  line-height: 1;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: color 0.15s;
-
-  svg {
-    width: 20px;
-    height: 20px;
-    stroke-width: 2;
-  }
 
   &:hover {
     color: #ffffff;
