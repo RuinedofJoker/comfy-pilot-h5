@@ -163,14 +163,7 @@
 
           <!-- ComfyUI 视图 -->
           <div v-show="currentView === 'comfyui'" class="f-comfyui-view">
-            <div v-if="!currentWorkflow" class="f-empty-state">
-              <svg class="f-icon f-icon-xl" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/>
-              </svg>
-              <div>请选择一个工作流开始编辑</div>
-            </div>
             <iframe
-              v-else
               ref="comfyuiFrame"
               class="f-comfyui-iframe"
               :src="comfyuiUrl"
@@ -305,8 +298,10 @@ const isChatMinimized = ref(false)
 const workflows = ref<Workflow[]>([])
 const currentWorkflowId = ref<string | null>(null)
 const currentWorkflow = ref<Workflow | null>(null)
-const workflowJsonContent = ref('')
-const hasUnsavedChanges = ref(false)
+const savedWorkflowContent = ref('') // 已保存的工作流内容
+const pendingWorkflowContent = ref('') // 待保存的工作流内容
+const workflowJsonContent = computed(() => pendingWorkflowContent.value) // JSON视图显示待保存内容
+const hasUnsavedChanges = computed(() => savedWorkflowContent.value !== pendingWorkflowContent.value)
 const isWorkflowLocked = ref(false)
 
 // UI状态
@@ -316,7 +311,6 @@ const showCreateWorkflowModal = ref(false)
 const newWorkflowName = ref('')
 const newWorkflowDescription = ref('')
 const isServiceAvailable = ref(true)
-const iframeError = ref(false)
 
 // WebSocket客户端
 let wsClient: WebSocketClient | null = null
@@ -325,9 +319,12 @@ let wsClient: WebSocketClient | null = null
 const comfyuiFrame = ref<HTMLIFrameElement | null>(null)
 const chatMessages = ref<HTMLDivElement | null>(null)
 
+// 定时同步定时器
+let syncTimer: number | null = null
+
 // 计算ComfyUI URL
 const comfyuiUrl = computed(() => {
-  if (!currentService.value || !currentWorkflow.value) return ''
+  if (!currentService.value) return ''
   return currentService.value.baseUrl
 })
 
@@ -351,7 +348,17 @@ function formatTime(time: string): string {
 // 加载服务信息
 async function loadServiceInfo(): Promise<void> {
   try {
+    console.log("初始化加载服务信息");
     currentService.value = await getServerById(serviceId.value)
+
+    // 等待 iframe 加载
+    await nextTick()
+    if (comfyuiFrame.value) {
+      comfyuiFrame.value.onerror = () => {
+        isServiceAvailable.value = false
+        toast.error('ComfyUI 服务连接失败')
+      }
+    }
   } catch (error) {
     console.error('加载服务信息失败:', error)
     toast.error('加载服务信息失败')
@@ -442,30 +449,22 @@ async function handleSelectWorkflow(workflowId: string): Promise<void> {
 
   currentWorkflowId.value = workflowId
   showWorkflowDropdown.value = false
-  iframeError.value = false
 
   try {
+    // 加载工作流信息和内容
     currentWorkflow.value = await getWorkflowById(workflowId)
     const content = await getWorkflowContent(workflowId)
-    workflowJsonContent.value = content
-    hasUnsavedChanges.value = false
 
-    // 监听iframe加载错误
-    await nextTick()
-    if (comfyuiFrame.value) {
-      comfyuiFrame.value.onerror = handleIframeError
-    }
+    // 设置已保存内容和待保存内容
+    savedWorkflowContent.value = content
+    pendingWorkflowContent.value = content
+
+    // 在 ComfyUI 中加载工作流
+    await loadWorkflowInComfyUI(content)
   } catch (error) {
     console.error('加载工作流失败:', error)
     toast.error('加载工作流失败')
   }
-}
-
-// 处理iframe加载错误
-function handleIframeError(): void {
-  iframeError.value = true
-  isServiceAvailable.value = false
-  toast.error('ComfyUI 服务连接失败')
 }
 
 // 切换工作流下拉菜单
@@ -473,9 +472,115 @@ function toggleWorkflowDropdown(): void {
   showWorkflowDropdown.value = !showWorkflowDropdown.value
 }
 
+// 在 ComfyUI 中加载工作流
+async function loadWorkflowInComfyUI(content: string): Promise<void> {
+  if (!comfyuiFrame.value?.contentWindow) {
+    return
+  }
+
+  try {
+    // 1. 创建新的工作流标签页
+    await sendComfyUIMessage('comfy-pilot:new-workflow', null)
+
+    // 2. 如果内容不为空，设置工作流内容
+    if (content && content.trim()) {
+      const workflowData = JSON.parse(content)
+      await sendComfyUIMessage('comfy-pilot:set-workflow', workflowData)
+    }
+  } catch (error) {
+    console.error('加载工作流到 ComfyUI 失败:', error)
+  }
+}
+
+// 发送消息到 ComfyUI 并等待响应
+function sendComfyUIMessage(type: string, payload: any): Promise<any> {
+  return new Promise((resolve, reject) => {
+    if (!comfyuiFrame.value?.contentWindow) {
+      reject(new Error('ComfyUI iframe 未就绪'))
+      return
+    }
+
+    const requestId = `req_${Date.now()}`
+
+    comfyuiFrame.value.contentWindow.postMessage({
+      type,
+      payload,
+      requestId
+    }, '*')
+
+    const handleMessage = (event: MessageEvent) => {
+      const { requestId: resId, type: resType, payload: resPayload } = event.data || {}
+
+      if (resId === requestId) {
+        window.removeEventListener('message', handleMessage)
+        if (resType?.includes('error')) {
+          reject(new Error(resPayload?.message || '操作失败'))
+        } else {
+          resolve(resPayload)
+        }
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+
+    setTimeout(() => {
+      window.removeEventListener('message', handleMessage)
+      reject(new Error('操作超时'))
+    }, 5000)
+  })
+}
+
 // 切换视图
 function switchView(view: 'comfyui' | 'json'): void {
   currentView.value = view
+  if (view === 'json') {
+    fetchWorkflowFromIframe()
+  }
+}
+
+// 从 iframe 获取工作流内容（更新待保存内容）
+function fetchWorkflowFromIframe(): void {
+  if (!comfyuiFrame.value?.contentWindow) {
+    return
+  }
+
+  try {
+    const requestId = `req_${Date.now()}`
+
+    comfyuiFrame.value.contentWindow.postMessage({
+      type: 'comfy-pilot:get-workflow',
+      requestId
+    }, '*')
+
+    const handleMessage = (event: MessageEvent) => {
+      const { type, payload, requestId: resId } = event.data || {}
+
+      if (resId === requestId) {
+        if (type === 'comfy-pilot:workflow-data' && payload) {
+          pendingWorkflowContent.value = JSON.stringify(payload, null, 2)
+        }
+        window.removeEventListener('message', handleMessage)
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+
+    setTimeout(() => {
+      window.removeEventListener('message', handleMessage)
+    }, 5000)
+  } catch (error) {
+    console.error('获取工作流内容失败:', error)
+  }
+}
+
+// 处理 ComfyUI 主动推送的消息
+function handleComfyUIMessage(event: MessageEvent): void {
+  const { type, payload } = event.data || {}
+
+  // 处理标签页切换事件
+  if (type === 'comfy-pilot:tab-changed' && payload) {
+    pendingWorkflowContent.value = JSON.stringify(payload, null, 2)
+  }
 }
 
 // 创建会话
@@ -519,15 +624,23 @@ async function handleConfirmCreateWorkflow(): Promise<void> {
 
 // 保存工作流
 async function handleSaveWorkflow(): Promise<void> {
-  if (!currentWorkflow.value || !currentSessionCode.value) return
+  if (!currentWorkflow.value) return
 
   try {
+    // 先从 ComfyUI 获取最新内容并等待
+    await new Promise<void>((resolve) => {
+      fetchWorkflowFromIframe()
+      setTimeout(resolve, 500)
+    })
+
+    // 手动保存
     await saveWorkflowContent(
       currentWorkflow.value.id,
-      currentSessionCode.value,
-      { content: workflowJsonContent.value }
+      { content: pendingWorkflowContent.value }
     )
-    hasUnsavedChanges.value = false
+
+    // 更新已保存内容
+    savedWorkflowContent.value = pendingWorkflowContent.value
     toast.success('工作流已保存')
   } catch (error) {
     console.error('保存工作流失败:', error)
@@ -580,15 +693,40 @@ function handleGoBack(): void {
   router.push('/services')
 }
 
+// 启动定时同步
+function startAutoSync(): void {
+  stopAutoSync()
+  syncTimer = window.setInterval(() => {
+    if (currentWorkflow.value && currentView.value === 'comfyui') {
+      fetchWorkflowFromIframe()
+    }
+  }, 3000) // 每3秒同步一次
+}
+
+// 停止定时同步
+function stopAutoSync(): void {
+  if (syncTimer !== null) {
+    clearInterval(syncTimer)
+    syncTimer = null
+  }
+}
+
 // 初始化
 onMounted(async () => {
   await loadServiceInfo()
   await loadSessions()
   await loadWorkflows()
+  startAutoSync()
+
+  // 注册全局消息监听器，接收 ComfyUI 主动推送
+  window.addEventListener('message', handleComfyUIMessage)
 })
 
 // 清理
 onUnmounted(() => {
+  stopAutoSync()
+  window.removeEventListener('message', handleComfyUIMessage)
+
   if (wsClient) {
     wsClient.close()
     wsClient = null

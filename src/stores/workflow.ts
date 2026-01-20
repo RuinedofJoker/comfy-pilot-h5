@@ -99,42 +99,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
   }
 
   /**
-   * 锁定工作流
-   */
-  async function lockWorkflow(id: string): Promise<void> {
-    const updatedWorkflow = await workflowApi.lockWorkflow(id)
-
-    // 更新列表中的工作流
-    const index = workflows.value.findIndex(w => w.id === id)
-    if (index !== -1) {
-      workflows.value[index] = updatedWorkflow
-    }
-
-    // 更新当前工作流
-    if (currentWorkflow.value?.id === id) {
-      currentWorkflow.value = updatedWorkflow
-    }
-  }
-
-  /**
-   * 解锁工作流
-   */
-  async function unlockWorkflow(id: string): Promise<void> {
-    const updatedWorkflow = await workflowApi.unlockWorkflow(id)
-
-    // 更新列表中的工作流
-    const index = workflows.value.findIndex(w => w.id === id)
-    if (index !== -1) {
-      workflows.value[index] = updatedWorkflow
-    }
-
-    // 更新当前工作流
-    if (currentWorkflow.value?.id === id) {
-      currentWorkflow.value = updatedWorkflow
-    }
-  }
-
-  /**
    * 获取工作流内容
    */
   async function fetchWorkflowContent(id: string): Promise<void> {
@@ -231,8 +195,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     updateWorkflowInfo,
     saveWorkflowContent,
     removeWorkflow,
-    lockWorkflow,
-    unlockWorkflow,
     setCurrentWorkflow,
     clearWorkflowData,
     fetchWorkflowVersions,
