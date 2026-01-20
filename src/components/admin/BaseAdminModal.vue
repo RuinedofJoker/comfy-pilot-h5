@@ -15,7 +15,7 @@
           </div>
 
           <!-- 模态框底部 -->
-          <div class="f-admin-modal__footer">
+          <div v-if="showFooter" class="f-admin-modal__footer">
             <button class="f-btn" @click="handleCancel">{{ cancelText }}</button>
             <button class="f-btn f-btn-primary" @click="handleConfirm">
               {{ confirmText }}
@@ -36,6 +36,7 @@ interface Props {
   cancelText?: string
   confirmText?: string
   closeOnMask?: boolean
+  showFooter?: boolean
 }
 
 interface Emits {
@@ -47,7 +48,8 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
   cancelText: '取消',
   confirmText: '保存',
-  closeOnMask: true
+  closeOnMask: true,
+  showFooter: true
 })
 
 const emit = defineEmits<Emits>()

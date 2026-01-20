@@ -2,89 +2,152 @@
  * Agent 相关类型定义
  */
 
-/**
- * Agent 类型
- */
-export type AgentType = 'workflow_editor' | 'workflow_analyzer' | 'general_assistant'
+import type { ModelCallingType } from './model'
 
-export const AgentTypeValues = {
-  WORKFLOW_EDITOR: 'workflow_editor' as const,
-  WORKFLOW_ANALYZER: 'workflow_analyzer' as const,
-  GENERAL_ASSISTANT: 'general_assistant' as const
+/**
+ * Agent 状态类型
+ */
+export type AgentStatus =
+  | 'ENABLED'    // 已启用
+  | 'DISABLED'   // 已禁用
+
+/**
+ * Agent 状态常量
+ */
+export const AgentStatus = {
+  ENABLED: 'ENABLED' as const,
+  DISABLED: 'DISABLED' as const
+} as const
+
+/**
+ * Agent 配置类型
+ */
+export type AgentConfigType =
+  | 'STRING'     // 字符串类型
+  | 'INT'        // 整数类型
+  | 'FLOAT'      // 浮点数类型
+  | 'BOOLEAN'    // 布尔类型
+  | 'MODEL'      // 模型类型
+
+/**
+ * Agent 配置类型常量
+ */
+export const AgentConfigType = {
+  STRING: 'STRING' as const,
+  INT: 'INT' as const,
+  FLOAT: 'FLOAT' as const,
+  BOOLEAN: 'BOOLEAN' as const,
+  MODEL: 'MODEL' as const
+} as const
+
+/**
+ * Agent 配置定义
+ */
+export interface AgentConfigDefinition {
+  /** 配置名/键 */
+  name: string
+  /** 配置描述 */
+  description?: string
+  /** 是否必填 */
+  require?: boolean
+  /** 用户是否能覆盖 */
+  userOverride?: boolean
+  /** 配置值类型 */
+  type: AgentConfigType
+  /** 字符串格式(正则表达式) */
+  format?: string
+  /** 整数类型取值范围起始值 */
+  intStartScope?: number
+  /** 整数类型取值范围结束值 */
+  intEndScope?: number
+  /** 浮点数类型取值范围起始值 */
+  floatStartScope?: number
+  /** 浮点数类型取值范围结束值 */
+  floatEndScope?: number
+  /** 模型调用方式 */
+  modelCallingType?: ModelCallingType
 }
 
 /**
  * Agent 配置信息
  */
 export interface AgentConfig {
+  /** Agent ID */
   id: string
-  name: string
-  type: AgentType
+  /** 创建时间 */
+  createTime: string
+  /** 更新时间 */
+  updateTime: string
+  /** Agent 编码 */
+  agentCode: string
+  /** Agent 名称 */
+  agentName: string
+  /** Agent 描述 */
   description?: string
-  modelProvider: string
-  modelName: string
-  temperature: number
-  maxTokens: number
-  systemPrompt?: string
-  enabled: boolean
-  createdAt: string
-  updatedAt: string
+  /** Agent 版本号 */
+  version: string
+  /** Agent Scope 配置 */
+  agentScopeConfig?: string
+  /** Agent 运行时配置 */
+  config?: string
+  /** Agent 运行时配置定义 */
+  agentConfigDefinitions?: AgentConfigDefinition[]
+  /** Agent 状态 */
+  status: AgentStatus
 }
 
 /**
- * 创建 Agent 参数
+ * Agent 运行时配置信息
  */
-export interface CreateAgentParams {
-  name: string
-  type: AgentType
-  description?: string
-  modelProvider: string
-  modelName: string
-  temperature?: number
-  maxTokens?: number
-  systemPrompt?: string
-}
-
-/**
- * 更新 Agent 参数
- */
-export interface UpdateAgentParams {
-  name?: string
-  description?: string
-  modelProvider?: string
-  modelName?: string
-  temperature?: number
-  maxTokens?: number
-  systemPrompt?: string
-  enabled?: boolean
-}
-
-/**
- * Agent 消息
- */
-export interface AgentMessage {
+export interface AgentRuntimeConfig {
+  /** Agent ID */
   id: string
-  role: 'user' | 'assistant' | 'system'
-  content: string
-  timestamp: string
-  metadata?: Record<string, unknown>
+  /** 创建时间 */
+  createTime: string
+  /** 更新时间 */
+  updateTime: string
+  /** Agent 编码 */
+  agentCode: string
+  /** Agent 名称 */
+  agentName: string
+  /** Agent 描述 */
+  description?: string
+  /** Agent 版本号 */
+  version: string
+  /** Agent 运行时配置定义 */
+  agentConfigDefinitions?: AgentConfigDefinition[]
 }
 
 /**
- * Agent 对话请求
+ * Agent 执行请求
  */
-export interface AgentChatRequest {
-  sessionId: string
-  message: string
-  workflowId?: string
+export interface AgentExecutionRequest {
+  /** 会话ID */
+  sessionId?: string
+  /** 用户输入内容 */
+  input: string
+  /** 用户ID */
+  userId?: string
+  /** 是否流式执行 */
+  isStreamable?: boolean
+  /** Agent配置(JSON格式) */
+  agentConfig?: string
 }
 
 /**
- * Agent 对话响应
+ * Agent 执行响应
  */
-export interface AgentChatResponse {
-  messageId: string
-  content: string
-  workflowModified: boolean
-  timestamp: string
+export interface AgentExecutionResponse {
+  /** 执行日志ID */
+  logId: string
+  /** Agent输出内容 */
+  output: string
+  /** 执行状态 */
+  status: string
+  /** 错误信息 */
+  errorMessage?: string
+  /** 执行耗时(毫秒) */
+  executionTimeMs: number
+  /** 执行开始时间戳(毫秒) */
+  executionStartMs: number
 }

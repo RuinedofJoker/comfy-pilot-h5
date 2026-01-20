@@ -3,9 +3,6 @@
     <!-- 顶部标题栏 -->
     <div class="m-header">
       <h1>Agent 配置管理</h1>
-      <button class="f-btn f-btn-primary" @click="showCreateModal = true">
-        + 新建 Agent
-      </button>
     </div>
 
     <!-- 内容区 -->
@@ -25,40 +22,46 @@
         <table class="f-table">
           <thead>
             <tr>
+              <th>Agent 编码</th>
               <th>Agent 名称</th>
-              <th>类型</th>
-              <th>关联模型</th>
-              <th>温度</th>
-              <th>最大 Token</th>
+              <th>描述</th>
+              <th>版本</th>
               <th>状态</th>
               <th>操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="agent in filteredAgents" :key="agent.id">
-              <td><span class="f-agent-name">{{ agent.name }}</span></td>
-              <td>
-                <span class="f-tag" :class="getTypeClass(agent.type)">
-                  {{ agent.type }}
-                </span>
-              </td>
-              <td>{{ agent.model }}</td>
-              <td>{{ agent.temperature }}</td>
-              <td>{{ agent.maxTokens.toLocaleString() }}</td>
+              <td><span class="f-agent-code">{{ agent.agentCode }}</span></td>
+              <td><span class="f-agent-name">{{ agent.agentName }}</span></td>
+              <td>{{ agent.description || '-' }}</td>
+              <td>{{ agent.version }}</td>
               <td>
                 <span
                   class="f-status"
-                  :class="agent.status === '活跃' ? 'active' : 'maintenance'"
+                  :class="agent.status === 'ENABLED' ? 'active' : 'disabled'"
                 >
                   <span class="f-status-dot"></span>
-                  {{ agent.status }}
+                  {{ getStatusText(agent.status) }}
                 </span>
               </td>
               <td>
                 <div class="f-actions">
                   <button class="f-btn" @click="handleView(agent)">查看</button>
-                  <button class="f-btn" @click="handleEdit(agent)">编辑</button>
-                  <button class="f-btn" @click="handleDelete(agent)">删除</button>
+                  <button
+                    v-if="agent.status === 'DISABLED'"
+                    class="f-btn f-btn-success"
+                    @click="handleEnable(agent)"
+                  >
+                    启用
+                  </button>
+                  <button
+                    v-if="agent.status === 'ENABLED'"
+                    class="f-btn f-btn-warning"
+                    @click="handleDisable(agent)"
+                  >
+                    禁用
+                  </button>
                 </div>
               </td>
             </tr>
@@ -67,123 +70,128 @@
       </div>
     </div>
 
-    <!-- 创建/编辑 Agent 模态框 -->
+    <!-- Agent 详情模态框 -->
     <BaseAdminModal
-      v-model="showCreateModal"
-      :title="editingAgent ? '编辑 Agent' : '新建 Agent'"
-      @confirm="handleConfirm"
-      @cancel="handleCancel"
+      v-model="showDetailModal"
+      title="Agent 详情"
+      :show-footer="false"
+      width="600px"
     >
-      <BaseFormGroup label="Agent 名称" required>
-        <BaseInput
-          v-model="formData.name"
-          placeholder="工作流编辑助手"
-          required
-        />
-      </BaseFormGroup>
+      <div v-if="selectedAgent" class="m-agent-detail">
+        <!-- 基本信息 -->
+        <div class="m-detail-section">
+          <h3 class="f-section-title">基本信息</h3>
+          <div class="f-detail-grid">
+            <div class="f-detail-item">
+              <span class="f-label">Agent ID:</span>
+              <span class="f-value">{{ selectedAgent.id }}</span>
+            </div>
+            <div class="f-detail-item">
+              <span class="f-label">Agent 编码:</span>
+              <span class="f-value f-code">{{ selectedAgent.agentCode }}</span>
+            </div>
+            <div class="f-detail-item">
+              <span class="f-label">Agent 名称:</span>
+              <span class="f-value">{{ selectedAgent.agentName }}</span>
+            </div>
+            <div class="f-detail-item">
+              <span class="f-label">版本号:</span>
+              <span class="f-value">{{ selectedAgent.version }}</span>
+            </div>
+            <div class="f-detail-item">
+              <span class="f-label">状态:</span>
+              <span
+                class="f-value f-status-badge"
+                :class="selectedAgent.status === 'ENABLED' ? 'enabled' : 'disabled'"
+              >
+                {{ getStatusText(selectedAgent.status) }}
+              </span>
+            </div>
+            <div class="f-detail-item f-full-width">
+              <span class="f-label">描述:</span>
+              <span class="f-value">{{ selectedAgent.description || '-' }}</span>
+            </div>
+          </div>
+        </div>
 
-      <BaseFormGroup label="类型" required>
-        <BaseInput
-          v-model="formData.type"
-          placeholder="工作流编辑"
-          required
-        />
-      </BaseFormGroup>
+        <!-- 时间信息 -->
+        <div class="m-detail-section">
+          <h3 class="f-section-title">时间信息</h3>
+          <div class="f-detail-grid">
+            <div class="f-detail-item">
+              <span class="f-label">创建时间:</span>
+              <span class="f-value">{{ formatDateTime(selectedAgent.createTime) }}</span>
+            </div>
+            <div class="f-detail-item">
+              <span class="f-label">更新时间:</span>
+              <span class="f-value">{{ formatDateTime(selectedAgent.updateTime) }}</span>
+            </div>
+          </div>
+        </div>
 
-      <BaseFormGroup label="系统提示词" required>
-        <BaseTextarea
-          v-model="formData.systemPrompt"
-          placeholder="定义 Agent 的角色和行为..."
-          :rows="4"
-          required
-        />
-      </BaseFormGroup>
+        <!-- Agent Scope 配置 -->
+        <div v-if="selectedAgent.agentScopeConfig" class="m-detail-section">
+          <h3 class="f-section-title">Agent Scope 配置</h3>
+          <pre class="f-json-viewer">{{ formatJson(selectedAgent.agentScopeConfig) }}</pre>
+        </div>
 
-      <BaseFormGroup label="关联模型" required>
-        <BaseInput
-          v-model="formData.model"
-          placeholder="GPT-4 Turbo"
-          required
-        />
-      </BaseFormGroup>
+        <!-- Agent 运行时配置 -->
+        <div v-if="selectedAgent.config" class="m-detail-section">
+          <h3 class="f-section-title">运行时配置</h3>
+          <pre class="f-json-viewer">{{ formatJson(selectedAgent.config) }}</pre>
+        </div>
 
-      <BaseFormGroup label="温度参数">
-        <BaseInput
-          v-model.number="formData.temperature"
-          type="number"
-          placeholder="0.7"
-        />
-      </BaseFormGroup>
-
-      <BaseFormGroup label="最大 Token">
-        <BaseInput
-          v-model.number="formData.maxTokens"
-          type="number"
-          placeholder="4096"
-        />
-      </BaseFormGroup>
+        <!-- Agent 配置定义 -->
+        <div v-if="selectedAgent.agentConfigDefinitions && selectedAgent.agentConfigDefinitions.length > 0" class="m-detail-section">
+          <h3 class="f-section-title">配置定义</h3>
+          <div class="f-config-definitions">
+            <div
+              v-for="(def, index) in selectedAgent.agentConfigDefinitions"
+              :key="index"
+              class="f-config-def-item"
+            >
+              <div class="f-config-def-header">
+                <span class="f-config-name">{{ def.name }}</span>
+                <span class="f-config-type" :class="`type-${def.type.toLowerCase()}`">
+                  {{ def.type }}
+                </span>
+              </div>
+              <div v-if="def.description" class="f-config-desc">{{ def.description }}</div>
+              <div class="f-config-meta">
+                <span v-if="def.require" class="f-meta-tag required">必填</span>
+                <span v-if="def.userOverride" class="f-meta-tag override">用户可覆盖</span>
+                <span v-if="def.format" class="f-meta-info">格式: {{ def.format }}</span>
+                <span v-if="def.intStartScope !== undefined" class="f-meta-info">
+                  范围: {{ def.intStartScope }} - {{ def.intEndScope }}
+                </span>
+                <span v-if="def.floatStartScope !== undefined" class="f-meta-info">
+                  范围: {{ def.floatStartScope }} - {{ def.floatEndScope }}
+                </span>
+                <span v-if="def.modelCallingType" class="f-meta-info">
+                  模型类型: {{ def.modelCallingType }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </BaseAdminModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { showToast, showConfirmDialog } from 'vant'
+import type { AgentConfig, AgentStatus } from '@/types/agent'
+import { agentApi } from '@/services/agent'
 import BaseAdminModal from '@/components/admin/BaseAdminModal.vue'
-import BaseFormGroup from '@/components/admin/BaseFormGroup.vue'
-import BaseInput from '@/components/admin/BaseInput.vue'
-import BaseTextarea from '@/components/admin/BaseTextarea.vue'
-
-// 模拟数据类型
-interface Agent {
-  id: string
-  name: string
-  type: string
-  model: string
-  temperature: number
-  maxTokens: number
-  status: string
-  systemPrompt?: string
-}
 
 // 状态
-const showCreateModal = ref(false)
-const editingAgent = ref<Agent | null>(null)
 const searchKeyword = ref('')
-
-// 模拟数据
-const agents = ref<Agent[]>([
-  {
-    id: '1',
-    name: '工作流编辑助手',
-    type: '工作流编辑',
-    model: 'GPT-4 Turbo',
-    temperature: 0.7,
-    maxTokens: 4096,
-    status: '活跃',
-    systemPrompt: '你是一个工作流编辑助手...'
-  },
-  {
-    id: '2',
-    name: '工作流分析专家',
-    type: '工作流分析',
-    model: 'Claude 3 Opus',
-    temperature: 0.5,
-    maxTokens: 8192,
-    status: '活跃',
-    systemPrompt: '你是一个工作流分析专家...'
-  }
-])
-
-// 表单数据
-const formData = reactive({
-  name: '',
-  type: '',
-  systemPrompt: '',
-  model: '',
-  temperature: 0.7,
-  maxTokens: 4096
-})
+const agents = ref<AgentConfig[]>([])
+const loading = ref(false)
+const showDetailModal = ref(false)
+const selectedAgent = ref<AgentConfig | null>(null)
 
 // 计算属性 - 过滤后的 Agent 列表
 const filteredAgents = computed(() => {
@@ -192,113 +200,109 @@ const filteredAgents = computed(() => {
   }
   const keyword = searchKeyword.value.toLowerCase()
   return agents.value.filter(
-    a => a.name.toLowerCase().includes(keyword) || a.type.toLowerCase().includes(keyword)
+    a =>
+      a.agentName.toLowerCase().includes(keyword) ||
+      a.agentCode.toLowerCase().includes(keyword) ||
+      (a.description && a.description.toLowerCase().includes(keyword))
   )
 })
 
-// 获取类型样式类
-function getTypeClass(type: string): string {
-  const typeMap: Record<string, string> = {
-    '工作流编辑': 'edit',
-    '工作流分析': 'analyze',
-    '通用助手': 'general'
+// 获取状态文本
+function getStatusText(status: AgentStatus): string {
+  return status === 'ENABLED' ? '已启用' : '已禁用'
+}
+
+// 格式化日期时间
+function formatDateTime(dateTime: string): string {
+  if (!dateTime) return '-'
+  const date = new Date(dateTime)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+// 格式化 JSON
+function formatJson(jsonStr: string): string {
+  try {
+    const obj = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr
+    return JSON.stringify(obj, null, 2)
+  } catch (error) {
+    return jsonStr
   }
-  return typeMap[type] || 'general'
+}
+
+// 加载 Agent 列表
+async function loadAgents(): Promise<void> {
+  try {
+    loading.value = true
+    agents.value = await agentApi.getAllAgents()
+  } catch (error) {
+    console.error('加载 Agent 列表失败:', error)
+    showToast({ type: 'fail', message: '加载 Agent 列表失败' })
+  } finally {
+    loading.value = false
+  }
 }
 
 // 查看 Agent
-function handleView(agent: Agent): void {
-  showToast({ type: 'success', message: `查看 ${agent.name}` })
+function handleView(agent: AgentConfig): void {
+  selectedAgent.value = agent
+  showDetailModal.value = true
 }
 
-// 编辑 Agent
-function handleEdit(agent: Agent): void {
-  editingAgent.value = agent
-  formData.name = agent.name
-  formData.type = agent.type
-  formData.systemPrompt = agent.systemPrompt || ''
-  formData.model = agent.model
-  formData.temperature = agent.temperature
-  formData.maxTokens = agent.maxTokens
-  showCreateModal.value = true
-}
-
-// 删除 Agent
-async function handleDelete(agent: Agent): Promise<void> {
+// 启用 Agent
+async function handleEnable(agent: AgentConfig): Promise<void> {
   try {
     await showConfirmDialog({
-      title: '确认删除',
-      message: `确定要删除 Agent "${agent.name}" 吗？`
+      title: '确认启用',
+      message: `确定要启用 Agent "${agent.agentName}" 吗？`,
+      confirmButtonText: '启用',
+      cancelButtonText: '取消',
+      className: 'custom-confirm-dialog'
     })
-    
-    agents.value = agents.value.filter(a => a.id !== agent.id)
-    showToast({ type: 'success', message: '删除成功' })
-  } catch (error) {
-    // 用户取消删除
-  }
-}
 
-// 确认按钮处理
-async function handleConfirm(): Promise<void> {
-  if (!formData.name.trim() || !formData.type.trim() || !formData.model.trim()) {
-    showToast({ type: 'fail', message: '请填写必填项' })
-    return
-  }
-
-  if (editingAgent.value) {
-    // 更新 Agent
-    const index = agents.value.findIndex(a => a.id === editingAgent.value!.id)
-    if (index !== -1) {
-      const currentAgent = agents.value[index]!
-      const updatedAgent: Agent = {
-        id: currentAgent.id,
-        name: formData.name,
-        type: formData.type,
-        model: formData.model,
-        temperature: formData.temperature,
-        maxTokens: formData.maxTokens,
-        status: currentAgent.status,
-        systemPrompt: formData.systemPrompt
-      }
-      agents.value[index] = updatedAgent
+    await agentApi.enableAgent(agent.id)
+    showToast({ type: 'success', message: '启用成功' })
+    await loadAgents()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('启用 Agent 失败:', error)
+      showToast({ type: 'fail', message: '启用失败' })
     }
-    showToast({ type: 'success', message: '更新成功' })
-  } else {
-    // 创建 Agent
-    const newAgent: Agent = {
-      id: Date.now().toString(),
-      name: formData.name,
-      type: formData.type,
-      model: formData.model,
-      temperature: formData.temperature,
-      maxTokens: formData.maxTokens,
-      status: '活跃',
-      systemPrompt: formData.systemPrompt
-    }
-    agents.value.unshift(newAgent)
-    showToast({ type: 'success', message: '创建成功' })
   }
-
-  // 重置表单并关闭模态框
-  resetForm()
-  showCreateModal.value = false
 }
 
-// 取消按钮处理
-function handleCancel(): void {
-  resetForm()
+// 禁用 Agent
+async function handleDisable(agent: AgentConfig): Promise<void> {
+  try {
+    await showConfirmDialog({
+      title: '确认禁用',
+      message: `确定要禁用 Agent "${agent.agentName}" 吗？`,
+      confirmButtonText: '禁用',
+      cancelButtonText: '取消',
+      className: 'custom-confirm-dialog'
+    })
+
+    await agentApi.disableAgent(agent.id)
+    showToast({ type: 'success', message: '禁用成功' })
+    await loadAgents()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('禁用 Agent 失败:', error)
+      showToast({ type: 'fail', message: '禁用失败' })
+    }
+  }
 }
 
-// 重置表单
-function resetForm(): void {
-  formData.name = ''
-  formData.type = ''
-  formData.systemPrompt = ''
-  formData.model = ''
-  formData.temperature = 0.7
-  formData.maxTokens = 4096
-  editingAgent.value = null
-}
+// 组件挂载时加载数据
+onMounted(() => {
+  loadAgents()
+})
 </script>
 
 <style scoped lang="scss">
@@ -347,6 +351,26 @@ function resetForm(): void {
 
     &:hover {
       background: #5aa8ff;
+    }
+  }
+
+  &-success {
+    background: #27ae60;
+    border-color: #27ae60;
+    color: #ffffff;
+
+    &:hover {
+      background: #2ecc71;
+    }
+  }
+
+  &-warning {
+    background: #e74c3c;
+    border-color: #e74c3c;
+    color: #ffffff;
+
+    &:hover {
+      background: #c0392b;
     }
   }
 }
@@ -417,31 +441,15 @@ function resetForm(): void {
   }
 }
 
+.f-agent-code {
+  color: #999999;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+}
+
 .f-agent-name {
   color: #ffffff;
   font-weight: 500;
-}
-
-.f-tag {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 3px;
-  font-size: 11px;
-
-  &.edit {
-    background: rgba(74, 158, 255, 0.15);
-    color: #4a9eff;
-  }
-
-  &.analyze {
-    background: rgba(156, 39, 176, 0.15);
-    color: #9c27b0;
-  }
-
-  &.general {
-    background: rgba(76, 175, 80, 0.15);
-    color: #4caf50;
-  }
 }
 
 .f-status {
@@ -454,8 +462,8 @@ function resetForm(): void {
     color: #27ae60;
   }
 
-  &.maintenance {
-    color: #f39c12;
+  &.disabled {
+    color: #e74c3c;
   }
 }
 
@@ -473,6 +481,231 @@ function resetForm(): void {
   .f-btn {
     padding: 4px 8px;
     font-size: 11px;
+  }
+}
+
+// Agent 详情模态框样式
+.m-agent-detail {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.m-detail-section {
+  margin-bottom: 20px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.f-section-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #ffffff;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.f-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.f-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &.f-full-width {
+    grid-column: 1 / -1;
+  }
+}
+
+.f-label {
+  font-size: 11px;
+  color: #999999;
+}
+
+.f-value {
+  font-size: 12px;
+  color: #cccccc;
+
+  &.f-code {
+    font-family: 'Courier New', monospace;
+    color: #4a9eff;
+  }
+}
+
+.f-status-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 500;
+
+  &.enabled {
+    background: rgba(39, 174, 96, 0.15);
+    color: #27ae60;
+  }
+
+  &.disabled {
+    background: rgba(231, 76, 60, 0.15);
+    color: #e74c3c;
+  }
+}
+
+.f-json-viewer {
+  background: #1e1e1e;
+  border: 1px solid #3a3a3a;
+  border-radius: 3px;
+  padding: 12px;
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+  color: #cccccc;
+  overflow-x: auto;
+  margin: 0;
+}
+
+.f-config-definitions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.f-config-def-item {
+  background: #1e1e1e;
+  border: 1px solid #3a3a3a;
+  border-radius: 3px;
+  padding: 12px;
+}
+
+.f-config-def-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.f-config-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #ffffff;
+  font-family: 'Courier New', monospace;
+}
+
+.f-config-type {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+
+  &.type-string {
+    background: rgba(74, 158, 255, 0.15);
+    color: #4a9eff;
+  }
+
+  &.type-int {
+    background: rgba(39, 174, 96, 0.15);
+    color: #27ae60;
+  }
+
+  &.type-float {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+  }
+
+  &.type-boolean {
+    background: rgba(243, 156, 18, 0.15);
+    color: #f39c12;
+  }
+
+  &.type-model {
+    background: rgba(155, 89, 182, 0.15);
+    color: #9b59b6;
+  }
+}
+
+.f-config-desc {
+  font-size: 11px;
+  color: #999999;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.f-config-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.f-meta-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 500;
+
+  &.required {
+    background: rgba(231, 76, 60, 0.15);
+    color: #e74c3c;
+  }
+
+  &.override {
+    background: rgba(52, 152, 219, 0.15);
+    color: #3498db;
+  }
+}
+
+.f-meta-info {
+  font-size: 10px;
+  color: #666666;
+}
+</style>
+
+<style lang="scss">
+// 自定义确认对话框样式（全局样式）
+.custom-confirm-dialog {
+  .van-dialog__header {
+    padding-top: 20px;
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .van-dialog__message {
+    padding: 16px 24px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .van-dialog__footer {
+    padding: 12px 16px;
+    display: flex;
+    gap: 12px;
+  }
+
+  .van-dialog__cancel,
+  .van-dialog__confirm {
+    flex: 1;
+    height: 36px;
+    font-size: 14px;
+    border-radius: 4px;
+  }
+
+  .van-dialog__cancel {
+    background: #3a3a3a;
+    border: 1px solid #555555;
+    color: #cccccc;
+  }
+
+  .van-dialog__confirm {
+    background: #4a9eff !important;
+    border: none;
+    color: #ffffff !important;
   }
 }
 </style>

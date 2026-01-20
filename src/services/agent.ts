@@ -1,80 +1,76 @@
 /**
- * Agent API 服务
+ * Agent 管理相关 API 服务
  */
-
-import http from './http'
+import request from './http'
 import type {
   AgentConfig,
-  AgentMessage,
-  AgentChatRequest,
-  AgentChatResponse
+  AgentRuntimeConfig,
+  AgentExecutionRequest,
+  AgentExecutionResponse
 } from '@/types/agent'
-import type { Session, CreateSessionParams, UpdateSessionParams } from '@/types/session'
 
 /**
- * ========== Agent 对话 ==========
+ * Agent 管理 API
  */
+export const agentApi = {
+  /**
+   * 获取所有 Agent
+   */
+  getAllAgents: (): Promise<AgentConfig[]> => {
+    return request.get('/api/v1/agents')
+  },
 
-/**
- * 发送消息给 Agent
- */
-export function sendMessageToAgent(params: AgentChatRequest): Promise<AgentChatResponse> {
-  return http.post('/api/agent/chat', params)
+  /**
+   * 根据 ID 获取 Agent
+   */
+  getAgentById: (id: string): Promise<AgentConfig> => {
+    return request.get(`/api/v1/agents/${id}`)
+  },
+
+  /**
+   * 根据编码获取 Agent
+   */
+  getAgentByCode: (agentCode: string): Promise<AgentConfig> => {
+    return request.get(`/api/v1/agents/code/${agentCode}`)
+  },
+
+  /**
+   * 启用 Agent
+   */
+  enableAgent: (id: string): Promise<void> => {
+    return request.post(`/api/v1/agents/${id}/enable`)
+  },
+
+  /**
+   * 禁用 Agent
+   */
+  disableAgent: (id: string): Promise<void> => {
+    return request.post(`/api/v1/agents/${id}/disable`)
+  }
 }
 
 /**
- * 获取会话消息历史
+ * Agent 运行时 API
  */
-export function getSessionMessages(sessionId: string): Promise<AgentMessage[]> {
-  return http.get(`/api/agent/sessions/${sessionId}/messages`)
-}
+export const agentRuntimeApi = {
+  /**
+   * 获取已启用的 Agent（运行时）
+   */
+  getEnabledAgents: (): Promise<AgentRuntimeConfig[]> => {
+    return request.get('/api/v1/agents/runtime/enabled')
+  },
 
-/**
- * ========== 会话管理 ==========
- */
+  /**
+   * 根据编码获取 Agent（运行时）
+   */
+  getAgentByCode: (agentCode: string): Promise<AgentRuntimeConfig> => {
+    return request.get(`/api/v1/agents/runtime/code/${agentCode}`)
+  },
 
-/**
- * 获取会话列表
- */
-export function getSessionList(): Promise<Session[]> {
-  return http.get('/api/agent/sessions')
-}
-
-/**
- * 获取会话详情
- */
-export function getSessionDetail(id: string): Promise<Session> {
-  return http.get(`/api/agent/sessions/${id}`)
-}
-
-/**
- * 创建会话
- */
-export function createSession(params: CreateSessionParams): Promise<Session> {
-  return http.post('/api/agent/sessions', params)
-}
-
-/**
- * 更新会话
- */
-export function updateSession(id: string, params: UpdateSessionParams): Promise<Session> {
-  return http.put(`/api/agent/sessions/${id}`, params)
-}
-
-/**
- * 删除会话
- */
-export function deleteSession(id: string): Promise<void> {
-  return http.delete(`/api/agent/sessions/${id}`)
-}
-
-/**
- * ========== Agent 配置 ==========
- */
-
-/**
- * 获取可用 Agent 列表
- */
-export function getAvailableAgents(): Promise<AgentConfig[]> {
-  return http.get('/api/agent/configs')
+  /**
+   * 执行 Agent
+   */
+  executeAgent: (agentCode: string, params: AgentExecutionRequest): Promise<AgentExecutionResponse> => {
+    return request.post(`/api/v1/agents/${agentCode}/execute`, params)
+  }
 }
