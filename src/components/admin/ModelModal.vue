@@ -257,7 +257,7 @@ const formData = ref({
 // 表单错误
 const errors = ref<Record<string, string>>({})
 
-// 配置 Schema（从 placeholder 中解析）
+// 配置 Schema（从 placeholder 中解析，只提取不带 $ 的 key）
 const configSchema = computed(() => {
   if (!configPlaceholder.value) return undefined
 
@@ -265,7 +265,17 @@ const configSchema = computed(() => {
     // 尝试从 placeholder 中提取 JSON
     const jsonMatch = configPlaceholder.value.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0])
+      const fullSchema = JSON.parse(jsonMatch[0])
+
+      // 只保留不带 $ 开头的 key
+      const codeSchema: Record<string, any> = {}
+      Object.keys(fullSchema).forEach(key => {
+        if (!key.startsWith('$')) {
+          codeSchema[key] = fullSchema[key]
+        }
+      })
+
+      return codeSchema
     }
   } catch (e) {
     console.warn('无法解析配置 schema:', e)
@@ -274,7 +284,7 @@ const configSchema = computed(() => {
   return undefined
 })
 
-// 格式化的配置提示（用于显示）
+// 格式化的配置提示（用于显示，只显示带 $ 的 key，并去掉 $ 前缀）
 const formattedConfigPlaceholder = computed(() => {
   if (!configPlaceholder.value) return ''
 
@@ -282,8 +292,18 @@ const formattedConfigPlaceholder = computed(() => {
     // 尝试从 placeholder 中提取 JSON
     const jsonMatch = configPlaceholder.value.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
-      const jsonObj = JSON.parse(jsonMatch[0])
-      return JSON.stringify(jsonObj, null, 2)
+      const fullSchema = JSON.parse(jsonMatch[0])
+
+      // 只保留带 $ 开头的 key，并去掉 $ 前缀
+      const docSchema: Record<string, any> = {}
+      Object.keys(fullSchema).forEach(key => {
+        if (key.startsWith('$')) {
+          const cleanKey = key.substring(1) // 去掉 $ 前缀
+          docSchema[cleanKey] = fullSchema[key]
+        }
+      })
+
+      return JSON.stringify(docSchema, null, 2)
     }
   } catch (e) {
     // 如果解析失败，返回原始文本

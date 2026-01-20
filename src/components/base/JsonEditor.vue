@@ -59,13 +59,18 @@ onMounted(() => {
     autoClosingQuotes: 'always',
     autoIndent: 'full',
     quickSuggestions: {
-      other: true,
-      comments: false,
-      strings: true
+      other: 'on',
+      comments: 'off',
+      strings: 'on'
     },
     suggestOnTriggerCharacters: true,
     acceptSuggestionOnEnter: 'on',
-    wordBasedSuggestions: false
+    wordBasedSuggestions: 'off',
+    // 关键：设置触发字符
+    suggest: {
+      showWords: false,
+      showSnippets: false
+    }
   })
 
   // 监听内容变化
@@ -109,6 +114,7 @@ const registerJsonCompletion = (schema: Record<string, any>) => {
 
   // 注册自动补全提供者
   monaco.languages.registerCompletionItemProvider('json', {
+    triggerCharacters: ['"', ' ', '\n'], // 触发字符
     provideCompletionItems: (model, position) => {
       const textUntilPosition = model.getValueInRange({
         startLineNumber: 1,
@@ -123,18 +129,29 @@ const registerJsonCompletion = (schema: Record<string, any>) => {
         return { suggestions: [] }
       }
 
+      // 获取当前行和光标前的文本
+      const currentLine = model.getLineContent(position.lineNumber)
+      const textBeforeCursor = currentLine.substring(0, position.column - 1)
+
+      // 检查是否在输入 key（在引号内）
+      const inQuotes = (textBeforeCursor.match(/"/g) || []).length % 2 === 1
+
       // 生成建议
       const suggestions: monaco.languages.CompletionItem[] = schemaKeys.map(key => {
         const value = schemaObj[key]
         const valueStr = typeof value === 'string' ? `"${value}"` : JSON.stringify(value)
 
+        // 如果在引号内，只插入 key 名称
+        const insertText = inQuotes ? key : `"${key}": ${valueStr}`
+
         return {
           label: key,
           kind: monaco.languages.CompletionItemKind.Property,
-          insertText: `"${key}": ${valueStr}`,
+          insertText: insertText,
           detail: typeof value === 'string' ? value : JSON.stringify(value),
           documentation: `建议值: ${valueStr}`,
-          sortText: `0${key}` // 确保按字母顺序排序
+          sortText: `0${key}`,
+          filterText: key // 用于过滤匹配
         }
       })
 

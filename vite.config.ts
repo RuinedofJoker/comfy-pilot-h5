@@ -7,7 +7,7 @@ import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 export default defineConfig({
   plugins: [
     vue(),
-    monacoEditorPlugin({
+    (monacoEditorPlugin as any).default({
       languageWorkers: ['json']
     })
   ],
