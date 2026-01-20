@@ -79,6 +79,16 @@
               </button>
 
               <div v-if="showWorkflowDropdown" class="f-workflow-dropdown">
+                <!-- 空状态提示 -->
+                <div v-if="workflows.length === 0" class="f-dropdown-empty">
+                  <svg class="f-icon f-icon-lg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                  </svg>
+                  <div class="f-empty-text">暂无工作流</div>
+                  <div class="f-empty-hint">点击"新建"按钮创建工作流</div>
+                </div>
+
+                <!-- 工作流列表 -->
                 <div
                   v-for="workflow in workflows"
                   :key="workflow.id"
@@ -94,9 +104,9 @@
               </div>
             </div>
 
-            <div class="f-service-indicator">
-              <span class="f-service-dot"></span>
-              <span>{{ currentService?.serverName || 'ComfyUI 服务' }}</span>
+            <div class="f-service-indicator" :class="{ error: !isServiceAvailable }">
+              <span class="f-service-dot" :class="{ error: !isServiceAvailable }"></span>
+              <span>{{ isServiceAvailable ? (currentService?.serverName || 'ComfyUI 服务') : 'ComfyUI 服务不可用' }}</span>
             </div>
 
             <div class="f-workflow-status" :class="{ saved: !hasUnsavedChanges, unsaved: hasUnsavedChanges }">
@@ -193,6 +203,30 @@
           </div>
         </div>
 
+        <!-- 创建工作流弹窗 -->
+        <div v-if="showCreateWorkflowModal" class="f-modal-overlay" @click.self="showCreateWorkflowModal = false">
+          <div class="f-modal">
+            <div class="f-modal-header">
+              <h3>新建工作流</h3>
+              <button class="f-close-btn" @click="showCreateWorkflowModal = false">×</button>
+            </div>
+            <div class="f-modal-body">
+              <div class="f-form-group">
+                <label>工作流名称 *</label>
+                <input v-model="newWorkflowName" type="text" placeholder="请输入工作流名称" />
+              </div>
+              <div class="f-form-group">
+                <label>描述</label>
+                <textarea v-model="newWorkflowDescription" placeholder="请输入工作流描述（可选）" rows="3"></textarea>
+              </div>
+            </div>
+            <div class="f-modal-footer">
+              <button class="f-modal-btn" @click="showCreateWorkflowModal = false">取消</button>
+              <button class="f-modal-btn primary" :disabled="!newWorkflowName.trim()" @click="handleConfirmCreateWorkflow">创建</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Agent 对话框 -->
         <div v-if="currentSessionCode" class="f-chat-dialog" :class="{ minimized: isChatMinimized }">
           <div class="f-chat-header">
@@ -278,6 +312,11 @@ const isWorkflowLocked = ref(false)
 // UI状态
 const showWorkflowDropdown = ref(false)
 const currentView = ref<'comfyui' | 'json'>('comfyui')
+const showCreateWorkflowModal = ref(false)
+const newWorkflowName = ref('')
+const newWorkflowDescription = ref('')
+const isServiceAvailable = ref(true)
+const iframeError = ref(false)
 
 // WebSocket客户端
 let wsClient: WebSocketClient | null = null
@@ -322,7 +361,7 @@ async function loadServiceInfo(): Promise<void> {
 // 加载会话列表
 async function loadSessions(): Promise<void> {
   try {
-    sessions.value = await listActiveSessions()
+    sessions.value = await listActiveSessions(serviceId.value)
   } catch (error) {
     console.error('加载会话列表失败:', error)
     toast.error('加载会话列表失败')
@@ -403,16 +442,30 @@ async function handleSelectWorkflow(workflowId: string): Promise<void> {
 
   currentWorkflowId.value = workflowId
   showWorkflowDropdown.value = false
+  iframeError.value = false
 
   try {
     currentWorkflow.value = await getWorkflowById(workflowId)
     const content = await getWorkflowContent(workflowId)
     workflowJsonContent.value = content
     hasUnsavedChanges.value = false
+
+    // 监听iframe加载错误
+    await nextTick()
+    if (comfyuiFrame.value) {
+      comfyuiFrame.value.onerror = handleIframeError
+    }
   } catch (error) {
     console.error('加载工作流失败:', error)
     toast.error('加载工作流失败')
   }
+}
+
+// 处理iframe加载错误
+function handleIframeError(): void {
+  iframeError.value = true
+  isServiceAvailable.value = false
+  toast.error('ComfyUI 服务连接失败')
 }
 
 // 切换工作流下拉菜单
@@ -433,8 +486,35 @@ function handleCreateSession(): void {
 
 // 创建工作流
 function handleCreateWorkflow(): void {
-  // TODO: 实现创建工作流弹窗
-  toast.info('创建工作流功能待实现')
+  showCreateWorkflowModal.value = true
+  newWorkflowName.value = ''
+  newWorkflowDescription.value = ''
+}
+
+// 确认创建工作流
+async function handleConfirmCreateWorkflow(): Promise<void> {
+  if (!newWorkflowName.value.trim() || !currentService.value) return
+
+  try {
+    const workflow = await createWorkflow({
+      workflowName: newWorkflowName.value.trim(),
+      description: newWorkflowDescription.value.trim() || undefined,
+      comfyuiServerId: serviceId.value,
+      comfyuiServerKey: currentService.value.serverKey
+    })
+
+    showCreateWorkflowModal.value = false
+    toast.success('工作流创建成功')
+
+    // 重新加载工作流列表
+    await loadWorkflows()
+
+    // 自动选择新创建的工作流
+    await handleSelectWorkflow(workflow.id)
+  } catch (error) {
+    console.error('创建工作流失败:', error)
+    toast.error('创建工作流失败')
+  }
 }
 
 // 保存工作流
@@ -842,6 +922,33 @@ onUnmounted(() => {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
+.f-dropdown-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: #999999;
+
+  .f-icon {
+    margin-bottom: 12px;
+    opacity: 0.6;
+  }
+
+  .f-empty-text {
+    font-size: 14px;
+    color: #cccccc;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .f-empty-hint {
+    font-size: 12px;
+    color: #777777;
+  }
+}
+
 .f-dropdown-item {
   padding: 12px 16px;
   cursor: pointer;
@@ -888,6 +995,11 @@ onUnmounted(() => {
   border-radius: 4px;
   font-size: 12px;
   color: #cccccc;
+
+  &.error {
+    border-color: #e74c3c;
+    color: #e74c3c;
+  }
 }
 
 .f-service-dot {
@@ -896,6 +1008,10 @@ onUnmounted(() => {
   border-radius: 50%;
   background: #27ae60;
   animation: pulse 2s infinite;
+
+  &.error {
+    background: #e74c3c;
+  }
 }
 
 // 工作流状态
@@ -1278,6 +1394,153 @@ onUnmounted(() => {
     color: #555555;
     cursor: not-allowed;
     border-color: #333333;
+  }
+}
+
+// 模态框
+.f-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.f-modal {
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.f-modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #3a3a3a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+    color: #ffffff;
+  }
+}
+
+.f-close-btn {
+  background: transparent;
+  border: none;
+  color: #777777;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #cccccc;
+  }
+}
+
+.f-modal-body {
+  padding: 20px;
+}
+
+.f-form-group {
+  margin-bottom: 16px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #cccccc;
+    font-weight: 400;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+    padding: 8px 12px;
+    background: #1e1e1e;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #cccccc;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+
+    &:focus {
+      border-color: #555555;
+    }
+
+    &::placeholder {
+      color: #555555;
+    }
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+}
+
+.f-modal-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #3a3a3a;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.f-modal-btn {
+  padding: 8px 20px;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  color: #cccccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: #333333;
+    border-color: #4a4a4a;
+  }
+
+  &.primary {
+    background: #3a3a3a;
+    border-color: #4a4a4a;
+
+    &:hover:not(:disabled) {
+      background: #454545;
+      border-color: #555555;
+      color: #ffffff;
+    }
+  }
+
+  &:disabled {
+    background: #242424;
+    color: #555555;
+    cursor: not-allowed;
+    border-color: #2a2a2a;
   }
 }
 </style>

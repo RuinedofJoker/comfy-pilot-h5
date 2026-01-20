@@ -19,9 +19,12 @@ export function createSession(data: CreateSessionRequest): Promise<string> {
 
 /**
  * 查询用户活跃会话列表
+ * @param comfyuiServerId 可选的 ComfyUI 服务 ID，用于过滤特定服务的会话
  */
-export function listActiveSessions(): Promise<ChatSession[]> {
-  return http.get('/api/v1/sessions')
+export function listActiveSessions(comfyuiServerId?: string): Promise<ChatSession[]> {
+  return http.get('/api/v1/sessions/active', {
+    params: comfyuiServerId ? { comfyuiServerId } : undefined
+  })
 }
 
 /**
