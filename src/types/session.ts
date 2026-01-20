@@ -2,7 +2,7 @@
  * 会话相关类型定义
  */
 
-import type { AgentType } from './agent'
+import type { AgentStatus } from './agent'
 
 /**
  * 会话状态
@@ -23,7 +23,7 @@ export interface Session {
   title: string
   workflowId: string
   workflowName: string
-  agentType: AgentType
+  agentType: AgentStatus
   status: SessionStatus
   summary?: string
   rules?: string
@@ -39,7 +39,7 @@ export interface Session {
 export interface CreateSessionParams {
   title: string
   workflowId: string
-  agentType: AgentType
+  agentType: AgentStatus
   rules?: string
 }
 
@@ -48,7 +48,7 @@ export interface CreateSessionParams {
  */
 export interface UpdateSessionParams {
   title?: string
-  agentType?: AgentType
+  agentType?: AgentStatus
   rules?: string
   status?: SessionStatus
 }

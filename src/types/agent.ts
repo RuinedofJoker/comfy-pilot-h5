@@ -24,6 +24,7 @@ export const AgentStatus = {
  */
 export type AgentConfigType =
   | 'STRING'     // 字符串类型
+  | 'TEXT'     // 文本类型
   | 'INT'        // 整数类型
   | 'FLOAT'      // 浮点数类型
   | 'BOOLEAN'    // 布尔类型
@@ -34,6 +35,7 @@ export type AgentConfigType =
  */
 export const AgentConfigType = {
   STRING: 'STRING' as const,
+  TEXT: 'TEXT' as const,
   INT: 'INT' as const,
   FLOAT: 'FLOAT' as const,
   BOOLEAN: 'BOOLEAN' as const,
