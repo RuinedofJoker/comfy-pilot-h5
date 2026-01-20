@@ -1,7 +1,7 @@
 <template>
   <div class="g-admin-sidebar">
     <!-- Logo -->
-    <div class="m-logo">ComfyUI Pilot</div>
+    <router-link to="/services" class="m-logo">ComfyUI Pilot</router-link>
 
     <!-- 导航菜单 -->
     <nav class="m-nav">
@@ -42,11 +42,14 @@ const navItems: NavItem[] = [
 }
 
 .m-logo {
+  display: block;
   padding: 16px;
   border-bottom: 1px solid #3a3a3a;
   font-size: 13px;
   font-weight: 500;
   color: #ffffff;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .m-nav {
