@@ -6,7 +6,7 @@ import type { RouteRecordRaw } from 'vue-router'
 
 const workflowRoutes: RouteRecordRaw[] = [
   {
-    path: '/workflow/:id',
+    path: '/comfy/workflows/:serviceId',
     name: 'WorkflowEditor',
     component: () => import('@/views/workflow/WorkflowEditorView.vue'),
     meta: {

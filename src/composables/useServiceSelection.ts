@@ -27,7 +27,7 @@ export function useServiceSelection() {
   })
 
   /**
-   * 选择服务并跳转到工作流列表
+   * 选择服务并跳转到工作流编辑器
    */
   function selectService(service: ComfyUIService): void {
     serviceStore.selectService(service.id)
@@ -35,7 +35,8 @@ export function useServiceSelection() {
       type: 'success',
       message: `已选择 ${service.serverName}`
     })
-    router.push('/comfy/workflows')
+    // 跳转到工作流编辑器,传递服务ID
+    router.push(`/comfy/workflows/${service.id}`)
   }
 
   /**

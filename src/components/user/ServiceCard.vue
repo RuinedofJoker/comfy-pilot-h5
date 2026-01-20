@@ -1,7 +1,7 @@
 <template>
   <BaseCard
-    :hoverable="isHealthy"
-    :class="['f-service-card', { 'f-service-card--disabled': !isHealthy }]"
+    :hoverable="true"
+    class="f-service-card"
     @click="handleClick"
   >
     <div class="f-service-card__header">
@@ -77,9 +77,6 @@ const statusText = computed(() => {
   }
 })
 
-// 判断服务是否健康
-const isHealthy = computed(() => props.service.healthStatus === HealthStatusValues.HEALTHY)
-
 // 测试状态
 const isTesting = ref(false)
 
@@ -102,26 +99,14 @@ async function handleTest(): Promise<void> {
 }
 
 function handleClick(): void {
-  // 只有健康的服务才能被选择
-  if (isHealthy.value) {
-    emit('select', props.service)
-  }
+  // 允许选择任何状态的服务
+  emit('select', props.service)
 }
 </script>
 
 <style scoped lang="scss">
 .f-service-card {
   cursor: pointer;
-
-  // 不健康的服务卡片样式
-  &--disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-
-    &:hover {
-      transform: none;
-    }
-  }
 
   &__header {
     margin-bottom: 16px;

@@ -44,22 +44,22 @@ export function updateWorkflow(id: string, data: UpdateWorkflowRequest): Promise
 /**
  * 删除工作流
  */
-export function deleteWorkflow(id: string): Promise<void> {
-  return http.delete(`/api/v1/workflows/${id}`)
+export function deleteWorkflow(id: string, messageId: string): Promise<void> {
+  return http.delete(`/api/v1/workflows/${id}`, { params: { messageId } })
 }
 
 /**
  * 锁定工作流
  */
-export function lockWorkflow(id: string): Promise<Workflow> {
-  return http.post(`/api/v1/workflows/${id}/lock`)
+export function lockWorkflow(id: string, messageId: string): Promise<Workflow> {
+  return http.post(`/api/v1/workflows/${id}/lock`, null, { params: { messageId } })
 }
 
 /**
  * 解锁工作流
  */
-export function unlockWorkflow(id: string): Promise<Workflow> {
-  return http.post(`/api/v1/workflows/${id}/unlock`)
+export function unlockWorkflow(id: string, messageId: string): Promise<Workflow> {
+  return http.post(`/api/v1/workflows/${id}/unlock`, null, { params: { messageId } })
 }
 
 /**
@@ -72,8 +72,8 @@ export function getWorkflowContent(id: string): Promise<string> {
 /**
  * 保存工作流内容
  */
-export function saveWorkflowContent(id: string, data: SaveWorkflowContentRequest): Promise<Workflow> {
-  return http.post(`/api/v1/workflows/${id}/content`, data)
+export function saveWorkflowContent(id: string, messageId: string, data: SaveWorkflowContentRequest): Promise<Workflow> {
+  return http.post(`/api/v1/workflows/${id}/content`, data, { params: { messageId } })
 }
 
 /**

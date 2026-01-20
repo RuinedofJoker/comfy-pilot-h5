@@ -1,54 +1,66 @@
 /**
- * 会话相关类型定义
+ * 会话相关类型定义（与后端 API 对应）
  */
-
-import type { AgentStatus } from './agent'
 
 /**
  * 会话状态
  */
-export type SessionStatus = 'active' | 'idle' | 'archived'
+export type SessionStatus = 'ACTIVE' | 'ARCHIVED'
 
 export const SessionStatusValues = {
-  ACTIVE: 'active' as const,
-  IDLE: 'idle' as const,
-  ARCHIVED: 'archived' as const
+  ACTIVE: 'ACTIVE' as const,
+  ARCHIVED: 'ARCHIVED' as const
 }
 
 /**
- * 会话信息
+ * 消息角色
  */
-export interface Session {
+export type MessageRole = 'USER' | 'ASSISTANT' | 'SYSTEM'
+
+export const MessageRoleValues = {
+  USER: 'USER' as const,
+  ASSISTANT: 'ASSISTANT' as const,
+  SYSTEM: 'SYSTEM' as const
+}
+
+/**
+ * 会话信息（与后端 ChatSessionDTO 对应）
+ */
+export interface ChatSession {
   id: string
-  title: string
-  workflowId: string
-  workflowName: string
-  agentType: AgentStatus
+  createTime: string
+  updateTime: string
+  sessionCode: string
+  userId: string
+  agentId: string
+  title: string | null
   status: SessionStatus
-  summary?: string
-  rules?: string
-  messageCount: number
-  lastMessageAt: string
-  createdAt: string
-  updatedAt: string
 }
 
 /**
- * 创建会话参数
+ * 聊天消息（与后端 ChatMessageDTO 对应）
  */
-export interface CreateSessionParams {
-  title: string
-  workflowId: string
-  agentType: AgentStatus
-  rules?: string
+export interface ChatMessage {
+  id: string
+  createTime: string
+  updateTime: string
+  sessionId: string
+  role: MessageRole
+  content: string
+  metadata?: Record<string, any>
 }
 
 /**
- * 更新会话参数
+ * 创建会话请求
  */
-export interface UpdateSessionParams {
+export interface CreateSessionRequest {
   title?: string
-  agentType?: AgentStatus
-  rules?: string
+}
+
+/**
+ * 更新会话请求
+ */
+export interface UpdateSessionRequest {
+  title?: string
   status?: SessionStatus
 }
