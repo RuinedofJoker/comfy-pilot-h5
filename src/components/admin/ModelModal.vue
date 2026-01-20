@@ -137,22 +137,22 @@
           <!-- 模型配置 -->
           <div v-if="formData.modelCallingType" class="f-form-item">
             <label class="f-label">
-              模型配置 <span class="f-required">*</span>
+              模型配置（JSON格式） <span class="f-required">*</span>
             </label>
-            <textarea
+            <JsonEditor
               v-model="formData.modelConfig"
-              class="f-textarea"
-              rows="6"
-              :placeholder="configPlaceholder"
               :disabled="mode === 'view'"
-              :class="{ 'is-error': errors.modelConfig }"
-            ></textarea>
+              :schema="configSchema"
+              height="200px"
+              @blur="validateJsonConfig"
+            />
             <span v-if="errors.modelConfig" class="f-error-text">
               {{ errors.modelConfig }}
             </span>
-            <span v-if="configPlaceholder" class="f-hint-text">
-              配置格式说明已显示在提示中
-            </span>
+            <div v-if="configPlaceholder" class="f-hint-box">
+              <div class="f-hint-title">配置格式说明：</div>
+              <pre class="f-hint-json">{{ formattedConfigPlaceholder }}</pre>
+            </div>
           </div>
 
           <!-- 描述 -->
@@ -213,6 +213,7 @@ import { ref, watch, computed } from 'vue'
 import { showToast } from 'vant'
 import { modelProviderApi, aiModelApi } from '@/services/model'
 import type { ModelProvider, AiModel, ModelCallingType, ProviderType } from '@/types/model'
+import JsonEditor from '@/components/base/JsonEditor.vue'
 
 // Props 定义
 interface Props {
@@ -255,6 +256,59 @@ const formData = ref({
 
 // 表单错误
 const errors = ref<Record<string, string>>({})
+
+// 配置 Schema（从 placeholder 中解析）
+const configSchema = computed(() => {
+  if (!configPlaceholder.value) return undefined
+
+  try {
+    // 尝试从 placeholder 中提取 JSON
+    const jsonMatch = configPlaceholder.value.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0])
+    }
+  } catch (e) {
+    console.warn('无法解析配置 schema:', e)
+  }
+
+  return undefined
+})
+
+// 格式化的配置提示（用于显示）
+const formattedConfigPlaceholder = computed(() => {
+  if (!configPlaceholder.value) return ''
+
+  try {
+    // 尝试从 placeholder 中提取 JSON
+    const jsonMatch = configPlaceholder.value.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      const jsonObj = JSON.parse(jsonMatch[0])
+      return JSON.stringify(jsonObj, null, 2)
+    }
+  } catch (e) {
+    // 如果解析失败，返回原始文本
+    return configPlaceholder.value
+  }
+
+  return configPlaceholder.value
+})
+
+/**
+ * 验证 JSON 配置
+ */
+const validateJsonConfig = () => {
+  if (!formData.value.modelConfig.trim()) {
+    errors.value.modelConfig = '请输入模型配置'
+    return
+  }
+
+  try {
+    JSON.parse(formData.value.modelConfig)
+    delete errors.value.modelConfig
+  } catch (e: any) {
+    errors.value.modelConfig = `JSON 格式错误: ${e.message}`
+  }
+}
 
 // 监听弹窗显示状态
 watch(
@@ -755,6 +809,34 @@ const handleCancel = () => {
   font-size: 12px;
   color: #999999;
   margin-top: 4px;
+}
+
+// 提示框
+.f-hint-box {
+  margin-top: 8px;
+  padding: 12px;
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+}
+
+.f-hint-title {
+  font-size: 12px;
+  color: #999999;
+  margin-bottom: 8px;
+}
+
+.f-hint-json {
+  margin: 0;
+  padding: 8px;
+  background: #0d0d0d;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  color: #4a9eff;
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.5;
 }
 
 // 模态框底部
