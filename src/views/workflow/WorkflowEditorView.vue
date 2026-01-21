@@ -129,7 +129,6 @@ const {
 
 // 从 comfyUIIntegration 解构状态和方法
 const {
-  comfyuiFrame,
   currentView,
   editableJsonContent,
   jsonEditError,
@@ -138,9 +137,7 @@ const {
   isDraggingViewToggle,
   setComfyuiFrame,
   switchView,
-  loadWorkflowFromComfyUI,
   loadWorkflowInComfyUI,
-  getWorkflowFromComfyUI,
   fetchWorkflowFromIframe,
   copyJsonToClipboard,
   formatJson,
@@ -312,7 +309,7 @@ function startAutoSync(): void {
           // 忽略错误
         })
     }
-  }, 3000) // 每3秒同步一次
+  }, 1000) // 每1秒同步一次
 }
 
 // 停止定时同步

@@ -70,20 +70,6 @@ export function useComfyUIIntegration() {
     }
   }
 
-  // 从 ComfyUI 加载工作流内容
-  function loadWorkflowFromComfyUI(content: string): void {
-    try {
-      // 验证 JSON 格式
-      JSON.parse(content)
-      editableJsonContent.value = content
-      jsonEditError.value = ''
-      isJsonValid.value = true
-    } catch (error) {
-      console.error('工作流内容格式错误:', error)
-      toast.error('工作流内容格式错误')
-    }
-  }
-
   // 发送消息到 ComfyUI 并等待响应
   function sendComfyUIMessage(type: string, payload: any): Promise<any> {
     return new Promise((resolve, reject) => {
@@ -205,11 +191,6 @@ export function useComfyUIIntegration() {
         reject(new Error('获取工作流超时'))
       }, 5000)
     })
-  }
-
-  // 从 ComfyUI 获取当前工作流 (兼容旧接口)
-  function getWorkflowFromComfyUI(): Promise<string> {
-    return fetchWorkflowFromIframe()
   }
 
   // 复制 JSON 到剪贴板
@@ -352,9 +333,7 @@ export function useComfyUIIntegration() {
     // 方法
     setComfyuiFrame,
     switchView,
-    loadWorkflowFromComfyUI,
     loadWorkflowInComfyUI,
-    getWorkflowFromComfyUI,
     fetchWorkflowFromIframe,
     copyJsonToClipboard,
     formatJson,
