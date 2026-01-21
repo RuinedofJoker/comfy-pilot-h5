@@ -26,6 +26,7 @@
           @create-workflow="showCreateModal = true"
           @select-workflow="handleSelectWorkflow"
           @save-workflow="handleSaveWorkflow"
+          @execute-workflow="handleExecuteWorkflow"
         />
 
         <!-- ComfyUI 容器和视图 -->
@@ -139,6 +140,7 @@ const {
   switchView,
   loadWorkflowInComfyUI,
   fetchWorkflowFromIframe,
+  executeWorkflow,
   copyJsonToClipboard,
   formatJson,
   handleJsonValidate,
@@ -290,6 +292,67 @@ async function handleSaveWorkflow(): Promise<void> {
   } catch (error) {
     console.error('保存工作流失败:', error)
     toast.error('保存工作流失败')
+  }
+}
+
+// 运行工作流
+async function handleExecuteWorkflow(): Promise<void> {
+  try {
+    if (!currentWorkflowId.value) {
+      toast.error('请先选择工作流')
+      return
+    }
+
+    if (!currentService.value) {
+      toast.error('ComfyUI 服务未连接')
+      return
+    }
+
+    // 执行工作流，传入 ComfyUI 服务地址
+    const result = await executeWorkflow(currentService.value.baseUrl)
+
+    // 在控制台打印执行结果
+    console.log('=== 工作流执行结果 ===')
+    console.log('完整结果对象:', JSON.stringify(result))
+    console.log('执行状态:', result.success ? '成功' : '失败')
+    console.log('Prompt ID:', result.promptId)
+
+    if (result.success) {
+      // 执行成功
+      toast.success(`工作流执行成功 (Prompt ID: ${result.promptId})`)
+
+      // 检查是否有输出数据
+      if (result.outputs && result.outputs.outputs) {
+        console.log('执行输出:', result.outputs)
+
+        // 打印所有生成的图片 URL
+        const outputs = result.outputs.outputs
+        for (const [nodeId, nodeOutput] of Object.entries(outputs)) {
+          const output = nodeOutput as any
+          if (output.images && Array.isArray(output.images)) {
+            console.log(`节点 ${nodeId} 生成的图片:`)
+            output.images.forEach((img: any, index: number) => {
+              console.log(`  [${index + 1}] ${img.filename}`)
+              console.log(`      完整 URL: ${img.fullUrl}`)
+            })
+          }
+        }
+      } else if (result.outputError) {
+        // 执行成功但获取输出失败
+        console.warn('获取输出失败:', result.outputError)
+        console.log('可以稍后使用 Prompt ID 手动查询:', result.promptId)
+      } else {
+        // 执行成功但没有输出
+        console.log('工作流执行成功，但没有输出数据')
+      }
+    } else {
+      // 执行失败
+      console.error('执行错误:', result.error)
+      toast.error(`工作流执行失败: ${result.error || '未知错误'}`)
+    }
+  } catch (error) {
+    console.error('运行工作流失败:', error)
+    toast.error('运行工作流失败')
   }
 }
 

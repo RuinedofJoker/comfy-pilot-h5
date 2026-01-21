@@ -155,3 +155,47 @@ export interface WorkflowGroup {
   color?: string
   font_size?: number
 }
+
+/**
+ * 工作流执行输出文件（图片、视频等）
+ */
+export interface WorkflowOutputFile {
+  filename: string
+  subfolder: string
+  type: string
+  url?: string
+  fullUrl?: string
+}
+
+/**
+ * 节点执行输出
+ */
+export interface WorkflowNodeOutput {
+  images?: WorkflowOutputFile[]
+  videos?: WorkflowOutputFile[]
+  gifs?: WorkflowOutputFile[]
+  audio?: WorkflowOutputFile[]
+}
+
+/**
+ * 执行状态
+ */
+export interface WorkflowExecutionStatus {
+  status_str: string
+  completed: boolean
+  messages?: Array<[string, Record<string, any>]>
+}
+
+/**
+ * 工作流执行结果
+ */
+export interface WorkflowExecutionResult {
+  success: boolean
+  promptId: string
+  outputs?: {
+    outputs: Record<string, WorkflowNodeOutput>
+  } | null
+  status?: WorkflowExecutionStatus | null
+  error?: string
+  outputError?: string
+}

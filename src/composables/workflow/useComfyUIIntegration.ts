@@ -1,5 +1,6 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { toast } from '@/utils/toast'
+import type { WorkflowExecutionResult } from '@/types/workflow'
 
 export function useComfyUIIntegration() {
   // ComfyUI iframe 引用 (需要从外部设置)
@@ -193,6 +194,200 @@ export function useComfyUIIntegration() {
     })
   }
 
+  // 执行工作流（不设置超时，因为工作流执行可能很长）
+  async function executeWorkflow(
+    comfyuiBaseUrl: string,
+    batchCount: number = 1
+  ): Promise<WorkflowExecutionResult> {
+    if (!comfyuiFrame.value?.contentWindow) {
+      throw new Error('ComfyUI iframe 未就绪')
+    }
+
+    // 第一步：发送执行请求
+    const execResult = await sendExecuteRequest(batchCount)
+
+    if (!execResult.success) {
+      return execResult
+    }
+
+    // 第二步：如果执行成功但没有 outputs，开始轮询
+    if (execResult.success && !execResult.outputs && execResult.promptId) {
+      console.log('[执行工作流] 开始轮询获取执行结果...')
+      const polledResult = await pollExecutionResult(comfyuiBaseUrl, execResult.promptId)
+      return polledResult
+    }
+
+    // 第三步：如果插件直接返回了 outputs，也需要处理 URL
+    if (execResult.outputs?.outputs) {
+      processOutputUrls(execResult.outputs.outputs, comfyuiBaseUrl)
+    }
+
+    return execResult
+  }
+
+  // 发送执行请求
+  function sendExecuteRequest(batchCount: number): Promise<WorkflowExecutionResult> {
+    return new Promise((resolve, reject) => {
+      if (!comfyuiFrame.value?.contentWindow) {
+        reject(new Error('ComfyUI iframe 未就绪'))
+        return
+      }
+
+      const requestId = `exec_${Date.now()}_${Math.random()}`
+
+      const handleMessage = (event: MessageEvent) => {
+        if (event.source !== comfyuiFrame.value?.contentWindow) {
+          return
+        }
+
+        const { requestId: resId, type: resType, payload: resPayload } = event.data || {}
+
+        if (resId === requestId && resType === 'comfy-pilot:execution-result') {
+          window.removeEventListener('message', handleMessage)
+          resolve(resPayload || { success: false, error: '执行结果为空' })
+        }
+      }
+
+      window.addEventListener('message', handleMessage)
+
+      comfyuiFrame.value.contentWindow.postMessage(
+        {
+          type: 'comfy-pilot:execute-workflow',
+          payload: { batchCount },
+          requestId
+        },
+        '*'
+      )
+    })
+  }
+
+  // 轮询获取执行结果
+  async function pollExecutionResult(
+    comfyuiBaseUrl: string,
+    promptId: string
+  ): Promise<WorkflowExecutionResult> {
+    const maxAttempts = 60 // 最多轮询 60 次（5 分钟）
+    const pollInterval = 5000 // 每 5 秒轮询一次
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      console.log(`[执行工作流] 轮询第 ${attempt} 次，查询 Prompt ID: ${promptId}`)
+
+      try {
+        // 调用 ComfyUI 的 history API
+        const response = await fetch(`${comfyuiBaseUrl}/history/${promptId}`)
+
+        if (!response.ok) {
+          console.warn(`[执行工作流] 轮询失败，HTTP 状态: ${response.status}`)
+          await sleep(pollInterval)
+          continue
+        }
+
+        const historyData = await response.json()
+
+        // 检查是否有该 promptId 的历史记录
+        if (historyData && historyData[promptId]) {
+          const history = historyData[promptId]
+          console.log('[执行工作流] 成功获取执行历史:', history)
+
+          // 构建返回结果（注意：history.outputs 直接就是节点输出对象）
+          const result = {
+            success: true,
+            promptId: promptId,
+            outputs: {
+              outputs: history.outputs || null
+            },
+            status: history.status || null
+          }
+
+          // 处理输出 URL
+          if (result.outputs.outputs) {
+            processOutputUrls(result.outputs.outputs, comfyuiBaseUrl)
+          }
+
+          return result
+        }
+
+        console.log('[执行工作流] 历史记录尚未生成，继续等待...')
+      } catch (error) {
+        console.error('[执行工作流] 轮询出错:', error)
+      }
+
+      // 等待后继续下一次轮询
+      await sleep(pollInterval)
+    }
+
+    // 超过最大轮询次数
+    return {
+      success: true,
+      promptId: promptId,
+      outputs: null,
+      outputError: '轮询超时，未能获取执行结果'
+    }
+  }
+
+  // 延迟函数
+  function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
+  }
+
+  // 处理输出中的 URL，拼接完整的 fullUrl
+  function processOutputUrls(outputs: Record<string, any>, baseUrl: string): void {
+    for (const nodeOutput of Object.values(outputs)) {
+      // 处理图片
+      if (nodeOutput.images && Array.isArray(nodeOutput.images)) {
+        nodeOutput.images.forEach((img: any) => {
+          // 根据 filename, subfolder, type 构建 URL
+          const params = new URLSearchParams({
+            filename: img.filename,
+            subfolder: img.subfolder || '',
+            type: img.type || 'output'
+          })
+          img.url = `/view?${params.toString()}`
+          img.fullUrl = `${baseUrl}${img.url}`
+        })
+      }
+
+      // 处理视频
+      if (nodeOutput.videos && Array.isArray(nodeOutput.videos)) {
+        nodeOutput.videos.forEach((video: any) => {
+          const params = new URLSearchParams({
+            filename: video.filename,
+            subfolder: video.subfolder || '',
+            type: video.type || 'output'
+          })
+          video.url = `/view?${params.toString()}`
+          video.fullUrl = `${baseUrl}${video.url}`
+        })
+      }
+
+      // 处理 GIF
+      if (nodeOutput.gifs && Array.isArray(nodeOutput.gifs)) {
+        nodeOutput.gifs.forEach((gif: any) => {
+          const params = new URLSearchParams({
+            filename: gif.filename,
+            subfolder: gif.subfolder || '',
+            type: gif.type || 'output'
+          })
+          gif.url = `/view?${params.toString()}`
+          gif.fullUrl = `${baseUrl}${gif.url}`
+        })
+      }
+
+      // 处理音频
+      if (nodeOutput.audio && Array.isArray(nodeOutput.audio)) {
+        nodeOutput.audio.forEach((audio: any) => {
+          const params = new URLSearchParams({
+            filename: audio.filename,
+            subfolder: audio.subfolder || '',
+            type: audio.type || 'output'
+          })
+          audio.url = `/view?${params.toString()}`
+          audio.fullUrl = `${baseUrl}${audio.url}`
+        })
+      }
+    }
+  }
+
   // 复制 JSON 到剪贴板
   async function copyJsonToClipboard(): Promise<void> {
     try {
@@ -335,6 +530,7 @@ export function useComfyUIIntegration() {
     switchView,
     loadWorkflowInComfyUI,
     fetchWorkflowFromIframe,
+    executeWorkflow,
     copyJsonToClipboard,
     formatJson,
     handleJsonValidate,

@@ -67,6 +67,13 @@
         </svg>
         <span>保存</span>
       </button>
+
+      <button class="f-toolbar-btn primary" :disabled="!currentWorkflowId" @click="$emit('execute-workflow')">
+        <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+        <span>运行</span>
+      </button>
     </div>
   </div>
 </template>
@@ -92,6 +99,7 @@ const emit = defineEmits<{
   'create-workflow': []
   'select-workflow': [workflowId: string]
   'save-workflow': []
+  'execute-workflow': []
 }>()
 
 // 本地状态
