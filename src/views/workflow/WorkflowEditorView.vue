@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from '@/utils/toast'
 import { compareWorkflowContent } from '@/utils/workflow-compare'
@@ -132,7 +132,6 @@ const {
   currentView,
   editableJsonContent,
   jsonEditError,
-  isJsonValid,
   viewTogglePosition,
   isDraggingViewToggle,
   setComfyuiFrame,
@@ -348,17 +347,6 @@ onMounted(async () => {
     toast.error('初始化失败')
   }
 })
-
-// 监听工作流内容变化
-watch(
-  () => editableJsonContent.value,
-  (newContent) => {
-    if (currentView.value === 'json' && isJsonValid.value) {
-      // JSON 视图中内容变化时，标记为未保存
-      // 实际同步会在切换回 ComfyUI 视图时进行
-    }
-  }
-)
 
 // 清理
 onUnmounted(() => {
