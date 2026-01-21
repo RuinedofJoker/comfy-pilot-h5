@@ -71,6 +71,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from '@/utils/toast'
+import { compareWorkflowContent } from '@/utils/workflow-compare'
 
 // 组件导入
 import TopNavBar from '@/components/user/TopNavBar.vue'
@@ -161,10 +162,28 @@ const currentWorkflow = computed(() => workflowStore.currentWorkflow)
 const currentService = computed(() => serviceStore.selectedService)
 const isServiceAvailable = computed(() => currentService.value?.healthStatus === 'HEALTHY')
 
-// 是否有未保存的修改
+// 是否有未保存的修改（使用深度比较避免格式差异导致的误判）
 const hasUnsavedChanges = computed(() => {
   if (!currentWorkflow.value || !editableJsonContent.value) return false
-  return editableJsonContent.value !== originalContent.value
+
+  // 忽略 ComfyUI 特定的元数据字段（画布偏移、缩放等）
+  const shouldIgnorePath = (path: string[]): boolean => {
+    // 忽略画布偏移量 (extra.ds.offset)
+    if (path.length >= 3 && path[0] === 'extra' && path[1] === 'ds' && path[2] === 'offset') {
+      return true
+    }
+    // 忽略画布缩放 (extra.ds.scale)
+    if (path.length >= 3 && path[0] === 'extra' && path[1] === 'ds' && path[2] === 'scale') {
+      return true
+    }
+    // 忽略节点内部名称 (nodes[*].properties['Node name for S&R'])
+    if (path.length >= 4 && path[0] === 'nodes' && path[2] === 'properties' && path[3] === 'Node name for S&R') {
+      return true
+    }
+    return false
+  }
+
+  return !compareWorkflowContent(editableJsonContent.value, originalContent.value, shouldIgnorePath)
 })
 
 // ComfyUI URL
@@ -284,7 +303,10 @@ function startAutoSync(): void {
     if (currentWorkflowId.value && currentView.value === 'comfyui') {
       fetchWorkflowFromIframe()
         .then(content => {
+          // 更新待保存内容
           pendingWorkflowContent.value = content
+          // 同时更新可编辑内容，以便 hasUnsavedChanges 能正确计算
+          editableJsonContent.value = content
         })
         .catch(() => {
           // 忽略错误

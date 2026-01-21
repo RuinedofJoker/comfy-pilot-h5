@@ -93,12 +93,23 @@ export function useComfyUIIntegration() {
       }
 
       const requestId = `req_${Date.now()}_${Math.random()}`
+      let timeoutId: number | null = null
 
       const handleMessage = (event: MessageEvent) => {
+        // 安全检查：确保消息来自 iframe
+        if (event.source !== comfyuiFrame.value?.contentWindow) {
+          return
+        }
+
         const { requestId: resId, type: resType, payload: resPayload } = event.data || {}
 
+        // 只处理匹配 requestId 的响应消息
         if (resId === requestId) {
           window.removeEventListener('message', handleMessage)
+          if (timeoutId !== null) {
+            clearTimeout(timeoutId)
+          }
+
           if (resType?.includes('error')) {
             reject(new Error(resPayload?.message || '操作失败'))
           } else {
@@ -118,7 +129,7 @@ export function useComfyUIIntegration() {
         '*'
       )
 
-      setTimeout(() => {
+      timeoutId = window.setTimeout(() => {
         window.removeEventListener('message', handleMessage)
         reject(new Error('操作超时'))
       }, 5000)
@@ -154,12 +165,23 @@ export function useComfyUIIntegration() {
       }
 
       const requestId = `req_${Date.now()}_${Math.random()}`
+      let timeoutId: number | null = null
 
       const handleMessage = (event: MessageEvent) => {
+        // 安全检查：确保消息来自 iframe
+        if (event.source !== comfyuiFrame.value?.contentWindow) {
+          return
+        }
+
         const { type, payload, requestId: resId } = event.data || {}
 
+        // 只处理匹配 requestId 的响应消息
         if (resId === requestId) {
           window.removeEventListener('message', handleMessage)
+          if (timeoutId !== null) {
+            clearTimeout(timeoutId)
+          }
+
           if (type === 'comfy-pilot:workflow-data' && payload) {
             resolve(JSON.stringify(payload, null, 2))
           } else {
@@ -178,37 +200,11 @@ export function useComfyUIIntegration() {
         '*'
       )
 
-      setTimeout(() => {
+      timeoutId = window.setTimeout(() => {
         window.removeEventListener('message', handleMessage)
         reject(new Error('获取工作流超时'))
       }, 5000)
     })
-  }
-
-  // 同步 JSON 到 ComfyUI
-  function syncJsonToComfyUI(): void {
-    if (!comfyuiFrame.value?.contentWindow) {
-      toast.error('ComfyUI 未加载')
-      return
-    }
-
-    try {
-      const workflow = JSON.parse(editableJsonContent.value)
-
-      // 通过 postMessage 发送工作流到 ComfyUI
-      comfyuiFrame.value.contentWindow.postMessage(
-        {
-          type: 'loadWorkflow',
-          workflow
-        },
-        '*'
-      )
-
-      toast.success('工作流已同步到 ComfyUI')
-    } catch (error) {
-      console.error('同步工作流失败:', error)
-      toast.error('同步工作流失败')
-    }
   }
 
   // 从 ComfyUI 获取当前工作流 (兼容旧接口)
@@ -298,33 +294,35 @@ export function useComfyUIIntegration() {
     document.removeEventListener('mouseup', handleViewToggleMouseUp)
   }
 
-  // 监听来自 ComfyUI 的消息
+  // 监听来自 ComfyUI 的推送消息（不需要 requestId 的消息）
   function handleComfyUIMessage(event: MessageEvent): void {
+    // 安全检查：确保消息来自 iframe
+    if (event.source !== comfyuiFrame.value?.contentWindow) {
+      return
+    }
+
     if (!event.data || typeof event.data !== 'object') return
 
-    const { type, payload } = event.data
+    const { type, payload, requestId } = event.data
+
+    // 如果消息有 requestId，说明是请求-响应消息，由 sendComfyUIMessage 处理
+    // 这里只处理推送消息（没有 requestId 的消息）
+    if (requestId) {
+      return
+    }
 
     switch (type) {
       case 'comfy-pilot:workflow-graph-changed':
-        // ComfyUI 中工作流图发生变化
-        if (payload) {
+        // ComfyUI 中工作流图发生变化（推送消息）
+        if (payload && currentView.value === 'comfyui') {
+          // 只在 ComfyUI 视图时更新内容
           editableJsonContent.value = JSON.stringify(payload, null, 2)
+          console.log('[ComfyUI Integration] 工作流图已更新')
         }
-        break
-
-      case 'workflowChanged':
-        // 兼容旧格式
-        if (event.data.workflow) {
-          loadWorkflowFromComfyUI(JSON.stringify(event.data.workflow, null, 2))
-        }
-        break
-
-      case 'workflowSaved':
-        // ComfyUI 中保存了工作流
-        toast.success('工作流已在 ComfyUI 中保存')
         break
 
       default:
+        // 忽略未知的推送消息
         break
     }
   }
@@ -356,7 +354,6 @@ export function useComfyUIIntegration() {
     switchView,
     loadWorkflowFromComfyUI,
     loadWorkflowInComfyUI,
-    syncJsonToComfyUI,
     getWorkflowFromComfyUI,
     fetchWorkflowFromIframe,
     copyJsonToClipboard,
