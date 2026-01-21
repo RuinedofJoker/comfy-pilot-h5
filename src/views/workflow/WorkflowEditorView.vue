@@ -305,6 +305,10 @@ const workflowJsonContent = computed(() => pendingWorkflowContent.value) // JSON
 
 // 工作流变更检测（使用深度对象比较，忽略特定字段）
 const hasUnsavedChanges = computed(() => {
+  if (!currentWorkflowId.value) {
+    // 当前为加载工作流
+    return false;
+  }
   return !compareWorkflowContent(
     savedWorkflowContent.value,
     pendingWorkflowContent.value,
