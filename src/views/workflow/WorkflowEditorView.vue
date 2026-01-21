@@ -26,7 +26,6 @@
           @create-workflow="showCreateModal = true"
           @select-workflow="handleSelectWorkflow"
           @save-workflow="handleSaveWorkflow"
-          @execute-workflow="handleExecuteWorkflow"
         />
 
         <!-- ComfyUI 容器和视图 -->
@@ -140,7 +139,6 @@ const {
   switchView,
   loadWorkflowInComfyUI,
   fetchWorkflowFromIframe,
-  executeWorkflow,
   copyJsonToClipboard,
   formatJson,
   handleJsonValidate,
@@ -292,149 +290,6 @@ async function handleSaveWorkflow(): Promise<void> {
   } catch (error) {
     console.error('保存工作流失败:', error)
     toast.error('保存工作流失败')
-  }
-}
-
-// 显示输出文件
-function showOutputFiles(outputs: Record<string, any>): void {
-  const filesByType = {
-    images: [] as string[],
-    videos: [] as string[],
-    gifs: [] as string[],
-    audio: [] as string[]
-  }
-
-  // 收集所有输出文件
-  for (const nodeOutput of Object.values(outputs)) {
-    const output = nodeOutput as any
-
-    // 收集图片
-    if (output.images && Array.isArray(output.images)) {
-      output.images.forEach((img: any) => {
-        if (img.fullUrl) {
-          filesByType.images.push(img.fullUrl)
-        }
-      })
-    }
-
-    // 收集视频
-    if (output.videos && Array.isArray(output.videos)) {
-      output.videos.forEach((video: any) => {
-        if (video.fullUrl) {
-          filesByType.videos.push(video.fullUrl)
-        }
-      })
-    }
-
-    // 收集 GIF
-    if (output.gifs && Array.isArray(output.gifs)) {
-      output.gifs.forEach((gif: any) => {
-        if (gif.fullUrl) {
-          filesByType.gifs.push(gif.fullUrl)
-        }
-      })
-    }
-
-    // 收集音频
-    if (output.audio && Array.isArray(output.audio)) {
-      output.audio.forEach((audio: any) => {
-        if (audio.fullUrl) {
-          filesByType.audio.push(audio.fullUrl)
-        }
-      })
-    }
-  }
-
-  // 构建提示消息
-  const messages: string[] = []
-
-  if (filesByType.images.length > 0) {
-    messages.push(`🖼️ 图片 (${filesByType.images.length})`)
-    filesByType.images.forEach((url, index) => {
-      messages.push(`  ${index + 1}. ${url}`)
-    })
-  }
-
-  if (filesByType.videos.length > 0) {
-    messages.push(`🎬 视频 (${filesByType.videos.length})`)
-    filesByType.videos.forEach((url, index) => {
-      messages.push(`  ${index + 1}. ${url}`)
-    })
-  }
-
-  if (filesByType.gifs.length > 0) {
-    messages.push(`🎞️ GIF (${filesByType.gifs.length})`)
-    filesByType.gifs.forEach((url, index) => {
-      messages.push(`  ${index + 1}. ${url}`)
-    })
-  }
-
-  if (filesByType.audio.length > 0) {
-    messages.push(`🎵 音频 (${filesByType.audio.length})`)
-    filesByType.audio.forEach((url, index) => {
-      messages.push(`  ${index + 1}. ${url}`)
-    })
-  }
-
-  // 显示提示
-  if (messages.length > 0) {
-    const message = messages.join('\n')
-    // 使用较长的持续时间显示
-    toast.success(message)
-    console.log('📁 输出文件列表:\n' + message)
-  } else {
-    toast.info('工作流执行成功，但没有生成输出文件')
-  }
-}
-
-// 运行工作流
-async function handleExecuteWorkflow(): Promise<void> {
-  try {
-    if (!currentWorkflowId.value) {
-      toast.error('请先选择工作流')
-      return
-    }
-
-    if (!currentService.value) {
-      toast.error('ComfyUI 服务未连接')
-      return
-    }
-
-    // 执行工作流，传入 ComfyUI 服务地址
-    const result = await executeWorkflow(currentService.value.baseUrl)
-
-    // 在控制台打印执行结果
-    console.log('=== 工作流执行结果 ===')
-    console.log('完整结果对象:', JSON.stringify(result))
-    console.log('执行状态:', result.success ? '成功' : '失败')
-    console.log('Prompt ID:', result.promptId)
-
-    if (result.success) {
-      // 执行成功
-      toast.success(`工作流执行成功 (Prompt ID: ${result.promptId})`)
-
-      // 检查是否有输出数据
-      if (result.outputs && result.outputs.outputs) {
-        console.log('执行输出:', result.outputs)
-
-        // 显示输出文件
-        showOutputFiles(result.outputs.outputs)
-      } else if (result.outputError) {
-        // 执行成功但获取输出失败
-        console.warn('获取输出失败:', result.outputError)
-        console.log('可以稍后使用 Prompt ID 手动查询:', result.promptId)
-      } else {
-        // 执行成功但没有输出
-        console.log('工作流执行成功，但没有输出数据')
-      }
-    } else {
-      // 执行失败
-      console.error('执行错误:', result.error)
-      toast.error(`工作流执行失败: ${result.error || '未知错误'}`)
-    }
-  } catch (error) {
-    console.error('运行工作流失败:', error)
-    toast.error('运行工作流失败')
   }
 }
 
