@@ -8,8 +8,9 @@
       <SessionSidebar
         :sessions="sessions"
         :current-session-code="currentSessionCode"
-        @create-session="handleCreateSession"
+        @create-session="handleOpenCreateSessionModal"
         @select-session="handleSelectSession"
+        @edit-session="handleOpenEditSessionModal"
         @go-back="handleGoBack"
       />
 
@@ -64,6 +65,16 @@
       @close="showCreateModal = false"
       @confirm="handleConfirmCreateWorkflow"
     />
+
+    <!-- 会话弹窗 -->
+    <SessionModal
+      v-model:visible="showSessionModal"
+      :is-edit="isEditMode"
+      :session-code="editingSessionCode"
+      :comfyui-server-id="serviceId"
+      :comfyui-server-name="currentService?.serverName || ''"
+      @confirm="handleConfirmSession"
+    />
   </div>
 </template>
 
@@ -80,6 +91,7 @@ import WorkflowToolbar from '@/components/workflow/WorkflowToolbar.vue'
 import WorkflowViewer from '@/components/workflow/WorkflowViewer.vue'
 import ChatDialog from '@/components/workflow/ChatDialog.vue'
 import CreateWorkflowModal from '@/components/workflow/CreateWorkflowModal.vue'
+import SessionModal from '@/components/workflow/SessionModal.vue'
 
 // Composables 导入
 import { useSessionManagement } from '@/composables/workflow/useSessionManagement'
@@ -115,7 +127,9 @@ const {
   messages,
   loadSessions,
   selectSession,
-  handleCreateSession
+  unselectSession,
+  handleCreateSession,
+  handleUpdateSession
 } = sessionManagement
 
 // 从 chatDialog 解构状态和方法
@@ -146,6 +160,9 @@ const {
 
 // 本地状态
 const showCreateModal = ref(false)
+const showSessionModal = ref(false)
+const isEditMode = ref(false)
+const editingSessionCode = ref<string | undefined>(undefined)
 const workflowViewerRef = ref<InstanceType<typeof WorkflowViewer> | null>(null)
 const currentWorkflowId = ref<string | null>(null)
 const originalContent = ref<string>('')
@@ -192,6 +209,46 @@ const comfyuiUrl = computed(() => {
 async function handleSelectSession(sessionCode: string): Promise<void> {
   await selectSession(sessionCode)
   showChat()
+}
+
+// 打开新建会话弹窗
+function handleOpenCreateSessionModal(): void {
+  isEditMode.value = false
+  editingSessionCode.value = undefined
+  showSessionModal.value = true
+}
+
+// 打开编辑会话弹窗
+function handleOpenEditSessionModal(sessionCode: string): void {
+  isEditMode.value = true
+  editingSessionCode.value = sessionCode
+  showSessionModal.value = true
+}
+
+// 确认会话操作(新建或编辑)
+async function handleConfirmSession(data: { title?: string; agentCode: string; agentConfig: string }): Promise<void> {
+  try {
+    if (isEditMode.value && editingSessionCode.value) {
+      // 编辑模式
+      await handleUpdateSession(editingSessionCode.value, {
+        title: data.title,
+        agentCode: data.agentCode,
+        agentConfig: data.agentConfig
+      })
+    } else {
+      // 新建模式
+      await handleCreateSession({
+        comfyuiServerId: serviceId,
+        title: data.title,
+        agentCode: data.agentCode,
+        agentConfig: data.agentConfig
+      })
+    }
+    showSessionModal.value = false
+  } catch (error) {
+    // 错误已在handleCreateSession/handleUpdateSession中处理
+    console.error('会话操作失败:', error)
+  }
 }
 
 function handleGoBack(): void {

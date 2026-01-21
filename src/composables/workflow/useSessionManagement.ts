@@ -1,7 +1,13 @@
 import { ref } from 'vue'
 import { toast } from '@/utils/toast'
-import { listActiveSessions, getSessionByCode, getSessionMessages, createSession } from '@/services/session'
-import type { ChatSession, ChatMessage } from '@/types/session'
+import {
+  listActiveSessions,
+  getSessionByCode,
+  getSessionMessages,
+  createSession,
+  updateSession
+} from '@/services/session'
+import type { ChatSession, ChatMessage, CreateSessionRequest, UpdateSessionRequest } from '@/types/session'
 
 export function useSessionManagement(serviceId: string) {
   // 会话相关状态
@@ -35,16 +41,43 @@ export function useSessionManagement(serviceId: string) {
     }
   }
 
+  // 取消选择会话
+  function unselectSession(): void {
+    currentSessionCode.value = null
+    currentSession.value = null
+    messages.value = []
+  }
+
   // 创建新会话
-  async function handleCreateSession(): Promise<void> {
+  async function handleCreateSession(data: CreateSessionRequest): Promise<void> {
     try {
-      const sessionCode = await createSession({ title: '新会话' })
+      const sessionCode = await createSession(data)
       await loadSessions()
       await selectSession(sessionCode)
       toast.success('会话创建成功')
     } catch (error) {
       console.error('创建会话失败:', error)
       toast.error('创建会话失败')
+      throw error
+    }
+  }
+
+  // 更新会话
+  async function handleUpdateSession(sessionCode: string, data: UpdateSessionRequest): Promise<void> {
+    try {
+      await updateSession(sessionCode, data)
+      await loadSessions()
+
+      // 如果更新的是当前会话,重新加载当前会话详情
+      if (currentSessionCode.value === sessionCode) {
+        currentSession.value = await getSessionByCode(sessionCode)
+      }
+
+      toast.success('会话更新成功')
+    } catch (error) {
+      console.error('更新会话失败:', error)
+      toast.error('更新会话失败')
+      throw error
     }
   }
 
@@ -55,6 +88,8 @@ export function useSessionManagement(serviceId: string) {
     messages,
     loadSessions,
     selectSession,
-    handleCreateSession
+    unselectSession,
+    handleCreateSession,
+    handleUpdateSession
   }
 }

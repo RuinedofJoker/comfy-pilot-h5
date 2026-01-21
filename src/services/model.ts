@@ -109,5 +109,13 @@ export const aiModelApi = {
    */
   getModelConfigFormat: (callingType: string): Promise<string> => {
     return request.get('/api/v1/models/config-format', { params: { modelCallingType: callingType } })
+  },
+
+  /**
+   * 查询启用的AI模型（前台）
+   * @param modelCallingType 模型调用方式
+   */
+  listEnabledModels: (modelCallingType: string): Promise<AiModel[]> => {
+    return request.get('/api/v1/models/enabled', { params: { modelCallingType } })
   }
 }

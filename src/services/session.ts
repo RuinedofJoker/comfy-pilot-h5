@@ -38,6 +38,13 @@ export function getSessionByCode(sessionCode: string): Promise<ChatSession> {
 }
 
 /**
+ * 更新会话
+ */
+export function updateSession(sessionCode: string, data: UpdateSessionRequest): Promise<string> {
+  return http.put(`/api/v1/sessions/${sessionCode}`, data)
+}
+
+/**
  * 查询消息历史
  */
 export function getSessionMessages(sessionCode: string): Promise<ChatMessage[]> {

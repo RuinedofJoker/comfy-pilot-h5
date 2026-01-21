@@ -32,8 +32,10 @@ export interface ChatSession {
   updateTime: string
   sessionCode: string
   userId: string
-  agentId: string
-  title: string | null
+  comfyuiServerId: string
+  agentCode: string
+  agentConfig?: string
+  title?: string
   status: SessionStatus
 }
 
@@ -54,7 +56,10 @@ export interface ChatMessage {
  * 创建会话请求
  */
 export interface CreateSessionRequest {
+  comfyuiServerId: string
   title?: string
+  agentCode: string
+  agentConfig?: string
 }
 
 /**
@@ -62,7 +67,8 @@ export interface CreateSessionRequest {
  */
 export interface UpdateSessionRequest {
   title?: string
-  status?: SessionStatus
+  agentCode?: string
+  agentConfig?: string
 }
 
 /**
