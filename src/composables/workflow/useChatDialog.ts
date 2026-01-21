@@ -14,6 +14,12 @@ export function useChatDialog() {
     isChatMinimized.value = false
   }
 
+  // 隐藏对话框
+  function hideChat(): void {
+    isChatVisible.value = false
+    isChatMinimized.value = false
+  }
+
   // 切换最小化状态
   function toggleMinimize(): void {
     isChatMinimized.value = !isChatMinimized.value
@@ -64,6 +70,7 @@ export function useChatDialog() {
 
     // 方法
     showChat,
+    hideChat,
     toggleMinimize,
     handleSendMessage
   }

@@ -54,6 +54,7 @@
           :session-title="currentSession?.title || null"
           :messages="messages"
           @toggle-minimize="toggleMinimize"
+          @close="handleCloseChat"
           @send-message="handleSendMessage"
         />
       </div>
@@ -138,6 +139,7 @@ const {
   isChatMinimized,
   toggleMinimize,
   showChat,
+  hideChat,
   handleSendMessage: sendMessageToChat
 } = chatDialog
 
@@ -262,6 +264,12 @@ async function handleSendMessage(content: string): Promise<void> {
     return
   }
   await sendMessageToChat(currentSessionCode.value, content, messages.value)
+}
+
+// 关闭对话框
+function handleCloseChat(): void {
+  hideChat()
+  unselectSession()
 }
 
 // 工作流相关方法

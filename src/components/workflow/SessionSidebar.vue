@@ -21,30 +21,31 @@
         :key="session.id"
         class="f-session-item"
         :class="{ active: currentSessionCode === session.sessionCode }"
+        @click="$emit('select-session', session.sessionCode)"
       >
-        <div class="f-session-content" @click="$emit('select-session', session.sessionCode)">
-          <div class="f-session-header">
-            <span class="f-status-dot" :class="{ idle: session.status !== 'ACTIVE' }"></span>
-            <span class="f-session-name">{{ session.title || '未命名会话' }}</span>
-          </div>
-          <div class="f-session-meta">
-            <div class="f-meta-row">
-              <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
-              </svg>
-              <span>{{ formatTime(session.updateTime) }}</span>
-            </div>
+        <div class="f-session-item-header">
+          <span class="f-status-dot" :class="{ active: currentSessionCode === session.sessionCode }"></span>
+          <span class="f-session-item-title">{{ session.title || '未命名会话' }}</span>
+        </div>
+        <div class="f-session-item-meta">
+          <div class="f-meta-row">
+            <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+            </svg>
+            <span>{{ formatTime(session.updateTime) }}</span>
           </div>
         </div>
-        <button
-          class="f-edit-btn"
-          @click.stop="$emit('edit-session', session.sessionCode)"
-          title="编辑会话"
-        >
-          <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-          </svg>
-        </button>
+        <div class="f-session-item-actions">
+          <button
+            class="f-session-edit-btn"
+            @click.stop="$emit('edit-session', session.sessionCode)"
+            title="编辑会话"
+          >
+            <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -172,18 +173,19 @@ function formatTime(time: string): string {
   background: #2a2a2a;
   border: 1px solid transparent;
   border-radius: 3px;
+  cursor: pointer;
   font-size: 12px;
   transition: all 0.15s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 
   &:hover {
     background: #333333;
     border-color: #3a3a3a;
 
-    .f-edit-btn {
+    .f-session-item-actions {
       opacity: 1;
     }
   }
@@ -194,39 +196,37 @@ function formatTime(time: string): string {
   }
 }
 
-.f-session-content {
-  flex: 1;
+.f-session-item-header {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  cursor: pointer;
-  min-width: 0;
+  align-items: center;
+  gap: 8px;
 }
 
-.f-edit-btn {
-  width: 28px;
-  height: 28px;
-  padding: 0;
+.f-session-item-actions {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.f-session-edit-btn {
+  width: 24px;
+  height: 24px;
   background: transparent;
-  border: 1px solid transparent;
-  color: #888888;
-  border-radius: 3px;
+  border: none;
+  color: #777777;
   cursor: pointer;
-  transition: all 0.2s;
+  border-radius: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  opacity: 0;
+  transition: all 0.15s;
 
   &:hover {
-    background: #454545;
-    border-color: #555555;
-    color: #ffffff;
-  }
-
-  &:active {
-    transform: scale(0.95);
+    background: #3a3a3a;
+    color: #cccccc;
   }
 
   .f-icon {
@@ -239,15 +239,15 @@ function formatTime(time: string): string {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #27ae60;
+  background: #999999;
   flex-shrink: 0;
 
-  &.idle {
-    background: #999999;
+  &.active {
+    background: #27ae60;
   }
 }
 
-.f-session-name {
+.f-session-item-title {
   flex: 1;
   font-weight: 400;
   overflow: hidden;
@@ -256,16 +256,20 @@ function formatTime(time: string): string {
   color: #cccccc;
 }
 
-.f-session-item.active .f-session-name {
+.f-session-item.active .f-session-item-title {
   color: #ffffff;
 }
 
-.f-session-meta {
+.f-session-item-meta {
   display: flex;
   flex-direction: column;
   gap: 3px;
   font-size: 11px;
   color: #777777;
+}
+
+.f-session-item.active .f-session-item-meta {
+  color: #999999;
 }
 
 .f-meta-row {

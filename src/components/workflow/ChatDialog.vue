@@ -1,6 +1,17 @@
 <template>
-  <div v-if="visible" class="f-chat-dialog" :class="{ minimized: isMinimized }">
-    <div class="f-chat-header">
+  <div
+    v-if="visible"
+    ref="chatDialog"
+    class="f-chat-dialog"
+    :class="{ minimized: isMinimized, dragging: isDragging }"
+    :style="{
+      left: dialogPosition.x ? `${dialogPosition.x}px` : undefined,
+      top: dialogPosition.y ? `${dialogPosition.y}px` : undefined,
+      right: dialogPosition.x ? 'auto' : undefined,
+      bottom: dialogPosition.y ? 'auto' : undefined
+    }"
+  >
+    <div ref="chatHeader" class="f-chat-header" @mousedown="handleMouseDown">
       <div class="f-chat-title">
         <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
           <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/>
@@ -8,7 +19,8 @@
         <span>{{ sessionTitle || '会话' }}</span>
       </div>
       <div class="f-chat-controls">
-        <button class="f-control-btn" @click="$emit('toggle-minimize')">−</button>
+        <button class="f-control-btn" @click="$emit('toggle-minimize')" title="最小化">−</button>
+        <button class="f-control-btn" @click="$emit('close')" title="关闭">×</button>
       </div>
     </div>
 
@@ -39,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import type { ChatMessage } from '@/types/session'
 
 // Props
@@ -55,12 +67,20 @@ const props = defineProps<Props>()
 // Emits
 const emit = defineEmits<{
   'toggle-minimize': []
+  'close': []
   'send-message': [content: string]
 }>()
 
 // 本地状态
 const inputValue = ref('')
 const chatMessages = ref<HTMLDivElement | null>(null)
+const chatDialog = ref<HTMLDivElement | null>(null)
+const chatHeader = ref<HTMLDivElement | null>(null)
+
+// 拖动相关状态
+const isDragging = ref(false)
+const dragOffset = ref({ x: 0, y: 0 })
+const dialogPosition = ref({ x: 0, y: 0 })
 
 // 发送消息
 function handleSend(): void {
@@ -82,6 +102,57 @@ function scrollToBottom(): void {
     chatMessages.value.scrollTop = chatMessages.value.scrollHeight
   }
 }
+
+// 拖动开始
+function handleMouseDown(event: MouseEvent): void {
+  // 只允许在头部区域拖动，且不能点击按钮
+  if ((event.target as HTMLElement).closest('.f-control-btn')) {
+    return
+  }
+
+  isDragging.value = true
+
+  if (chatDialog.value) {
+    const rect = chatDialog.value.getBoundingClientRect()
+    dragOffset.value = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    }
+  }
+}
+
+// 拖动中
+function handleMouseMove(event: MouseEvent): void {
+  if (!isDragging.value || !chatDialog.value) return
+
+  const x = event.clientX - dragOffset.value.x
+  const y = event.clientY - dragOffset.value.y
+
+  // 限制在视口范围内
+  const maxX = window.innerWidth - chatDialog.value.offsetWidth
+  const maxY = window.innerHeight - chatDialog.value.offsetHeight
+
+  dialogPosition.value = {
+    x: Math.max(0, Math.min(x, maxX)),
+    y: Math.max(0, Math.min(y, maxY))
+  }
+}
+
+// 拖动结束
+function handleMouseUp(): void {
+  isDragging.value = false
+}
+
+// 生命周期
+onMounted(() => {
+  document.addEventListener('mousemove', handleMouseMove)
+  document.addEventListener('mouseup', handleMouseUp)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('mousemove', handleMouseMove)
+  document.removeEventListener('mouseup', handleMouseUp)
+})
 </script>
 
 <style scoped lang="scss">
@@ -99,10 +170,15 @@ function scrollToBottom(): void {
   display: flex;
   flex-direction: column;
   z-index: 200;
-  transition: all 0.2s ease;
+  transition: box-shadow 0.2s ease;
 
   &.minimized {
     height: 48px;
+  }
+
+  &.dragging {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+    cursor: move;
   }
 }
 
@@ -125,6 +201,8 @@ function scrollToBottom(): void {
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  cursor: move;
+  user-select: none;
 }
 
 .f-chat-title {
