@@ -272,6 +272,7 @@ import { listActiveSessions, getSessionByCode, getSessionMessages, createSession
 import { getServerById } from '@/services/service'
 import { WebSocketClient } from '@/utils/websocket'
 import { toast } from '@/utils/toast'
+import { compareWorkflowContent } from '@/utils/workflow-compare'
 import type { Workflow } from '@/types/workflow'
 import type { ChatSession, ChatMessage } from '@/types/session'
 import type { ComfyUIService } from '@/types/service'
@@ -301,7 +302,33 @@ const currentWorkflow = ref<Workflow | null>(null)
 const savedWorkflowContent = ref('') // 已保存的工作流内容
 const pendingWorkflowContent = ref('') // 待保存的工作流内容
 const workflowJsonContent = computed(() => pendingWorkflowContent.value) // JSON视图显示待保存内容
-const hasUnsavedChanges = computed(() => savedWorkflowContent.value !== pendingWorkflowContent.value)
+
+// 工作流变更检测（使用深度对象比较，忽略特定字段）
+const hasUnsavedChanges = computed(() => {
+  return !compareWorkflowContent(
+    savedWorkflowContent.value,
+    pendingWorkflowContent.value,
+    (path) => {
+      // 忽略 extra.ds.offset
+      if (path.length >= 3 && path[0] === 'extra' && path[1] === 'ds' && path[2] === 'offset') {
+        return true
+      }
+
+      // 忽略 extra.ds.scale
+      if (path.length >= 3 && path[0] === 'extra' && path[1] === 'ds' && path[2] === 'scale') {
+        return true
+      }
+
+      // 忽略 nodes[*].properties["Node name for S&R"]
+      if (path.length >= 4 && path[0] === 'nodes' && path[2] === 'properties' && path[3] === 'Node name for S&R') {
+        return true
+      }
+
+      return false
+    }
+  )
+})
+
 const isWorkflowLocked = ref(false)
 
 // UI状态
@@ -479,7 +506,7 @@ async function loadWorkflowInComfyUI(content: string): Promise<void> {
   }
 
   try {
-    // 1. 创建新的工作流标签页
+    // 1. 创建新的工作流标签页    
     await sendComfyUIMessage('comfy-pilot:new-workflow', null)
 
     // 2. 如果内容不为空，设置工作流内容
@@ -577,8 +604,8 @@ function fetchWorkflowFromIframe(): void {
 function handleComfyUIMessage(event: MessageEvent): void {
   const { type, payload } = event.data || {}
 
-  // 处理标签页切换事件
-  if (type === 'comfy-pilot:tab-changed' && payload) {
+  // 处理工作流内容变化事件
+  if (type === 'comfy-pilot:workflow-graph-changed' && payload) {
     pendingWorkflowContent.value = JSON.stringify(payload, null, 2)
   }
 }
