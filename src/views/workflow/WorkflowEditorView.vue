@@ -295,6 +295,98 @@ async function handleSaveWorkflow(): Promise<void> {
   }
 }
 
+// 显示输出文件
+function showOutputFiles(outputs: Record<string, any>): void {
+  const filesByType = {
+    images: [] as string[],
+    videos: [] as string[],
+    gifs: [] as string[],
+    audio: [] as string[]
+  }
+
+  // 收集所有输出文件
+  for (const nodeOutput of Object.values(outputs)) {
+    const output = nodeOutput as any
+
+    // 收集图片
+    if (output.images && Array.isArray(output.images)) {
+      output.images.forEach((img: any) => {
+        if (img.fullUrl) {
+          filesByType.images.push(img.fullUrl)
+        }
+      })
+    }
+
+    // 收集视频
+    if (output.videos && Array.isArray(output.videos)) {
+      output.videos.forEach((video: any) => {
+        if (video.fullUrl) {
+          filesByType.videos.push(video.fullUrl)
+        }
+      })
+    }
+
+    // 收集 GIF
+    if (output.gifs && Array.isArray(output.gifs)) {
+      output.gifs.forEach((gif: any) => {
+        if (gif.fullUrl) {
+          filesByType.gifs.push(gif.fullUrl)
+        }
+      })
+    }
+
+    // 收集音频
+    if (output.audio && Array.isArray(output.audio)) {
+      output.audio.forEach((audio: any) => {
+        if (audio.fullUrl) {
+          filesByType.audio.push(audio.fullUrl)
+        }
+      })
+    }
+  }
+
+  // 构建提示消息
+  const messages: string[] = []
+
+  if (filesByType.images.length > 0) {
+    messages.push(`🖼️ 图片 (${filesByType.images.length})`)
+    filesByType.images.forEach((url, index) => {
+      messages.push(`  ${index + 1}. ${url}`)
+    })
+  }
+
+  if (filesByType.videos.length > 0) {
+    messages.push(`🎬 视频 (${filesByType.videos.length})`)
+    filesByType.videos.forEach((url, index) => {
+      messages.push(`  ${index + 1}. ${url}`)
+    })
+  }
+
+  if (filesByType.gifs.length > 0) {
+    messages.push(`🎞️ GIF (${filesByType.gifs.length})`)
+    filesByType.gifs.forEach((url, index) => {
+      messages.push(`  ${index + 1}. ${url}`)
+    })
+  }
+
+  if (filesByType.audio.length > 0) {
+    messages.push(`🎵 音频 (${filesByType.audio.length})`)
+    filesByType.audio.forEach((url, index) => {
+      messages.push(`  ${index + 1}. ${url}`)
+    })
+  }
+
+  // 显示提示
+  if (messages.length > 0) {
+    const message = messages.join('\n')
+    // 使用较长的持续时间显示
+    toast.success(message)
+    console.log('📁 输出文件列表:\n' + message)
+  } else {
+    toast.info('工作流执行成功，但没有生成输出文件')
+  }
+}
+
 // 运行工作流
 async function handleExecuteWorkflow(): Promise<void> {
   try {
@@ -325,18 +417,8 @@ async function handleExecuteWorkflow(): Promise<void> {
       if (result.outputs && result.outputs.outputs) {
         console.log('执行输出:', result.outputs)
 
-        // 打印所有生成的图片 URL
-        const outputs = result.outputs.outputs
-        for (const [nodeId, nodeOutput] of Object.entries(outputs)) {
-          const output = nodeOutput as any
-          if (output.images && Array.isArray(output.images)) {
-            console.log(`节点 ${nodeId} 生成的图片:`)
-            output.images.forEach((img: any, index: number) => {
-              console.log(`  [${index + 1}] ${img.filename}`)
-              console.log(`      完整 URL: ${img.fullUrl}`)
-            })
-          }
-        }
+        // 显示输出文件
+        showOutputFiles(result.outputs.outputs)
       } else if (result.outputError) {
         // 执行成功但获取输出失败
         console.warn('获取输出失败:', result.outputError)
