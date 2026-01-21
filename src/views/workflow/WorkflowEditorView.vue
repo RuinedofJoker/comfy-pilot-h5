@@ -138,7 +138,23 @@
         <!-- ComfyUI 容器 -->
         <div class="f-comfyui-container" :class="{ locked: isWorkflowLocked }">
           <!-- 视图切换按钮 -->
-          <div class="f-view-toggle">
+          <div
+            class="f-view-toggle"
+            :class="{ dragging: isDraggingViewToggle }"
+            :style="{
+              left: `calc(50% + ${viewTogglePosition.x}px)`,
+              top: `${viewTogglePosition.y}px`
+            }"
+          >
+            <div
+              class="f-drag-handle"
+              @mousedown="handleViewToggleMouseDown"
+              title="拖动以移动位置"
+            >
+              <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+              </svg>
+            </div>
             <button
               class="f-view-btn"
               :class="{ active: currentView === 'comfyui' }"
@@ -342,6 +358,12 @@ const showCreateWorkflowModal = ref(false)
 const newWorkflowName = ref('')
 const newWorkflowDescription = ref('')
 const isServiceAvailable = ref(true)
+
+// 视图切换按钮拖动状态
+const viewTogglePosition = ref({ x: 0, y: 12 }) // x: 0 表示居中，y: 12 表示距离顶部12px
+const isDraggingViewToggle = ref(false)
+const dragStartPos = ref({ x: 0, y: 0 })
+const dragStartOffset = ref({ x: 0, y: 0 })
 
 // WebSocket客户端
 let wsClient: WebSocketClient | null = null
@@ -722,6 +744,54 @@ function scrollToBottom(): void {
 // 返回服务选择页面
 function handleGoBack(): void {
   router.push('/services')
+}
+
+// 视图切换按钮拖动相关函数
+function handleViewToggleMouseDown(event: MouseEvent): void {
+  isDraggingViewToggle.value = true
+  dragStartPos.value = { x: event.clientX, y: event.clientY }
+  dragStartOffset.value = { ...viewTogglePosition.value }
+
+  document.addEventListener('mousemove', handleViewToggleMouseMove)
+  document.addEventListener('mouseup', handleViewToggleMouseUp)
+
+  event.preventDefault()
+}
+
+function handleViewToggleMouseMove(event: MouseEvent): void {
+  if (!isDraggingViewToggle.value) return
+
+  const container = document.querySelector('.f-comfyui-container') as HTMLElement
+  const toggleElement = document.querySelector('.f-view-toggle') as HTMLElement
+
+  if (!container || !toggleElement) return
+
+  const containerRect = container.getBoundingClientRect()
+  const toggleRect = toggleElement.getBoundingClientRect()
+
+  // 计算新位置
+  const deltaX = event.clientX - dragStartPos.value.x
+  const deltaY = event.clientY - dragStartPos.value.y
+
+  let newX = dragStartOffset.value.x + deltaX
+  let newY = dragStartOffset.value.y + deltaY
+
+  // 限制在容器范围内
+  const minX = -containerRect.width / 2 + toggleRect.width / 2 + 12
+  const maxX = containerRect.width / 2 - toggleRect.width / 2 - 12
+  const minY = 12
+  const maxY = containerRect.height - toggleRect.height - 12
+
+  newX = Math.max(minX, Math.min(maxX, newX))
+  newY = Math.max(minY, Math.min(maxY, newY))
+
+  viewTogglePosition.value = { x: newX, y: newY }
+}
+
+function handleViewToggleMouseUp(): void {
+  isDraggingViewToggle.value = false
+  document.removeEventListener('mousemove', handleViewToggleMouseMove)
+  document.removeEventListener('mouseup', handleViewToggleMouseUp)
 }
 
 // 启动定时同步
@@ -1228,8 +1298,6 @@ onUnmounted(() => {
 // 视图切换
 .f-view-toggle {
   position: absolute;
-  top: 12px;
-  left: 50%;
   transform: translateX(-50%);
   z-index: 30;
   display: flex;
@@ -1239,6 +1307,39 @@ onUnmounted(() => {
   border-radius: 4px;
   padding: 2px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: box-shadow 0.2s;
+
+  &.dragging {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    cursor: move;
+  }
+}
+
+.f-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  cursor: move;
+  color: #777777;
+  border-right: 1px solid #3a3a3a;
+  transition: all 0.2s;
+  user-select: none;
+
+  &:hover {
+    color: #cccccc;
+    background: #333333;
+  }
+
+  &:active {
+    color: #ffffff;
+    background: #3a3a3a;
+  }
+
+  .f-icon {
+    width: 14px;
+    height: 14px;
+  }
 }
 
 .f-view-btn {
