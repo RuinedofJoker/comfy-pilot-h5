@@ -189,15 +189,36 @@
           <!-- JSON 视图 -->
           <div v-show="currentView === 'json'" class="f-json-view">
             <div class="f-json-header">
-              <div class="f-json-title">工作流 JSON 原型</div>
-              <button class="f-json-copy-btn" @click="handleCopyJson">
-                <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                </svg>
-                <span>复制 JSON</span>
-              </button>
+              <div class="f-json-title">
+                <span>工作流 JSON 原型</span>
+                <span class="f-json-hint">（可编辑，切换回 ComfyUI 视图时生效）</span>
+              </div>
+              <div class="f-json-actions">
+                <button class="f-json-copy-btn" @click="handleCopyJson">
+                  <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                  </svg>
+                  <span>复制</span>
+                </button>
+                <button class="f-json-format-btn" @click="handleFormatJson">
+                  <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>
+                  </svg>
+                  <span>格式化</span>
+                </button>
+              </div>
             </div>
-            <pre class="f-json-content">{{ workflowJsonContent }}</pre>
+            <div v-if="jsonEditError" class="f-json-error">
+              <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+              </svg>
+              <span>{{ jsonEditError }}</span>
+            </div>
+            <MonacoJsonEditor
+              ref="monacoEditor"
+              v-model="editableJsonContent"
+              @validate="handleJsonValidate"
+            />
           </div>
 
           <!-- 锁定遮罩 -->
@@ -283,6 +304,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TopNavBar from '@/components/user/TopNavBar.vue'
+import MonacoJsonEditor from '@/components/workflow/MonacoJsonEditor.vue'
 import { listWorkflows, getWorkflowById, createWorkflow, getWorkflowContent, saveWorkflowContent } from '@/services/workflow'
 import { listActiveSessions, getSessionByCode, getSessionMessages, createSession } from '@/services/session'
 import { getServerById } from '@/services/service'
@@ -317,7 +339,8 @@ const currentWorkflowId = ref<string | null>(null)
 const currentWorkflow = ref<Workflow | null>(null)
 const savedWorkflowContent = ref('') // 已保存的工作流内容
 const pendingWorkflowContent = ref('') // 待保存的工作流内容
-const workflowJsonContent = computed(() => pendingWorkflowContent.value) // JSON视图显示待保存内容
+const editableJsonContent = ref('') // JSON 视图中可编辑的内容
+const jsonEditError = ref('') // JSON 编辑错误信息
 
 // 工作流变更检测（使用深度对象比较，忽略特定字段）
 const hasUnsavedChanges = computed(() => {
@@ -371,6 +394,7 @@ let wsClient: WebSocketClient | null = null
 // ComfyUI iframe引用
 const comfyuiFrame = ref<HTMLIFrameElement | null>(null)
 const chatMessages = ref<HTMLDivElement | null>(null)
+const monacoEditor = ref<InstanceType<typeof MonacoJsonEditor> | null>(null)
 
 // 定时同步定时器
 let syncTimer: number | null = null
@@ -584,10 +608,47 @@ function sendComfyUIMessage(type: string, payload: any): Promise<any> {
 }
 
 // 切换视图
-function switchView(view: 'comfyui' | 'json'): void {
+async function switchView(view: 'comfyui' | 'json'): Promise<void> {
+  const previousView = currentView.value
   currentView.value = view
+
   if (view === 'json') {
+    // 切换到 JSON 视图：从 iframe 获取最新内容
     fetchWorkflowFromIframe()
+    // 等待内容更新后，初始化可编辑内容
+    await nextTick()
+    setTimeout(() => {
+      editableJsonContent.value = pendingWorkflowContent.value
+      jsonEditError.value = ''
+    }, 100)
+  } else if (view === 'comfyui' && previousView === 'json') {
+    // 从 JSON 视图切换回 ComfyUI 视图：应用 JSON 修改
+    await applyJsonChangesToComfyUI()
+  }
+}
+
+// 应用 JSON 修改到 ComfyUI
+async function applyJsonChangesToComfyUI(): Promise<void> {
+  if (!editableJsonContent.value.trim()) {
+    return
+  }
+
+  try {
+    // 验证 JSON 格式
+    const workflowData = JSON.parse(editableJsonContent.value)
+
+    // 发送到 ComfyUI iframe
+    await sendComfyUIMessage('comfy-pilot:set-workflow', workflowData)
+
+    // 更新待保存内容
+    pendingWorkflowContent.value = editableJsonContent.value
+
+    jsonEditError.value = ''
+    toast.success('工作流已应用到 ComfyUI')
+  } catch (error) {
+    console.error('应用 JSON 修改失败:', error)
+    jsonEditError.value = error instanceof Error ? error.message : 'JSON 格式错误'
+    toast.error('JSON 格式错误，无法应用修改')
   }
 }
 
@@ -703,18 +764,44 @@ async function handleSaveWorkflow(): Promise<void> {
 
 // 复制JSON
 function handleCopyJson(): void {
-  if (!workflowJsonContent.value) {
+  if (!editableJsonContent.value) {
     toast.warning('没有可复制的内容')
     return
   }
 
-  navigator.clipboard.writeText(workflowJsonContent.value)
+  navigator.clipboard.writeText(editableJsonContent.value)
     .then(() => {
       toast.success('JSON已复制到剪贴板')
     })
     .catch(() => {
       toast.error('复制失败')
     })
+}
+
+// 格式化JSON
+function handleFormatJson(): void {
+  if (!monacoEditor.value) {
+    toast.warning('编辑器未就绪')
+    return
+  }
+
+  if (!editableJsonContent.value.trim()) {
+    toast.warning('没有可格式化的内容')
+    return
+  }
+
+  // 使用 Monaco Editor 的内置格式化功能
+  monacoEditor.value.formatJson()
+  toast.success('JSON 已格式化')
+}
+
+// 处理 JSON 验证结果
+function handleJsonValidate(isValid: boolean, errors: string[]): void {
+  if (isValid) {
+    jsonEditError.value = ''
+  } else {
+    jsonEditError.value = errors[0] || 'JSON 格式错误'
+  }
 }
 
 // 发送消息
@@ -1397,26 +1484,43 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   background: #1e1e1e;
-  overflow: auto;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .f-json-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  padding: 16px 20px;
   border-bottom: 1px solid #3a3a3a;
+  background: #242424;
+  flex-shrink: 0;
 }
 
 .f-json-title {
   font-size: 14px;
   color: #cccccc;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.f-json-copy-btn {
+.f-json-hint {
+  font-size: 12px;
+  color: #777777;
+  font-weight: 400;
+}
+
+.f-json-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.f-json-copy-btn,
+.f-json-format-btn {
   padding: 6px 12px;
   background: #2a2a2a;
   border: 1px solid #3a3a3a;
@@ -1433,19 +1537,33 @@ onUnmounted(() => {
     background: #333333;
     border-color: #4a4a4a;
   }
+
+  &:active {
+    background: #3a3a3a;
+  }
 }
 
-.f-json-content {
-  background: #252525;
-  border: 1px solid #3a3a3a;
-  border-radius: 4px;
-  padding: 16px;
-  font-family: 'Consolas', 'Monaco', monospace;
+.f-json-error {
+  padding: 12px 20px;
+  background: rgba(231, 76, 60, 0.1);
+  border-bottom: 1px solid rgba(231, 76, 60, 0.3);
+  color: #e74c3c;
   font-size: 12px;
-  line-height: 1.6;
-  color: #d4d4d4;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+
+  .f-icon {
+    flex-shrink: 0;
+  }
+}
+
+// Monaco Editor 容器样式已在组件内部定义
+// 这里只需要确保父容器正确布局
+:deep(.monaco-editor-container) {
+  flex: 1;
+  min-height: 0;
 }
 
 // 锁定遮罩
