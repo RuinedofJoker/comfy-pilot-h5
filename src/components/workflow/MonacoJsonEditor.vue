@@ -69,7 +69,8 @@ onMounted(() => {
 
 // 验证 JSON
 function validateJson(value: string): void {
-  if (!value.trim()) {
+  // 处理空值情况
+  if (!value || !value.trim()) {
     emit('validate', true, [])
     return
   }

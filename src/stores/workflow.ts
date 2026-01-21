@@ -26,14 +26,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
   // 计算属性
   const hasWorkflows = computed(() => workflows.value.length > 0)
 
-  const lockedWorkflows = computed(() =>
-    workflows.value.filter(w => w.isLocked)
-  )
-
-  const unlockedWorkflows = computed(() =>
-    workflows.value.filter(w => !w.isLocked)
-  )
-
   /**
    * 查询工作流列表
    */
@@ -185,8 +177,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     isSaving,
     // 计算属性
     hasWorkflows,
-    lockedWorkflows,
-    unlockedWorkflows,
     // 方法
     fetchWorkflows,
     fetchWorkflowById,

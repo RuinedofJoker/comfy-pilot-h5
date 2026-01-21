@@ -64,3 +64,12 @@ export interface UpdateSessionRequest {
   title?: string
   status?: SessionStatus
 }
+
+/**
+ * 发送消息请求
+ */
+export interface SendMessageRequest {
+  sessionCode: string
+  content: string
+  agentCode?: string
+}
