@@ -117,7 +117,8 @@ http.interceptors.response.use(
 
       // 服务器错误
       if (status >= 500) {
-        errorMessage = '服务器错误，请稍后重试'
+        const apiError = data as ApiError
+        errorMessage = apiError.message || '服务器错误，请稍后重试'
         toast.error(errorMessage)
         return Promise.reject(new Error(errorMessage))
       }

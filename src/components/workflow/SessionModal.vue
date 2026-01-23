@@ -59,13 +59,13 @@
 
           <div
             v-for="config in agentConfigDefinitions"
+            v-show="config.userOverride"
             :key="config.name"
             class="f-form-item"
           >
             <label class="f-label">
-              {{ config.name }}
-              <span v-if="config.description" class="f-description">({{ config.description }})</span>
-              <span v-if="config.require" class="f-required">*</span>
+              {{ config.description ? config.description : config.name }}
+              <span v-if="config.userOverride && config.require" class="f-required"> *</span>
             </label>
 
             <!-- STRING类型 -->
@@ -316,7 +316,7 @@ function validateForm(): boolean {
     const value = agentConfigValues.value[config.name]
 
     // 必填验证
-    if (config.require && (value === '' || value === null || value === undefined)) {
+    if (config.userOverride && config.require && (value === '' || value === null || value === undefined)) {
       toast.error(`请填写${config.name}`)
       return false
     }
