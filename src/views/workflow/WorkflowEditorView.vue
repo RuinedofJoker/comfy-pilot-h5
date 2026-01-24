@@ -259,12 +259,12 @@ function handleGoBack(): void {
 }
 
 // 消息发送包装函数
-async function handleSendMessage(content: string): Promise<void> {
+async function handleSendMessage(content: string, attachments?: import('@/types/chat-content').ChatContent[]): Promise<void> {
   if (!currentSessionCode.value) {
     toast.error('请先选择会话')
     return
   }
-  await sendMessageToChat(currentSessionCode.value, content, messages.value)
+  await sendMessageToChat(currentSessionCode.value, content, messages.value, attachments)
 }
 
 // 关闭对话框

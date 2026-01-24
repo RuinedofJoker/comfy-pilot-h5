@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { toast } from '@/utils/toast'
 import type { ChatMessage } from '@/types/session'
+import type { ChatContent } from '@/types/chat-content'
 
 export function useChatDialog() {
   // 对话框状态
@@ -28,10 +29,15 @@ export function useChatDialog() {
   async function handleSendMessage(
     sessionCode: string,
     content: string,
-    messages: ChatMessage[]
+    messages: ChatMessage[],
+    attachments?: ChatContent[]
   ): Promise<void> {
     if (!content.trim()) return
-    //
+
+    // TODO: 实现消息发送逻辑
+    // 1. 构建包含多模态数据的消息
+    // 2. 通过 WebSocket 发送到后端
+    console.log('发送消息:', { sessionCode, content, attachments })
   }
 
   return {

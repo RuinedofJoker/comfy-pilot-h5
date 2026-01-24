@@ -3,7 +3,6 @@
  */
 
 import http from './http'
-import type { Result } from '@/types/api'
 import type { FileResource } from '@/types/file'
 
 /**
@@ -12,7 +11,7 @@ import type { FileResource } from '@/types/file'
  * @param businessType 业务类型（可选）
  * @param businessId 业务ID（可选）
  */
-export async function uploadFile(
+export function uploadFile(
   file: File,
   businessType?: string,
   businessId?: string
@@ -24,7 +23,7 @@ export async function uploadFile(
   if (businessType) params.businessType = businessType
   if (businessId) params.businessId = businessId
 
-  const response = await http.post<Result<FileResource>>(
+  return http.post(
     '/api/v1/files/upload',
     formData,
     {
@@ -34,8 +33,6 @@ export async function uploadFile(
       }
     }
   )
-
-  return response.data.data
 }
 
 /**
@@ -44,7 +41,7 @@ export async function uploadFile(
  * @param businessType 业务类型（可选）
  * @param businessId 业务ID（可选）
  */
-export async function uploadFiles(
+export function uploadFiles(
   files: File[],
   businessType?: string,
   businessId?: string
@@ -58,7 +55,7 @@ export async function uploadFiles(
   if (businessType) params.businessType = businessType
   if (businessId) params.businessId = businessId
 
-  const response = await http.post<Result<FileResource[]>>(
+  return http.post(
     '/api/v1/files/upload/batch',
     formData,
     {
@@ -68,28 +65,24 @@ export async function uploadFiles(
       }
     }
   )
-
-  return response.data.data
 }
 
 /**
  * 查询用户文件列表
  * 获取当前用户上传的所有文件列表
  */
-export async function listUserFiles(): Promise<FileResource[]> {
-  const response = await http.get<Result<FileResource[]>>('/api/v1/files/user')
-  return response.data.data
+export function listUserFiles(): Promise<FileResource[]> {
+  return http.get('/api/v1/files/user')
 }
 
 /**
  * 下载文件
  * @param fileName 文件名（storedName）
  */
-export async function downloadFile(fileName: string): Promise<Blob> {
-  const response = await http.get(`/api/v1/files/download/${fileName}`, {
+export function downloadFile(fileName: string): Promise<Blob> {
+  return http.get(`/api/v1/files/download/${fileName}`, {
     responseType: 'blob'
   })
-  return response.data
 }
 
 /**
@@ -97,15 +90,14 @@ export async function downloadFile(fileName: string): Promise<Blob> {
  * @param businessType 业务类型
  * @param businessId 业务ID
  */
-export async function listBusinessFiles(
+export function listBusinessFiles(
   businessType: string,
   businessId: string
 ): Promise<FileResource[]> {
-  const response = await http.get<Result<FileResource[]>>('/api/v1/files/business', {
+  return http.get('/api/v1/files/business', {
     params: {
       businessType,
       businessId
     }
   })
-  return response.data.data
 }

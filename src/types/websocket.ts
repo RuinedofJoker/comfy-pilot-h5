@@ -109,6 +109,8 @@ export interface UserMessageRequestData {
   workflowContent: string;
   /** 客户端MCP工具schema列表 */
   toolSchemas?: McpToolSchema[];
+  /** 多模态数据 */
+  multimodalContents?: import('./chat-content').ChatContent[];
 }
 
 /**

@@ -34,9 +34,61 @@
         <div class="f-avatar">{{ message.role === 'USER' ? 'U' : 'AI' }}</div>
         <div class="f-message-content">{{ message.content }}</div>
       </div>
+
+      <!-- 附件预览区域 -->
+      <div v-if="selectedFiles.length > 0" class="f-attachments-preview">
+        <div
+          v-for="(file, index) in selectedFiles"
+          :key="index"
+          class="f-attachment-item"
+        >
+          <!-- 图片预览 -->
+          <div v-if="file.type === 'image'" class="f-attachment-preview">
+            <img :src="getPreviewUrl(file)" alt="预览" class="f-preview-image" />
+            <button class="f-attachment-remove-overlay" @click="removeAttachment(index)" title="移除">
+              ×
+            </button>
+          </div>
+
+          <!-- 视频预览 -->
+          <div v-else-if="file.type === 'video'" class="f-attachment-preview">
+            <video :src="getPreviewUrl(file)" class="f-preview-video"></video>
+            <button class="f-attachment-remove-overlay" @click="removeAttachment(index)" title="移除">
+              ×
+            </button>
+          </div>
+
+          <!-- 其他文件类型 -->
+          <div v-else class="f-attachment-file">
+            <div class="f-file-icon">
+              <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+              </svg>
+            </div>
+            <div class="f-file-info">
+              <span class="f-file-name">{{ getFileName(file) }}</span>
+            </div>
+            <button class="f-attachment-remove-btn" @click="removeAttachment(index)" title="移除">
+              ×
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div v-show="!isMinimized" class="f-chat-input">
+      <button class="f-attach-btn" @click="handleAttachClick" title="添加附件">
+        <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+        </svg>
+      </button>
+      <input
+        ref="fileInput"
+        type="file"
+        multiple
+        style="display: none"
+        @change="handleFileSelect"
+      />
       <input
         v-model="inputValue"
         type="text"
@@ -53,9 +105,13 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import type { ChatMessage } from '@/types/session'
+import type { ChatContent } from '@/types/chat-content'
 import { AgentWebSocketManager } from '@/utils/websocket'
 import { useAuthStore } from '@/stores/auth'
 import { AGENT_PROMPT_DEFAULT_MESSAGES } from '@/types/websocket'
+import { uploadFile } from '@/services/file'
+import * as FileContentUtil from '@/utils/file-content'
+import { toast } from '@/utils/toast'
 
 // Props
 interface Props {
@@ -72,7 +128,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'toggle-minimize': []
   'close': []
-  'send-message': [content: string]
+  'send-message': [content: string, attachments?: ChatContent[]]
 }>()
 
 // Auth Store
@@ -83,6 +139,8 @@ const inputValue = ref('')
 const chatMessages = ref<HTMLDivElement | null>(null)
 const chatDialog = ref<HTMLDivElement | null>(null)
 const chatHeader = ref<HTMLDivElement | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
+const selectedFiles = ref<ChatContent[]>([])
 
 // WebSocket 管理器
 let wsManager: AgentWebSocketManager | null = null
@@ -145,12 +203,177 @@ function disconnectWebSocket(): void {
   }
 }
 
+/**
+ * 处理文件列表，转换为 ChatContent 数组
+ */
+async function processFiles(files: File[]): Promise<ChatContent[]> {
+  const contents: ChatContent[] = []
+  const MAX_SIZE = 5 * 1024 * 1024 // 5MB
+
+  for (const file of files) {
+    const mimeType = FileContentUtil.getMimeType(file)
+    const fileSize = FileContentUtil.getFileSize(file)
+
+    // 文本类型：直接读取内容
+    if (FileContentUtil.isText(mimeType)) {
+      const text = await readFileAsText(file)
+      contents.push({
+        type: 'text',
+        text
+      })
+      continue
+    }
+
+    // 图片类型
+    if (FileContentUtil.isImage(mimeType)) {
+      const content = await processMediaFile(file, 'image', mimeType, fileSize, MAX_SIZE, file.name)
+      contents.push(content)
+      continue
+    }
+
+    // 视频类型
+    if (FileContentUtil.isVideo(mimeType)) {
+      const content = await processMediaFile(file, 'video', mimeType, fileSize, MAX_SIZE, file.name)
+      contents.push(content)
+      continue
+    }
+
+    // 音频类型
+    if (FileContentUtil.isAudio(mimeType)) {
+      const content = await processMediaFile(file, 'audio', mimeType, fileSize, MAX_SIZE, file.name)
+      contents.push(content)
+      continue
+    }
+
+    // PDF 类型
+    if (FileContentUtil.isPdf(mimeType)) {
+      const content = await processMediaFile(file, 'pdfFile', mimeType, fileSize, MAX_SIZE, file.name)
+      contents.push(content)
+      continue
+    }
+
+    // 不支持的文件类型
+    toast.warning(`不支持的文件类型: ${file.name}`)
+  }
+
+  return contents
+}
+
+/**
+ * 读取文件为文本
+ */
+function readFileAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(new Error('读取文件失败'))
+    reader.readAsText(file)
+  })
+}
+
+/**
+ * 处理媒体文件（图片/视频/音频/PDF）
+ */
+async function processMediaFile(
+  file: File,
+  type: 'image' | 'video' | 'audio' | 'pdfFile',
+  mimeType: string,
+  fileSize: number,
+  maxSize: number,
+  uploadFileName: string
+): Promise<ChatContent> {
+  // 文件大小超过 5MB，上传到服务器
+  if (fileSize > maxSize) {
+    const fileResource = await uploadFile(file)
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+    const fullUrl = `${baseUrl}${fileResource.webPath}`
+
+    return {
+      type,
+      isUseBase64: false,
+      url: fullUrl,
+      mimeType,
+      uploadFileName
+    } as ChatContent
+  }
+
+  // 文件大小小于等于 5MB，转换为 Base64
+  const base64Data = await FileContentUtil.toBase64(file)
+  return {
+    type,
+    isUseBase64: true,
+    base64Data,
+    mimeType,
+    uploadFileName
+  } as ChatContent
+}
+
+// 点击附件按钮
+function handleAttachClick(): void {
+  fileInput.value?.click()
+}
+
+// 文件选择处理
+async function handleFileSelect(event: Event): Promise<void> {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  if (!files || files.length === 0) return
+
+  try {
+    const contents = await processFiles(Array.from(files))
+    selectedFiles.value = [...selectedFiles.value, ...contents]
+    toast.success(`已选择 ${contents.length} 个文件`)
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : '文件处理失败')
+  } finally {
+    // 清空 input，允许重复选择同一文件
+    target.value = ''
+  }
+}
+
+// 获取预览 URL（用于图片和视频）
+function getPreviewUrl(file: ChatContent): string {
+  if (file.type === 'text') return ''
+
+  if (file.isUseBase64 && file.base64Data) {
+    return `data:${file.mimeType || 'application/octet-stream'};base64,${file.base64Data}`
+  }
+
+  return file.url || ''
+}
+
+// 获取文件名
+function getFileName(file: ChatContent): string {
+  if (file.type === 'text') {
+    return '文本内容'
+  }
+
+  // 优先使用 uploadFileName
+  if ('uploadFileName' in file && file.uploadFileName) {
+    return file.uploadFileName
+  }
+
+  // 降级方案：根据类型显示
+  const typeNames: Record<string, string> = {
+    audio: '音频文件',
+    pdfFile: 'PDF文件'
+  }
+  return typeNames[file.type] || '未知文件'
+}
+
+// 移除附件
+function removeAttachment(index: number): void {
+  selectedFiles.value.splice(index, 1)
+}
+
 // 发送消息
 function handleSend(): void {
-  if (!inputValue.value.trim()) return
-
-  emit('send-message', inputValue.value)
+  if (!inputValue.value) return
+  const textContent = inputValue.value
+  const attachmentContents = selectedFiles.value
   inputValue.value = ''
+  selectedFiles.value = []
+  emit('send-message', textContent, attachmentContents)
 }
 
 // 监听消息变化，自动滚动到底部
@@ -371,6 +594,126 @@ onUnmounted(() => {
   color: #ffffff;
 }
 
+// 附件预览区域
+.f-attachments-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  margin-top: auto;
+}
+
+.f-attachment-item {
+  position: relative;
+}
+
+// 图片/视频预览容器
+.f-attachment-preview {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #3a3a3a;
+  background: #2a2a2a;
+}
+
+.f-preview-image,
+.f-preview-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.f-attachment-remove-overlay {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  border-radius: 50%;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(255, 68, 68, 0.9);
+    transform: scale(1.1);
+  }
+}
+
+// 文件类型预览
+.f-attachment-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  min-width: 200px;
+  max-width: 280px;
+}
+
+.f-file-icon {
+  width: 32px;
+  height: 32px;
+  background: #3a3a3a;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #999999;
+
+  .f-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.f-file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.f-file-name {
+  display: block;
+  font-size: 12px;
+  color: #cccccc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.f-attachment-remove-btn {
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border: none;
+  color: #999999;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #ff4444;
+  }
+}
+
 // 输入框
 .f-chat-input {
   display: flex;
@@ -380,7 +723,7 @@ onUnmounted(() => {
   background: #242424;
   flex-shrink: 0;
 
-  input {
+  input[type="text"] {
     flex: 1;
     padding: 8px 12px;
     background: #2a2a2a;
@@ -397,6 +740,32 @@ onUnmounted(() => {
     &::placeholder {
       color: #777777;
     }
+  }
+}
+
+.f-attach-btn {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid #3a3a3a;
+  border-radius: 3px;
+  color: #999999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+
+  &:hover {
+    background: #3a3a3a;
+    color: #ffffff;
+    border-color: #4a9eff;
+  }
+
+  .f-icon {
+    width: 18px;
+    height: 18px;
   }
 }
 

@@ -28,6 +28,8 @@ export interface MediaChatContent {
   base64Data?: string
   /** MIME类型（如image/png, audio/mp3） */
   mimeType?: string
+  /** 用户上传的原始文件名 */
+  uploadFileName?: string
 }
 
 /**
