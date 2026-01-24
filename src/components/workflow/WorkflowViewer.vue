@@ -42,11 +42,28 @@
 
     <!-- ComfyUI 视图 -->
     <div v-show="currentView === 'comfyui'" class="f-comfyui-view">
+      <!-- iframe 始终渲染，用于连接检测 -->
       <iframe
         ref="comfyuiFrame"
         class="f-comfyui-iframe"
+        :class="{ 'f-iframe-hidden': !isIframeConnected || isCheckingConnection }"
         :src="comfyuiUrl"
       ></iframe>
+
+      <!-- 加载中状态 -->
+      <div v-if="isCheckingConnection" class="f-comfyui-loading">
+        <div class="f-loading-spinner"></div>
+        <div class="f-loading-text">正在连接 ComfyUI 服务...</div>
+      </div>
+
+      <!-- 连接失败时显示占位符覆盖层 -->
+      <div v-else-if="!isIframeConnected" class="f-comfyui-placeholder">
+        <svg class="f-icon f-icon-xl" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/>
+        </svg>
+        <div class="f-placeholder-text">ComfyUI 工作流编辑器</div>
+        <div class="f-placeholder-hint">ComfyUI 服务连接失败，请在 JSON 视图中查看和编辑工作流</div>
+      </div>
     </div>
 
     <!-- JSON 视图 -->
@@ -98,6 +115,8 @@ interface Props {
   jsonEditError: string
   viewTogglePosition: { x: number; y: number }
   isDraggingViewToggle: boolean
+  isIframeConnected: boolean
+  isCheckingConnection: boolean
 }
 
 const props = defineProps<Props>()
@@ -260,6 +279,74 @@ defineExpose({
   width: 100%;
   height: 100%;
   border: none;
+
+  &.f-iframe-hidden {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+.f-comfyui-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #999999;
+  background: #252525;
+  z-index: 1;
+}
+
+.f-comfyui-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #252525;
+  z-index: 2;
+}
+
+.f-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #3a3a3a;
+  border-top-color: #4a9eff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.f-loading-text {
+  font-size: 14px;
+  color: #999999;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.f-placeholder-text {
+  font-size: 16px;
+  color: #cccccc;
+}
+
+.f-placeholder-hint {
+  font-size: 13px;
+  color: #777777;
+  text-align: center;
+  max-width: 400px;
 }
 
 // JSON 视图

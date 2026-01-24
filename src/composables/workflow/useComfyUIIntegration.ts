@@ -6,6 +6,10 @@ export function useComfyUIIntegration() {
   // ComfyUI iframe 引用 (需要从外部设置)
   const comfyuiFrame = ref<HTMLIFrameElement | null>(null)
 
+  // iframe 连接状态
+  const isIframeConnected = ref(false)
+  const isCheckingConnection = ref(false)
+
   // 设置 iframe 引用的方法
   function setComfyuiFrame(iframe: HTMLIFrameElement | null): void {
     comfyuiFrame.value = iframe
@@ -25,10 +29,142 @@ export function useComfyUIIntegration() {
   const dragStartPos = ref({ x: 0, y: 0 })
   const dragStartTogglePos = ref({ x: 0, y: 0 })
 
+  // 等待 iframe 加载完成
+  function waitForIframeLoad(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!comfyuiFrame.value) {
+        reject(new Error('iframe 元素不存在'))
+        return
+      }
+
+      // 检查当前 location 是否已经是目标 URL（不是 about:blank）
+      try {
+        const currentLocation = comfyuiFrame.value.contentWindow?.location.href
+        if (currentLocation && currentLocation !== 'about:blank' &&
+            comfyuiFrame.value.contentDocument?.readyState === 'complete') {
+          console.log('[ComfyUI Integration] iframe 已经加载完成:', currentLocation)
+          resolve()
+          return
+        }
+      } catch (e) {
+        // 跨域情况下无法访问 location，继续等待 load 事件
+      }
+
+      // 监听 load 事件
+      const handleLoad = () => {
+        console.log('[ComfyUI Integration] iframe load 事件触发')
+        resolve()
+      }
+
+      const handleError = () => {
+        console.error('[ComfyUI Integration] iframe 加载失败')
+        reject(new Error('iframe 加载失败'))
+      }
+
+      comfyuiFrame.value.addEventListener('load', handleLoad, { once: true })
+      comfyuiFrame.value.addEventListener('error', handleError, { once: true })
+
+      // 设置超时（15秒）
+      setTimeout(() => {
+        comfyuiFrame.value?.removeEventListener('load', handleLoad)
+        comfyuiFrame.value?.removeEventListener('error', handleError)
+        reject(new Error('iframe 加载超时'))
+      }, 15000)
+    })
+  }
+
+  // 检测 iframe 连接状态
+  async function checkIframeConnection(): Promise<boolean> {
+    if (!comfyuiFrame.value?.contentWindow) {
+      console.error('[ComfyUI Integration] iframe 元素或 contentWindow 不存在')
+      isIframeConnected.value = false
+      return false
+    }
+
+    isCheckingConnection.value = true
+
+    try {
+      // 等待 iframe 加载完成
+      console.log('[ComfyUI Integration] 等待 iframe 加载完成...')
+      await waitForIframeLoad()
+
+      // 额外等待 1000ms 确保 iframe 内部脚本初始化完成
+      console.log('[ComfyUI Integration] 等待 ComfyUI 初始化...')
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // 检测是否能访问 iframe 的 contentWindow（说明同源且可通信）
+      try {
+        // 尝试访问 iframe 的 location（如果跨域会抛出错误）
+        const iframeLocation = comfyuiFrame.value.contentWindow.location.href
+        console.log('[ComfyUI Integration] iframe location:', iframeLocation)
+
+        // 如果能访问到 location，说明连接成功
+        isIframeConnected.value = true
+        console.log('[ComfyUI Integration] ✅ iframe 连接成功（同源检测通过）')
+        return true
+      } catch (crossOriginError) {
+        // 跨域情况下，尝试通过 postMessage 通信
+        console.log('[ComfyUI Integration] 跨域环境，尝试 postMessage 通信...')
+
+        // 发送测试消息并等待任何响应
+        const connected = await new Promise<boolean>((resolve) => {
+          let resolved = false
+          const timeout = setTimeout(() => {
+            if (!resolved) {
+              resolved = true
+              window.removeEventListener('message', messageHandler)
+              resolve(false)
+            }
+          }, 3000)
+
+          const messageHandler = (event: MessageEvent) => {
+            // 检查消息是否来自 iframe
+            if (event.source === comfyuiFrame.value?.contentWindow) {
+              if (!resolved) {
+                resolved = true
+                clearTimeout(timeout)
+                window.removeEventListener('message', messageHandler)
+                console.log('[ComfyUI Integration] 收到 iframe 消息，连接成功')
+                resolve(true)
+              }
+            }
+          }
+
+          window.addEventListener('message', messageHandler)
+
+          // 发送测试消息
+          comfyuiFrame.value?.contentWindow?.postMessage(
+            { type: 'comfy-pilot:ping', timestamp: Date.now() },
+            '*'
+          )
+        })
+
+        isIframeConnected.value = connected
+        if (connected) {
+          console.log('[ComfyUI Integration] ✅ iframe 连接成功（postMessage 通信正常）')
+        } else {
+          console.error('[ComfyUI Integration] ❌ iframe 连接失败（无响应）')
+        }
+        return connected
+      }
+    } catch (error) {
+      isIframeConnected.value = false
+      console.error('[ComfyUI Integration] ❌ iframe 连接失败:', error)
+      return false
+    } finally {
+      isCheckingConnection.value = false
+    }
+  }
+
   // 切换视图
   async function switchView(view: 'comfyui' | 'json'): Promise<void> {
     const previousView = currentView.value
     currentView.value = view
+
+    // 如果 iframe 未连接,不进行同步操作
+    if (!isIframeConnected.value) {
+      return
+    }
 
     if (view === 'json' && previousView === 'comfyui') {
       // 从 ComfyUI 视图切换到 JSON 视图：获取最新内容
@@ -72,15 +208,18 @@ export function useComfyUIIntegration() {
   }
 
   // 发送消息到 ComfyUI 并等待响应
-  function sendComfyUIMessage(type: string, payload: any): Promise<any> {
+  function sendComfyUIMessage(type: string, payload: any, timeout: number = 10000): Promise<any> {
     return new Promise((resolve, reject) => {
       if (!comfyuiFrame.value?.contentWindow) {
+        console.error('[ComfyUI Integration] iframe contentWindow 不存在')
         reject(new Error('ComfyUI iframe 未就绪'))
         return
       }
 
       const requestId = `req_${Date.now()}_${Math.random()}`
       let timeoutId: number | null = null
+
+      console.log(`[ComfyUI Integration] 发送消息: ${type}, requestId: ${requestId}`)
 
       const handleMessage = (event: MessageEvent) => {
         // 安全检查：确保消息来自 iframe
@@ -92,6 +231,7 @@ export function useComfyUIIntegration() {
 
         // 只处理匹配 requestId 的响应消息
         if (resId === requestId) {
+          console.log(`[ComfyUI Integration] 收到响应: ${resType}, requestId: ${resId}`)
           window.removeEventListener('message', handleMessage)
           if (timeoutId !== null) {
             clearTimeout(timeoutId)
@@ -117,9 +257,10 @@ export function useComfyUIIntegration() {
       )
 
       timeoutId = window.setTimeout(() => {
+        console.error(`[ComfyUI Integration] 消息超时: ${type}, requestId: ${requestId}, timeout: ${timeout}ms`)
         window.removeEventListener('message', handleMessage)
-        reject(new Error('操作超时'))
-      }, 5000)
+        reject(new Error(`操作超时 (${timeout}ms)`))
+      }, timeout)
     })
   }
 
@@ -524,9 +665,12 @@ export function useComfyUIIntegration() {
     isJsonValid,
     viewTogglePosition,
     isDraggingViewToggle,
+    isIframeConnected,
+    isCheckingConnection,
 
     // 方法
     setComfyuiFrame,
+    checkIframeConnection,
     switchView,
     loadWorkflowInComfyUI,
     fetchWorkflowFromIframe,

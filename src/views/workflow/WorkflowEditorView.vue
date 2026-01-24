@@ -38,6 +38,8 @@
           :json-edit-error="jsonEditError"
           :view-toggle-position="viewTogglePosition"
           :is-dragging-view-toggle="isDraggingViewToggle"
+          :is-iframe-connected="isIframeConnected"
+          :is-checking-connection="isCheckingConnection"
           @switch-view="switchView"
           @copy-json="copyJsonToClipboard"
           @format-json="formatJson"
@@ -151,7 +153,10 @@ const {
   jsonEditError,
   viewTogglePosition,
   isDraggingViewToggle,
+  isIframeConnected,
+  isCheckingConnection,
   setComfyuiFrame,
+  checkIframeConnection,
   switchView,
   loadWorkflowInComfyUI,
   fetchWorkflowFromIframe,
@@ -285,8 +290,10 @@ async function handleSelectWorkflow(workflowId: string): Promise<void> {
     editableJsonContent.value = content
     originalContent.value = content
 
-    // 加载到 ComfyUI iframe
-    await loadWorkflowInComfyUI(content)
+    // 只有在 iframe 连接成功时才加载到 ComfyUI
+    if (isIframeConnected.value) {
+      await loadWorkflowInComfyUI(content)
+    }
 
     toast.success('工作流已加载')
   } catch (error) {
@@ -325,17 +332,19 @@ async function handleSaveWorkflow(): Promise<void> {
       return
     }
 
-    // 从 ComfyUI 获取最新内容并等待
-    await new Promise<void>((resolve) => {
-      fetchWorkflowFromIframe()
-        .then(content => {
-          pendingWorkflowContent.value = content
-          resolve()
-        })
-        .catch(() => {
-          resolve() // 即使失败也继续
-        })
-    })
+    // 只有在 iframe 连接成功时才从 ComfyUI 获取最新内容
+    if (isIframeConnected.value) {
+      await new Promise<void>((resolve) => {
+        fetchWorkflowFromIframe()
+          .then(content => {
+            pendingWorkflowContent.value = content
+            resolve()
+          })
+          .catch(() => {
+            resolve() // 即使失败也继续
+          })
+      })
+    }
 
     // 使用待保存内容或当前编辑内容
     const content = pendingWorkflowContent.value || editableJsonContent.value
@@ -404,10 +413,19 @@ onMounted(async () => {
     await nextTick()
     if (workflowViewerRef.value?.comfyuiFrame) {
       setComfyuiFrame(workflowViewerRef.value.comfyuiFrame)
-    }
 
-    // 启动定时同步
-    startAutoSync()
+      // 尝试检测 iframe 连接状态
+      console.log('[WorkflowEditor] 开始检测 ComfyUI 连接...')
+      const connected = await checkIframeConnection()
+
+      if (connected) {
+        console.log('[WorkflowEditor] ComfyUI 连接成功，启动定时同步')
+        // 启动定时同步
+        startAutoSync()
+      } else {
+        console.log('[WorkflowEditor] ComfyUI 连接失败，使用默认展示')
+      }
+    }
   } catch (error) {
     console.error('初始化失败:', error)
     toast.error('初始化失败')

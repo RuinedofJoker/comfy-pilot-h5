@@ -3,12 +3,14 @@
     v-if="visible"
     ref="chatDialog"
     class="f-chat-dialog"
-    :class="{ minimized: isMinimized, dragging: isDragging }"
+    :class="{ minimized: isMinimized, dragging: isDragging, resizing: isResizing }"
     :style="{
       left: dialogPosition.x ? `${dialogPosition.x}px` : undefined,
       top: dialogPosition.y ? `${dialogPosition.y}px` : undefined,
       right: dialogPosition.x ? 'auto' : undefined,
-      bottom: dialogPosition.y ? 'auto' : undefined
+      bottom: dialogPosition.y ? 'auto' : undefined,
+      width: `${dialogSize.width}px`,
+      height: `${dialogSize.height}px`
     }"
   >
     <div ref="chatHeader" class="f-chat-header" @mousedown="handleMouseDown">
@@ -99,6 +101,21 @@
         发送
       </button>
     </div>
+
+    <!-- 调整大小手柄 -->
+    <div v-show="!isMinimized" class="f-resize-handles">
+      <!-- 四个角 -->
+      <div class="f-resize-handle f-resize-nw" @mousedown="handleResizeStart($event, 'nw')"></div>
+      <div class="f-resize-handle f-resize-ne" @mousedown="handleResizeStart($event, 'ne')"></div>
+      <div class="f-resize-handle f-resize-sw" @mousedown="handleResizeStart($event, 'sw')"></div>
+      <div class="f-resize-handle f-resize-se" @mousedown="handleResizeStart($event, 'se')"></div>
+
+      <!-- 四条边 -->
+      <div class="f-resize-handle f-resize-n" @mousedown="handleResizeStart($event, 'n')"></div>
+      <div class="f-resize-handle f-resize-s" @mousedown="handleResizeStart($event, 's')"></div>
+      <div class="f-resize-handle f-resize-w" @mousedown="handleResizeStart($event, 'w')"></div>
+      <div class="f-resize-handle f-resize-e" @mousedown="handleResizeStart($event, 'e')"></div>
+    </div>
   </div>
 </template>
 
@@ -149,6 +166,20 @@ let wsManager: AgentWebSocketManager | null = null
 const isDragging = ref(false)
 const dragOffset = ref({ x: 0, y: 0 })
 const dialogPosition = ref({ x: 0, y: 0 })
+
+// 调整大小相关状态
+const isResizing = ref(false)
+const resizeDirection = ref<string>('')
+const dialogSize = ref({ width: 380, height: 520 })
+const resizeStartPos = ref({ x: 0, y: 0 })
+const resizeStartSize = ref({ width: 0, height: 0 })
+const resizeStartPosition = ref({ x: 0, y: 0 })
+
+// 最小和最大尺寸限制
+const MIN_WIDTH = 300
+const MIN_HEIGHT = 400
+const MAX_WIDTH = 800
+const MAX_HEIGHT = 800
 
 /**
  * 初始化 WebSocket 连接
@@ -409,6 +440,12 @@ function handleMouseDown(event: MouseEvent): void {
 
 // 拖动中
 function handleMouseMove(event: MouseEvent): void {
+  // 优先处理调整大小
+  if (isResizing.value) {
+    handleResizeMove(event)
+    return
+  }
+
   if (!isDragging.value || !chatDialog.value) return
 
   const x = event.clientX - dragOffset.value.x
@@ -427,6 +464,80 @@ function handleMouseMove(event: MouseEvent): void {
 // 拖动结束
 function handleMouseUp(): void {
   isDragging.value = false
+  handleResizeEnd()
+}
+
+// 调整大小开始
+function handleResizeStart(event: MouseEvent, direction: string): void {
+  event.stopPropagation()
+  isResizing.value = true
+  resizeDirection.value = direction
+  resizeStartPos.value = { x: event.clientX, y: event.clientY }
+  resizeStartSize.value = { ...dialogSize.value }
+  resizeStartPosition.value = { ...dialogPosition.value }
+}
+
+// 调整大小中
+function handleResizeMove(event: MouseEvent): void {
+  if (!isResizing.value || !chatDialog.value) return
+
+  const deltaX = event.clientX - resizeStartPos.value.x
+  const deltaY = event.clientY - resizeStartPos.value.y
+  const direction = resizeDirection.value
+
+  let newWidth = resizeStartSize.value.width
+  let newHeight = resizeStartSize.value.height
+  let newX = resizeStartPosition.value.x
+  let newY = resizeStartPosition.value.y
+
+  // 根据方向调整尺寸和位置
+  if (direction.includes('e')) {
+    newWidth = resizeStartSize.value.width + deltaX
+  }
+  if (direction.includes('w')) {
+    newWidth = resizeStartSize.value.width - deltaX
+    newX = resizeStartPosition.value.x + deltaX
+  }
+  if (direction.includes('s')) {
+    newHeight = resizeStartSize.value.height + deltaY
+  }
+  if (direction.includes('n')) {
+    newHeight = resizeStartSize.value.height - deltaY
+    newY = resizeStartPosition.value.y + deltaY
+  }
+
+  // 应用尺寸限制
+  newWidth = Math.max(MIN_WIDTH, Math.min(newWidth, MAX_WIDTH))
+  newHeight = Math.max(MIN_HEIGHT, Math.min(newHeight, MAX_HEIGHT))
+
+  // 更新尺寸
+  dialogSize.value = { width: newWidth, height: newHeight }
+
+  // 如果是从左边或上边调整,需要更新位置
+  if (direction.includes('w') || direction.includes('n')) {
+    // 计算实际的尺寸变化
+    const actualWidthChange = newWidth - resizeStartSize.value.width
+    const actualHeightChange = newHeight - resizeStartSize.value.height
+
+    if (direction.includes('w')) {
+      newX = resizeStartPosition.value.x - actualWidthChange
+    }
+    if (direction.includes('n')) {
+      newY = resizeStartPosition.value.y - actualHeightChange
+    }
+
+    // 限制在视口范围内
+    newX = Math.max(0, Math.min(newX, window.innerWidth - newWidth))
+    newY = Math.max(0, Math.min(newY, window.innerHeight - newHeight))
+
+    dialogPosition.value = { x: newX, y: newY }
+  }
+}
+
+// 调整大小结束
+function handleResizeEnd(): void {
+  isResizing.value = false
+  resizeDirection.value = ''
 }
 
 // 监听 sessionCode 变化，切换 WebSocket 连接
@@ -481,6 +592,11 @@ onUnmounted(() => {
   &.dragging {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
     cursor: move;
+  }
+
+  &.resizing {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+    user-select: none;
   }
 }
 
@@ -789,5 +905,88 @@ onUnmounted(() => {
     color: #777777;
     cursor: not-allowed;
   }
+}
+
+// 调整大小手柄容器
+.f-resize-handles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+// 调整大小手柄基础样式
+.f-resize-handle {
+  position: absolute;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+// 四个角的手柄 (8x8 像素)
+.f-resize-nw {
+  top: -4px;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  cursor: nw-resize;
+}
+
+.f-resize-ne {
+  top: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  cursor: ne-resize;
+}
+
+.f-resize-sw {
+  bottom: -4px;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  cursor: sw-resize;
+}
+
+.f-resize-se {
+  bottom: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  cursor: se-resize;
+}
+
+// 四条边的手柄 (4 像素宽度)
+.f-resize-n {
+  top: -2px;
+  left: 8px;
+  right: 8px;
+  height: 4px;
+  cursor: n-resize;
+}
+
+.f-resize-s {
+  bottom: -2px;
+  left: 8px;
+  right: 8px;
+  height: 4px;
+  cursor: s-resize;
+}
+
+.f-resize-w {
+  left: -2px;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  cursor: w-resize;
+}
+
+.f-resize-e {
+  right: -2px;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  cursor: e-resize;
 }
 </style>
