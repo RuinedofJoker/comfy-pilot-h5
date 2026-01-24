@@ -4,9 +4,7 @@
 import request from './http'
 import type {
   AgentConfig,
-  AgentRuntimeConfig,
-  AgentExecutionRequest,
-  AgentExecutionResponse
+  AgentRuntimeConfig
 } from '@/types/agent'
 
 /**
@@ -65,12 +63,5 @@ export const agentRuntimeApi = {
    */
   getAgentByCode: (agentCode: string): Promise<AgentRuntimeConfig> => {
     return request.get(`/api/v1/agents/runtime/code/${agentCode}`)
-  },
-
-  /**
-   * 执行 Agent
-   */
-  executeAgent: (agentCode: string, params: AgentExecutionRequest): Promise<AgentExecutionResponse> => {
-    return request.post(`/api/v1/agents/${agentCode}/execute`, params)
   }
 }

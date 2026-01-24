@@ -2,6 +2,8 @@
  * 会话相关类型定义（与后端 API 对应）
  */
 
+import type { PersistableChatMessage } from './chat-message'
+
 /**
  * 会话状态
  */
@@ -49,6 +51,9 @@ export interface ChatMessage {
   sessionId: string
   role: MessageRole
   content: string
+  chatContent?: string
+  /** chatContent 反序列化后的结果 */
+  chatData?: PersistableChatMessage
   metadata?: Record<string, any>
 }
 
@@ -69,13 +74,4 @@ export interface UpdateSessionRequest {
   title?: string
   agentCode?: string
   agentConfig?: string
-}
-
-/**
- * 发送消息请求
- */
-export interface SendMessageRequest {
-  sessionCode: string
-  content: string
-  agentCode?: string
 }

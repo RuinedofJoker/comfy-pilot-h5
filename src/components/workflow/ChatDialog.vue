@@ -53,12 +53,16 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import type { ChatMessage } from '@/types/session'
+import { AgentWebSocketManager } from '@/utils/websocket'
+import { useAuthStore } from '@/stores/auth'
+import { AGENT_PROMPT_DEFAULT_MESSAGES } from '@/types/websocket'
 
 // Props
 interface Props {
   visible: boolean
   isMinimized: boolean
   sessionTitle: string | null
+  sessionCode: string | null
   messages: ChatMessage[]
 }
 
@@ -71,16 +75,75 @@ const emit = defineEmits<{
   'send-message': [content: string]
 }>()
 
+// Auth Store
+const authStore = useAuthStore()
+
 // 本地状态
 const inputValue = ref('')
 const chatMessages = ref<HTMLDivElement | null>(null)
 const chatDialog = ref<HTMLDivElement | null>(null)
 const chatHeader = ref<HTMLDivElement | null>(null)
 
+// WebSocket 管理器
+let wsManager: AgentWebSocketManager | null = null
+
 // 拖动相关状态
 const isDragging = ref(false)
 const dragOffset = ref({ x: 0, y: 0 })
 const dialogPosition = ref({ x: 0, y: 0 })
+
+/**
+ * 初始化 WebSocket 连接
+ */
+function initWebSocket(sessionCode: string): void {
+  // 先关闭旧连接
+  disconnectWebSocket()
+
+  const token = authStore.token
+  if (!token) {
+    console.error('[ChatDialog] 无法建立 WebSocket 连接：未找到 token')
+    return
+  }
+
+  console.log(`[ChatDialog] 初始化 WebSocket 连接: ${sessionCode}`)
+  wsManager = new AgentWebSocketManager(sessionCode, token)
+
+  // 注册事件回调
+  wsManager.on('prompt', (data) => {
+    const message = data.message || AGENT_PROMPT_DEFAULT_MESSAGES[data.promptType]
+    console.log('[ChatDialog] Agent 提示:', message)
+  })
+
+  wsManager.on('stream', (content) => {
+    console.log('[ChatDialog] Agent 流式输出:', content)
+  })
+
+  wsManager.on('complete', () => {
+    console.log('[ChatDialog] Agent 完成')
+  })
+
+  wsManager.on('toolRequest', async (data) => {
+    console.log('[ChatDialog] 工具调用请求:', data)
+  })
+
+  wsManager.on('error', (error) => {
+    console.error('[ChatDialog] WebSocket 错误:', error)
+  })
+
+  // 建立连接
+  wsManager.connect()
+}
+
+/**
+ * 断开 WebSocket 连接
+ */
+function disconnectWebSocket(): void {
+  if (wsManager) {
+    console.log('[ChatDialog] 断开 WebSocket 连接')
+    wsManager.disconnect()
+    wsManager = null
+  }
+}
 
 // 发送消息
 function handleSend(): void {
@@ -143,15 +206,31 @@ function handleMouseUp(): void {
   isDragging.value = false
 }
 
+// 监听 sessionCode 变化，切换 WebSocket 连接
+watch(() => props.sessionCode, (newSessionCode, oldSessionCode) => {
+  if (newSessionCode && newSessionCode !== oldSessionCode) {
+    console.log(`[ChatDialog] 会话切换: ${oldSessionCode} -> ${newSessionCode}`)
+    initWebSocket(newSessionCode)
+  }
+})
+
 // 生命周期
 onMounted(() => {
   document.addEventListener('mousemove', handleMouseMove)
   document.addEventListener('mouseup', handleMouseUp)
+
+  // 如果有 sessionCode，建立 WebSocket 连接
+  if (props.sessionCode) {
+    initWebSocket(props.sessionCode)
+  }
 })
 
 onUnmounted(() => {
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
+
+  // 断开 WebSocket 连接
+  disconnectWebSocket()
 })
 </script>
 

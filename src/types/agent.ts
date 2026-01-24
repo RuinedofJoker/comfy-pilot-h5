@@ -119,37 +119,3 @@ export interface AgentRuntimeConfig {
   /** Agent 运行时配置定义 */
   agentConfigDefinitions?: AgentConfigDefinition[]
 }
-
-/**
- * Agent 执行请求
- */
-export interface AgentExecutionRequest {
-  /** 会话ID */
-  sessionId?: string
-  /** 用户输入内容 */
-  input: string
-  /** 用户ID */
-  userId?: string
-  /** 是否流式执行 */
-  isStreamable?: boolean
-  /** Agent配置(JSON格式) */
-  agentConfig?: string
-}
-
-/**
- * Agent 执行响应
- */
-export interface AgentExecutionResponse {
-  /** 执行日志ID */
-  logId: string
-  /** Agent输出内容 */
-  output: string
-  /** 执行状态 */
-  status: string
-  /** 错误信息 */
-  errorMessage?: string
-  /** 执行耗时(毫秒) */
-  executionTimeMs: number
-  /** 执行开始时间戳(毫秒) */
-  executionStartMs: number
-}

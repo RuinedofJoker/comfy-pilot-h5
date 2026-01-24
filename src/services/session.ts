@@ -6,11 +6,8 @@ import type {
   ChatSession,
   ChatMessage,
   CreateSessionRequest,
-  UpdateSessionRequest,
-  SendMessageRequest
+  UpdateSessionRequest
 } from '@/types/session'
-import { agentRuntimeApi } from './agent'
-import type { AgentExecutionRequest } from '@/types/agent'
 
 /**
  * 创建会话
@@ -56,51 +53,4 @@ export function getSessionMessages(sessionCode: string): Promise<ChatMessage[]> 
  */
 export function archiveSession(sessionCode: string): Promise<void> {
   return http.post(`/api/v1/sessions/${sessionCode}/archive`)
-}
-
-/**
- * 发送消息到会话（通过 Agent 执行）
- * @param sessionCode 会话编码
- * @param content 消息内容
- * @param agentCode Agent 编码（可选，默认使用会话关联的 Agent）
- * @returns AI 助手的回复消息
- */
-export async function sendMessage(
-  sessionCode: string,
-  content: string,
-  agentCode?: string
-): Promise<ChatMessage> {
-  // 如果没有指定 agentCode，先获取会话信息以获取关联的 Agent
-  let targetAgentCode = agentCode
-  if (!targetAgentCode) {
-    const session = await getSessionByCode(sessionCode)
-    targetAgentCode = session.agentId
-  }
-
-  // 构建 Agent 执行请求
-  const executionRequest: AgentExecutionRequest = {
-    sessionId: sessionCode,
-    input: content,
-    isStreamable: false
-  }
-
-  // 执行 Agent
-  const response = await agentRuntimeApi.executeAgent(targetAgentCode, executionRequest)
-
-  // 将 Agent 响应转换为 ChatMessage 格式
-  const assistantMessage: ChatMessage = {
-    id: response.logId,
-    createTime: new Date(response.executionStartMs).toISOString(),
-    updateTime: new Date(response.executionStartMs + response.executionTimeMs).toISOString(),
-    sessionId: sessionCode,
-    role: 'ASSISTANT',
-    content: response.output,
-    metadata: {
-      status: response.status,
-      errorMessage: response.errorMessage,
-      executionTimeMs: response.executionTimeMs
-    }
-  }
-
-  return assistantMessage
 }

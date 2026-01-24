@@ -52,6 +52,7 @@
           :visible="isChatVisible"
           :is-minimized="isChatMinimized"
           :session-title="currentSession?.title || null"
+          :session-code="currentSessionCode"
           :messages="messages"
           @toggle-minimize="toggleMinimize"
           @close="handleCloseChat"
