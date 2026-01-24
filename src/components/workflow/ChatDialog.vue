@@ -10,7 +10,7 @@
       right: dialogPosition.x ? 'auto' : undefined,
       bottom: dialogPosition.y ? 'auto' : undefined,
       width: `${dialogSize.width}px`,
-      height: `${dialogSize.height}px`
+      height: isMinimized ? '48px' : `${dialogSize.height}px`
     }"
   >
     <div ref="chatHeader" class="f-chat-header" @mousedown="handleMouseDown">
