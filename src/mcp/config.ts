@@ -13,7 +13,8 @@ const DEFAULT_VERSION = '1.0.0'
 const DEFAULT_CONFIG: McpConfig = {
   version: DEFAULT_VERSION,
   toolSets: [],
-  externalServers: []
+  externalServers: [],
+  globalExecutionPolicy: 'ask-every-time'
 }
 
 /**
@@ -245,6 +246,26 @@ export class McpConfigManager {
     return (config.externalServers || [])
       .filter(s => s.enabled)
       .map(s => s.id)
+  }
+
+  // ==================== 全局执行策略管理 ====================
+
+  /**
+   * 获取全局执行策略
+   */
+  getGlobalExecutionPolicy(): ToolExecutionPolicy {
+    const config = this.loadConfig()
+    return config.globalExecutionPolicy ?? 'ask-every-time'
+  }
+
+  /**
+   * 设置全局执行策略
+   */
+  setGlobalExecutionPolicy(policy: ToolExecutionPolicy): void {
+    const config = this.loadConfig()
+    config.globalExecutionPolicy = policy
+    this.saveConfig(config)
+    console.log('[MCP Config] 全局执行策略已更新:', policy)
   }
 }
 

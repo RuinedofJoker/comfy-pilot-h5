@@ -97,24 +97,44 @@ export class ExternalMcpToolSet implements McpToolSet {
     const { url, auth } = this.serverConfig
 
     // 构建请求头
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    }
+    const customHeaders: Record<string, string> = {}
 
     // 添加认证信息
     if (auth) {
       if (auth.type === 'bearer' && auth.token) {
-        headers['Authorization'] = `Bearer ${auth.token}`
+        customHeaders['Authorization'] = `Bearer ${auth.token}`
       } else if (auth.type === 'api-key' && auth.token) {
-        headers['X-API-Key'] = auth.token
+        customHeaders['X-API-Key'] = auth.token
       }
     }
 
     // 根据传输协议创建传输层
     if (this.serverConfig.transport === 'sse' || this.serverConfig.transport === 'http') {
-      return new SSEClientTransport(new URL(url), {
-        headers
-      })
+      // 如果有自定义请求头，使用自定义 fetch 函数注入
+      const options: any = {}
+
+      if (Object.keys(customHeaders).length > 0) {
+        // 创建自定义 fetch 函数，注入认证请求头
+        options.fetch = async (url: string | URL, init: any) => {
+          const mergedHeaders = {
+            ...init.headers,
+            ...customHeaders
+          }
+          return fetch(url, {
+            ...init,
+            headers: mergedHeaders
+          })
+        }
+      }
+
+      // requestInit 用于自定义 POST 请求（发送消息）
+      if (Object.keys(customHeaders).length > 0) {
+        options.requestInit = {
+          headers: customHeaders
+        }
+      }
+
+      return new SSEClientTransport(new URL(url), options)
     }
 
     throw new Error(`不支持的传输协议: ${this.serverConfig.transport}`)

@@ -131,6 +131,7 @@ import { uploadFile } from '@/services/file'
 import * as FileContentUtil from '@/utils/file-content'
 import { toast } from '@/utils/toast'
 import { mcpToolRegistry, mcpConfigManager } from '@/mcp'
+import type { ToolExecutionPolicy } from '@/mcp/types'
 
 // Props
 interface Props {
@@ -282,9 +283,16 @@ async function handleClientToolCall(
     return
   }
 
-  // 获取工具集配置
-  const config = mcpConfigManager.getToolSetConfig(toolSet.id)
-  const executionPolicy = config?.executionPolicy || 'ask-every-time'
+  // 获取执行策略
+  let executionPolicy: ToolExecutionPolicy
+  if (toolSet.type === 'external-mcp') {
+    // 外部 MCP 工具集使用全局执行策略
+    executionPolicy = mcpConfigManager.getGlobalExecutionPolicy()
+  } else {
+    // 内置工具集使用各自的执行策略
+    const config = mcpConfigManager.getToolSetConfig(toolSet.id)
+    executionPolicy = config?.executionPolicy || 'ask-every-time'
+  }
 
   // 根据执行策略决定是否需要用户确认
   let isAllow = false

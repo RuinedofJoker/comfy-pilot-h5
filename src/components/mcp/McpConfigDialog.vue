@@ -28,7 +28,7 @@
                 :checked="executionPolicy === 'ask-every-time'"
               />
               <div class="f-radio-content">
-                <div class="f-radio-title">每次询问（推荐）</div>
+                <div class="f-radio-title">每次询问</div>
                 <div class="f-radio-desc">执行工具前需要用户确认，更安全</div>
               </div>
             </label>
@@ -137,16 +137,7 @@ const executionPolicy = ref<ToolExecutionPolicy>('ask-every-time')
 
 // 示例配置
 const exampleConfig = `{
-  "mcpServers": {
-    "amap-test": {
-      "url": "https://mcp.amap.com/sse",
-      "disabled": false,
-      "timeout": 60,
-      "type": "sse",
-      "headers": {
-        "Authorization": "Bearer your-token"
-      }
-    }
+  "mcpServers": {}
   }
 }`
 
@@ -154,18 +145,15 @@ const exampleConfig = `{
 function initConfig(): void {
   const servers = mcpConfigManager.getAllExternalServers()
 
+  // 获取全局执行策略
+  executionPolicy.value = mcpConfigManager.getGlobalExecutionPolicy()
+
   if (servers.length === 0) {
     // 如果没有配置，使用示例配置
     configJson.value = exampleConfig
-    executionPolicy.value = 'ask-every-time'
   } else {
     // 转换现有配置为用户格式
     const mcpServers: Record<string, any> = {}
-
-    // 获取第一个服务器的执行策略作为全局策略
-    if (servers.length > 0) {
-      executionPolicy.value = servers[0].executionPolicy
-    }
 
     servers.forEach(server => {
       mcpServers[server.id] = {
@@ -270,12 +258,15 @@ async function handleSave(): Promise<void> {
       return
     }
 
+    // 保存全局执行策略
+    mcpConfigManager.setGlobalExecutionPolicy(executionPolicy.value)
+
     // 清空现有的外部服务器配置
     const existingServers = mcpConfigManager.getAllExternalServers()
     existingServers.forEach(server => {
       mcpConfigManager.removeExternalServer(server.id)
-      // 从注册表中移除
-      mcpToolRegistry.unregister(server.id)
+      // 从注册表中注销工具集
+      mcpToolRegistry.unregisterToolSet(server.id)
     })
 
     // 保存新配置

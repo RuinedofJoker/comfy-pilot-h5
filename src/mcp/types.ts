@@ -92,6 +92,8 @@ export interface McpConfig {
   toolSets: McpToolSetConfig[]
   /** 外部 MCP 服务器配置列表 */
   externalServers: McpServerConfig[]
+  /** 全局工具执行策略（用于所有外部 MCP 服务器） */
+  globalExecutionPolicy?: ToolExecutionPolicy
 }
 
 /**
