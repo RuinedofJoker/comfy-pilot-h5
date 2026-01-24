@@ -611,6 +611,9 @@ export function useComfyUIIntegration() {
     document.removeEventListener('mouseup', handleViewToggleMouseUp)
   }
 
+  // 防抖定时器
+  let workflowUpdateDebounceTimer: number | null = null
+
   // 监听来自 ComfyUI 的推送消息（不需要 requestId 的消息）
   function handleComfyUIMessage(event: MessageEvent): void {
     // 安全检查：确保消息来自 iframe
@@ -632,9 +635,16 @@ export function useComfyUIIntegration() {
       case 'comfy-pilot:workflow-graph-changed':
         // ComfyUI 中工作流图发生变化（推送消息）
         if (payload && currentView.value === 'comfyui') {
-          // 只在 ComfyUI 视图时更新内容
-          editableJsonContent.value = JSON.stringify(payload, null, 2)
-          console.log('[ComfyUI Integration] 工作流图已更新')
+          // 使用防抖处理，避免短时间内的重复更新
+          if (workflowUpdateDebounceTimer !== null) {
+            clearTimeout(workflowUpdateDebounceTimer)
+          }
+
+          workflowUpdateDebounceTimer = window.setTimeout(() => {
+            // 只在 ComfyUI 视图时更新内容
+            editableJsonContent.value = JSON.stringify(payload, null, 2)
+            workflowUpdateDebounceTimer = null
+          }, 100) // 100ms 防抖延迟
         }
         break
 

@@ -247,7 +247,6 @@ watch(
   (newContent, oldContent) => {
     // 如果正在应用历史记录，不推入新记录
     if (isApplyingHistory.value) {
-      // console.log('[WorkflowEditor] 正在应用历史记录，跳过推入')
       return
     }
 
@@ -281,7 +280,6 @@ watch(
     if (hasChanges && newContent) {
       // 推入新内容到历史栈（而不是旧内容）
       pushHistory(newContent)
-      // console.log('[WorkflowEditor] 检测到工作流变化，推入历史记录')
     }
   }
 )
