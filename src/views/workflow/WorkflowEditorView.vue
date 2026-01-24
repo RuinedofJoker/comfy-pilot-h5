@@ -24,9 +24,13 @@
           :service-name="currentService?.serverName || null"
           :is-service-available="isServiceAvailable"
           :has-unsaved-changes="hasUnsavedChanges"
+          :can-undo="canUndo"
+          :can-redo="canRedo"
           @create-workflow="showCreateModal = true"
           @select-workflow="handleSelectWorkflow"
           @save-workflow="handleSaveWorkflow"
+          @undo="handleUndo"
+          @redo="handleRedo"
         />
 
         <!-- ComfyUI 容器和视图 -->
@@ -90,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from '@/utils/toast'
 import { compareWorkflowContent } from '@/utils/workflow-compare'
@@ -109,6 +113,7 @@ import McpConfigDialog from '@/components/mcp/McpConfigDialog.vue'
 import { useSessionManagement } from '@/composables/workflow/useSessionManagement'
 import { useChatDialog } from '@/composables/workflow/useChatDialog'
 import { useComfyUIIntegration } from '@/composables/workflow/useComfyUIIntegration'
+import { useWorkflowHistory } from '@/composables/workflow/useWorkflowHistory'
 
 // Store 导入
 import { useWorkflowStore } from '@/stores/workflow'
@@ -133,6 +138,7 @@ const serviceId = route.params.serviceId as string
 const sessionManagement = useSessionManagement(serviceId)
 const chatDialog = useChatDialog()
 const comfyUIIntegration = useComfyUIIntegration()
+const workflowHistory = useWorkflowHistory()
 
 // 从 sessionManagement 解构状态和方法
 const {
@@ -175,6 +181,17 @@ const {
   handleJsonValidate,
   handleViewToggleMouseDown
 } = comfyUIIntegration
+
+// 从 workflowHistory 解构状态和方法
+const {
+  canUndo,
+  canRedo,
+  isApplyingHistory,
+  pushHistory,
+  undo,
+  redo,
+  resetHistory
+} = workflowHistory
 
 // 本地状态
 const showCreateModal = ref(false)
@@ -223,6 +240,51 @@ const comfyuiUrl = computed(() => {
   if (!currentService.value) return ''
   return currentService.value.baseUrl
 })
+
+// 监听工作流内容变化，推入历史记录
+watch(
+  () => editableJsonContent.value,
+  (newContent, oldContent) => {
+    // 如果正在应用历史记录，不推入新记录
+    if (isApplyingHistory.value) {
+      // console.log('[WorkflowEditor] 正在应用历史记录，跳过推入')
+      return
+    }
+
+    // 如果没有当前工作流，不推入历史记录
+    if (!currentWorkflow.value) {
+      return
+    }
+
+    // 如果新旧内容相同，不推入历史记录
+    if (newContent === oldContent) {
+      return
+    }
+
+    // 检查是否有实质性变化（使用与 hasUnsavedChanges 相同的比较逻辑）
+    const shouldIgnorePath = (path: string[]): boolean => {
+      if (path.length >= 3 && path[0] === 'extra' && path[1] === 'ds' && path[2] === 'offset') {
+        return true
+      }
+      if (path.length >= 3 && path[0] === 'extra' && path[1] === 'ds' && path[2] === 'scale') {
+        return true
+      }
+      if (path.length >= 4 && path[0] === 'nodes' && path[2] === 'properties' && path[3] === 'Node name for S&R') {
+        return true
+      }
+      return false
+    }
+
+    // 只有当内容与原始内容不同时才推入历史记录
+    const hasChanges = !compareWorkflowContent(newContent, originalContent.value, shouldIgnorePath)
+
+    if (hasChanges && newContent) {
+      // 推入新内容到历史栈（而不是旧内容）
+      pushHistory(newContent)
+      // console.log('[WorkflowEditor] 检测到工作流变化，推入历史记录')
+    }
+  }
+)
 
 // 会话相关方法
 async function handleSelectSession(sessionCode: string): Promise<void> {
@@ -320,6 +382,12 @@ async function handleSelectWorkflow(workflowId: string): Promise<void> {
     editableJsonContent.value = content
     originalContent.value = content
 
+    // 切换工作流时重置历史记录
+    resetHistory()
+
+    // 将初始内容推入历史栈
+    pushHistory(content)
+
     // 只有在 iframe 连接成功时才加载到 ComfyUI
     if (isIframeConnected.value) {
       await loadWorkflowInComfyUI(content)
@@ -390,10 +458,81 @@ async function handleSaveWorkflow(): Promise<void> {
     editableJsonContent.value = content
     pendingWorkflowContent.value = content
 
+    // 保存后不重置历史记录，只更新 originalContent
+    // 用户仍然可以撤销到保存之前的状态
+
     toast.success('工作流已保存')
   } catch (error) {
     console.error('保存工作流失败:', error)
     toast.error('保存工作流失败')
+  }
+}
+
+// 撤销操作
+async function handleUndo(): Promise<void> {
+  const previousContent = undo()
+
+  if (previousContent === null) {
+    console.warn('[WorkflowEditor] 撤销失败：无法获取历史内容')
+    return
+  }
+
+  // 在 nextTick 之后更新内容，确保 isApplyingHistory 标志已经设置
+  await nextTick()
+
+  // 更新编辑器内容
+  editableJsonContent.value = previousContent
+
+  // 如果 iframe 连接成功，直接设置工作流内容（不创建新标签页）
+  if (isIframeConnected.value && comfyUIIntegration.comfyuiFrame.value?.contentWindow) {
+    try {
+      const workflowData = JSON.parse(previousContent)
+      // 直接发送 set-workflow 消息，不创建新标签页
+      comfyUIIntegration.comfyuiFrame.value.contentWindow.postMessage(
+        {
+          type: 'comfy-pilot:set-workflow',
+          payload: workflowData,
+          requestId: `undo_${Date.now()}_${Math.random()}`
+        },
+        '*'
+      )
+    } catch (error) {
+      console.error('同步撤销内容到 ComfyUI 失败:', error)
+    }
+  }
+}
+
+// 回退撤销操作
+async function handleRedo(): Promise<void> {
+  const nextContent = redo()
+
+  if (nextContent === null) {
+    console.warn('[WorkflowEditor] 回退撤销失败：无法获取历史内容')
+    return
+  }
+
+  // 在 nextTick 之后更新内容，确保 isApplyingHistory 标志已经设置
+  await nextTick()
+
+  // 更新编辑器内容
+  editableJsonContent.value = nextContent
+
+  // 如果 iframe 连接成功，直接设置工作流内容（不创建新标签页）
+  if (isIframeConnected.value && comfyUIIntegration.comfyuiFrame.value?.contentWindow) {
+    try {
+      const workflowData = JSON.parse(nextContent)
+      // 直接发送 set-workflow 消息，不创建新标签页
+      comfyUIIntegration.comfyuiFrame.value.contentWindow.postMessage(
+        {
+          type: 'comfy-pilot:set-workflow',
+          payload: workflowData,
+          requestId: `redo_${Date.now()}_${Math.random()}`
+        },
+        '*'
+      )
+    } catch (error) {
+      console.error('同步回退撤销内容到 ComfyUI 失败:', error)
+    }
   }
 }
 

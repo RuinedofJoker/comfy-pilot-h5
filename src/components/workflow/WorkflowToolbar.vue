@@ -61,6 +61,32 @@
         <span>{{ hasUnsavedChanges ? '有未保存的修改' : '已保存' }}</span>
       </div>
 
+      <!-- 撤销按钮 -->
+      <button
+        class="f-toolbar-btn"
+        :disabled="!canUndo"
+        @click="$emit('undo')"
+        title="撤销"
+      >
+        <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+        </svg>
+        <span>撤销</span>
+      </button>
+
+      <!-- 回退撤销按钮 -->
+      <button
+        class="f-toolbar-btn"
+        :disabled="!canRedo"
+        @click="$emit('redo')"
+        title="回退撤销"
+      >
+        <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/>
+        </svg>
+        <span>回退撤销</span>
+      </button>
+
       <button class="f-toolbar-btn primary" :disabled="!hasUnsavedChanges" @click="$emit('save-workflow')">
         <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
           <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
@@ -83,6 +109,8 @@ interface Props {
   serviceName: string | null
   isServiceAvailable: boolean
   hasUnsavedChanges: boolean
+  canUndo: boolean
+  canRedo: boolean
 }
 
 defineProps<Props>()
@@ -92,6 +120,8 @@ const emit = defineEmits<{
   'create-workflow': []
   'select-workflow': [workflowId: string]
   'save-workflow': []
+  'undo': []
+  'redo': []
 }>()
 
 // 本地状态
