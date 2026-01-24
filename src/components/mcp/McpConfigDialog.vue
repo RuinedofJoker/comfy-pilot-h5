@@ -138,7 +138,6 @@ const executionPolicy = ref<ToolExecutionPolicy>('ask-every-time')
 // 示例配置
 const exampleConfig = `{
   "mcpServers": {}
-  }
 }`
 
 // 初始化配置
