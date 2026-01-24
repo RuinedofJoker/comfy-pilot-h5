@@ -56,9 +56,9 @@
           :session-title="currentSession?.title || null"
           :session-code="currentSessionCode"
           :messages="messages"
+          :workflow-content="editableJsonContent"
           @toggle-minimize="toggleMinimize"
           @close="handleCloseChat"
-          @send-message="handleSendMessage"
         />
       </div>
     </div>
@@ -142,8 +142,7 @@ const {
   isChatMinimized,
   toggleMinimize,
   showChat,
-  hideChat,
-  handleSendMessage: sendMessageToChat
+  hideChat
 } = chatDialog
 
 // 从 comfyUIIntegration 解构状态和方法
@@ -261,15 +260,6 @@ async function handleConfirmSession(data: { title?: string; agentCode: string; a
 
 function handleGoBack(): void {
   router.push('/services')
-}
-
-// 消息发送包装函数
-async function handleSendMessage(content: string, attachments?: import('@/types/chat-content').ChatContent[]): Promise<void> {
-  if (!currentSessionCode.value) {
-    toast.error('请先选择会话')
-    return
-  }
-  await sendMessageToChat(currentSessionCode.value, content, messages.value, attachments)
 }
 
 // 关闭对话框

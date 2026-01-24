@@ -137,6 +137,7 @@ interface Props {
   sessionTitle: string | null
   sessionCode: string | null
   messages: ChatMessage[]
+  workflowContent: string
 }
 
 const props = defineProps<Props>()
@@ -399,12 +400,38 @@ function removeAttachment(index: number): void {
 
 // 发送消息
 function handleSend(): void {
-  if (!inputValue.value) return
-  const textContent = inputValue.value
+  if (!inputValue.value.trim()) {
+    toast.error('消息内容不能为空')
+    return
+  }
+
+  if (!props.sessionCode) {
+    toast.error('会话未就绪')
+    return
+  }
+
+  if (!wsManager) {
+    toast.error('WebSocket 连接未建立')
+    return
+  }
+
+  const textContent = inputValue.value.trim()
   const attachmentContents = selectedFiles.value
+
+  // 通过 WebSocket 发送消息
+  wsManager.sendMessage(
+    textContent,
+    props.workflowContent,
+    undefined, // toolSchemas 暂时不传
+    attachmentContents.length > 0 ? attachmentContents : undefined
+  )
+
+  // 清空输入
   inputValue.value = ''
   selectedFiles.value = []
-  emit('send-message', textContent, attachmentContents)
+
+  // 触发事件通知父组件（用于更新 UI 等）
+  emit('send-message', textContent, attachmentContents.length > 0 ? attachmentContents : undefined)
 }
 
 // 监听消息变化，自动滚动到底部

@@ -106,7 +106,7 @@ export class AgentWebSocketManager {
         break
 
       case WebSocketMessageTypeValues.PONG:
-        console.log('[WebSocket] 收到 PONG 心跳响应')
+        // console.log('[WebSocket] 收到 PONG 心跳响应')
         break
 
       default:
@@ -126,16 +126,33 @@ export class AgentWebSocketManager {
   }
 
   /**
-   * 发送用户消息
+   * 发送用户消息或命令
    */
-  sendMessage(content: string, workflowContent: string, toolSchemas?: any[]): void {
-    const msg = MessageBuilder.userMessage(
-      this.sessionCode,
-      content,
-      workflowContent,
-      toolSchemas
-    )
-    console.log('[WebSocket] 发送用户消息:', content)
+  sendMessage(
+    content: string,
+    workflowContent: string,
+    toolSchemas?: any[],
+    multimodalContents?: any[]
+  ): void {
+    // 判断是否为命令（以 / 开头）
+    const isCommand = content.trim().startsWith('/')
+
+    const msg = isCommand
+      ? MessageBuilder.userOrder(
+          this.sessionCode,
+          content,
+          workflowContent,
+          multimodalContents
+        )
+      : MessageBuilder.userMessage(
+          this.sessionCode,
+          content,
+          workflowContent,
+          toolSchemas,
+          multimodalContents
+        )
+
+    console.log(`[WebSocket] 发送${isCommand ? '命令' : '消息'}:`, content)
     this.send(msg)
   }
 
@@ -192,7 +209,7 @@ export class AgentWebSocketManager {
 
     this.heartbeatTimer = window.setInterval(() => {
       const msg = MessageBuilder.ping(this.sessionCode)
-      console.log('[WebSocket] 发送 PING 心跳')
+      // console.log('[WebSocket] 发送 PING 心跳')
       this.send(msg)
     }, 5000) // 5秒
   }

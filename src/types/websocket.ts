@@ -209,14 +209,15 @@ export class MessageBuilder {
     sessionCode: string,
     content: string,
     workflowContent: string,
-    toolSchemas?: McpToolSchema[]
+    toolSchemas?: McpToolSchema[],
+    multimodalContents?: import('./chat-content').ChatContent[]
   ): UserMessage {
     return {
       type: WebSocketMessageTypeValues.USER_MESSAGE,
       sessionCode,
       requestId: Date.now().toString(),
       content,
-      data: { workflowContent, toolSchemas },
+      data: { workflowContent, toolSchemas, multimodalContents },
       timestamp: Date.now()
     };
   }
@@ -227,14 +228,15 @@ export class MessageBuilder {
   static userOrder(
     sessionCode: string,
     command: string,
-    workflowContent: string
+    workflowContent: string,
+    multimodalContents?: import('./chat-content').ChatContent[]
   ): UserOrderMessage {
     return {
       type: WebSocketMessageTypeValues.USER_ORDER,
       sessionCode,
       requestId: Date.now().toString(),
       content: command,
-      data: { workflowContent },
+      data: { workflowContent, multimodalContents },
       timestamp: Date.now()
     };
   }
