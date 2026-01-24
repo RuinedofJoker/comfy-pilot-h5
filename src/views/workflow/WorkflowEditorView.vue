@@ -1,7 +1,7 @@
 <template>
   <div class="g-workflow-editor">
     <!-- 顶部导航栏 -->
-    <TopNavBar />
+    <TopNavBar @open-mcp-config="showMcpConfig = true" />
 
     <div class="m-editor-container">
       <!-- 左侧会话管理区域 -->
@@ -80,6 +80,12 @@
       :comfyui-server-name="currentService?.serverName || ''"
       @confirm="handleConfirmSession"
     />
+
+    <!-- MCP 工具配置弹窗 -->
+    <McpConfigDialog
+      v-model:visible="showMcpConfig"
+      @change="handleMcpConfigChange"
+    />
   </div>
 </template>
 
@@ -97,6 +103,7 @@ import WorkflowViewer from '@/components/workflow/WorkflowViewer.vue'
 import ChatDialog from '@/components/workflow/ChatDialog.vue'
 import CreateWorkflowModal from '@/components/workflow/CreateWorkflowModal.vue'
 import SessionModal from '@/components/workflow/SessionModal.vue'
+import McpConfigDialog from '@/components/mcp/McpConfigDialog.vue'
 
 // Composables 导入
 import { useSessionManagement } from '@/composables/workflow/useSessionManagement'
@@ -108,7 +115,7 @@ import { useWorkflowStore } from '@/stores/workflow'
 import { useServiceStore } from '@/stores/service'
 
 // MCP 工具系统导入
-import { mcpToolRegistry, mcpConfigManager, ComfyUIToolSet } from '@/mcp'
+import { mcpToolRegistry, mcpConfigManager, ComfyUIToolSet, ExternalMcpToolSet } from '@/mcp'
 
 // 类型导入
 import type { Workflow } from '@/types/workflow'
@@ -172,6 +179,7 @@ const {
 // 本地状态
 const showCreateModal = ref(false)
 const showSessionModal = ref(false)
+const showMcpConfig = ref(false)
 const isEditMode = ref(false)
 const editingSessionCode = ref<string | undefined>(undefined)
 const workflowViewerRef = ref<InstanceType<typeof WorkflowViewer> | null>(null)
@@ -264,6 +272,34 @@ async function handleConfirmSession(data: { title?: string; agentCode: string; a
 
 function handleGoBack(): void {
   router.push('/services')
+}
+
+// MCP 配置变更处理
+async function handleMcpConfigChange(): Promise<void> {
+  try {
+    console.log('[WorkflowEditor] MCP 配置已变更，重新初始化外部服务器...')
+
+    // 注销所有外部 MCP 工具集
+    const allToolSets = mcpToolRegistry.getAllToolSets()
+    for (const toolSet of allToolSets) {
+      if (toolSet.type === 'external-mcp') {
+        // 断开连接
+        if (toolSet.disconnect) {
+          await toolSet.disconnect()
+        }
+        // 注销工具集
+        mcpToolRegistry.unregisterToolSet(toolSet.id)
+      }
+    }
+
+    // 重新初始化外部服务器
+    await initializeExternalMcpServers()
+
+    toast.success('MCP 配置已更新')
+  } catch (error) {
+    console.error('[WorkflowEditor] MCP 配置变更处理失败:', error)
+    toast.error('配置更新失败')
+  }
 }
 
 // 关闭对话框
@@ -388,6 +424,53 @@ function stopAutoSync(): void {
   }
 }
 
+/**
+ * 初始化外部 MCP 服务器
+ */
+async function initializeExternalMcpServers(): Promise<void> {
+  try {
+    // 获取所有启用的外部服务器配置
+    const enabledServerIds = mcpConfigManager.getEnabledExternalServerIds()
+
+    if (enabledServerIds.length === 0) {
+      console.log('[WorkflowEditor] 没有启用的外部 MCP 服务器')
+      return
+    }
+
+    console.log(`[WorkflowEditor] 开始初始化 ${enabledServerIds.length} 个外部 MCP 服务器...`)
+
+    // 并行连接所有外部服务器
+    const connectionPromises = enabledServerIds.map(async (serverId) => {
+      try {
+        const serverConfig = mcpConfigManager.getExternalServer(serverId)
+        if (!serverConfig) {
+          console.warn(`[WorkflowEditor] 服务器配置不存在: ${serverId}`)
+          return
+        }
+
+        // 创建外部工具集实例
+        const externalToolSet = new ExternalMcpToolSet(serverConfig)
+
+        // 连接到服务器
+        await externalToolSet.connect()
+
+        // 注册到工具注册表
+        mcpToolRegistry.registerToolSet(externalToolSet)
+
+        console.log(`[WorkflowEditor] ✅ 外部 MCP 服务器已连接: ${serverConfig.name}`)
+      } catch (error) {
+        console.error(`[WorkflowEditor] ❌ 连接外部 MCP 服务器失败 (${serverId}):`, error)
+        toast.warning(`连接 MCP 服务器失败: ${serverId}`)
+      }
+    })
+
+    await Promise.allSettled(connectionPromises)
+    console.log('[WorkflowEditor] 外部 MCP 服务器初始化完成')
+  } catch (error) {
+    console.error('[WorkflowEditor] 初始化外部 MCP 服务器失败:', error)
+  }
+}
+
 // 生命周期钩子
 onMounted(async () => {
   try {
@@ -405,6 +488,9 @@ onMounted(async () => {
     }
 
     console.log('[WorkflowEditor] ComfyUI 工具集已注册')
+
+    // 初始化外部 MCP 服务器
+    await initializeExternalMcpServers()
 
     // 加载服务列表并选择当前服务
     await serviceStore.fetchEnabledServices()

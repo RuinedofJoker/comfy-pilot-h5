@@ -22,6 +22,15 @@
         <span>我的工作流</span>
       </button>
 
+      <!-- MCP 工具配置按钮 -->
+      <button class="f-nav-btn" @click="openMcpConfig">
+        <svg class="f-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>MCP 工具</span>
+      </button>
+
       <!-- 用户菜单 -->
       <div class="f-user-menu" :class="{ active: showDropdown }">
         <div class="f-user-info" @click="toggleDropdown">
@@ -75,6 +84,12 @@ import { useUserStore } from '@/stores/user'
 import { useAuthStore } from '@/stores/auth'
 import { showConfirmDialog } from 'vant'
 
+interface Emits {
+  (e: 'open-mcp-config'): void
+}
+
+const emit = defineEmits<Emits>()
+
 const router = useRouter()
 const userStore = useUserStore()
 const authStore = useAuthStore()
@@ -107,6 +122,11 @@ function goToHome(): void {
 function goToWorkflows(): void {
   showDropdown.value = false
   router.push('/workflows')
+}
+
+// 打开 MCP 配置
+function openMcpConfig(): void {
+  emit('open-mcp-config')
 }
 
 // 跳转到个人信息

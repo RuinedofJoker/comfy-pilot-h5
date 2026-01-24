@@ -47,15 +47,18 @@ export class McpToolRegistry {
   }
 
   /**
-   * 获取指定工具集的工具 schema
+   * 获取指定工具集的工具 schema（异步版本）
    */
-  getToolSchemas(toolSetIds: string[]): McpToolSchema[] {
+  async getToolSchemas(toolSetIds: string[]): Promise<McpToolSchema[]> {
     const schemas: McpToolSchema[] = []
 
     for (const id of toolSetIds) {
       const toolSet = this.toolSets.get(id)
       if (toolSet) {
-        schemas.push(...toolSet.getTools())
+        const tools = toolSet.getTools()
+        // 支持同步和异步的 getTools()
+        const resolvedTools = tools instanceof Promise ? await tools : tools
+        schemas.push(...resolvedTools)
       } else {
         console.warn(`[MCP Registry] 工具集 ${id} 不存在`)
       }
@@ -65,12 +68,14 @@ export class McpToolRegistry {
   }
 
   /**
-   * 根据工具名称查找所属的工具集
+   * 根据工具名称查找所属的工具集（异步版本）
    */
-  findToolSetByToolName(toolName: string): McpToolSet | undefined {
+  async findToolSetByToolName(toolName: string): Promise<McpToolSet | undefined> {
     for (const toolSet of this.toolSets.values()) {
       const tools = toolSet.getTools()
-      if (tools.some(tool => tool.name === toolName)) {
+      // 支持同步和异步的 getTools()
+      const resolvedTools = tools instanceof Promise ? await tools : tools
+      if (resolvedTools.some(tool => tool.name === toolName)) {
         return toolSet
       }
     }
@@ -80,8 +85,8 @@ export class McpToolRegistry {
   /**
    * 执行工具
    */
-  async executeToolByName(toolName: string, args: any): Promise<ToolExecutionResult> {
-    const toolSet = this.findToolSetByToolName(toolName)
+  async executeToolByName(toolCallId: string, toolName: string, args: any): Promise<ToolExecutionResult> {
+    const toolSet = await this.findToolSetByToolName(toolName)
 
     if (!toolSet) {
       return {
@@ -98,7 +103,7 @@ export class McpToolRegistry {
     }
 
     try {
-      const result = await toolSet.executeToolByName(toolName, args)
+      const result = await toolSet.executeToolByName(toolCallId, toolName, args)
       return {
         success: true,
         result

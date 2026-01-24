@@ -5,8 +5,13 @@
 // 类型定义
 export type {
   ToolExecutionPolicy,
+  McpToolSetType,
+  McpTransportType,
+  McpAuthType,
   McpToolSchema,
   McpToolSetConfig,
+  McpServerAuth,
+  McpServerConfig,
   McpConfig,
   McpToolSet,
   ToolCallRequest,
@@ -22,3 +27,6 @@ export { McpConfigManager, mcpConfigManager } from './config'
 
 // 内置工具集
 export { ComfyUIToolSet } from './toolsets'
+
+// 外部 MCP 工具集
+export { ExternalMcpToolSet } from './client/external-toolset'

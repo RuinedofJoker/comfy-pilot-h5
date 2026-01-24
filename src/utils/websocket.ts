@@ -161,6 +161,7 @@ export class AgentWebSocketManager {
    */
   sendToolResponse(
     requestId: string,
+    toolCallId: string,
     toolName: string,
     toolArgs: string,
     isClientTool: boolean,
@@ -173,6 +174,7 @@ export class AgentWebSocketManager {
       ? MessageBuilder.toolCallAllow(
           this.sessionCode,
           requestId,
+          toolCallId,
           toolName,
           toolArgs,
           isClientTool,
@@ -183,6 +185,7 @@ export class AgentWebSocketManager {
       : MessageBuilder.toolCallDeny(
           this.sessionCode,
           requestId,
+          toolCallId,
           toolName,
           toolArgs,
           isClientTool

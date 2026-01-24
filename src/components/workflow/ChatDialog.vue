@@ -243,7 +243,7 @@ function disconnectWebSocket(): void {
  * 处理工具调用请求
  */
 async function handleToolCallRequest(requestId: string, data: AgentToolCallRequestData): Promise<void> {
-  const { toolName, toolArgs, isClientTool } = data
+  const { toolCallId, toolName, toolArgs, isClientTool } = data
 
   try {
     // 解析工具参数
@@ -251,10 +251,10 @@ async function handleToolCallRequest(requestId: string, data: AgentToolCallReque
 
     if (isClientTool) {
       // 前端工具：需要执行并返回结果
-      await handleClientToolCall(requestId, toolName, args, toolArgs)
+      await handleClientToolCall(requestId, toolCallId, toolName, args, toolArgs)
     } else {
       // 后端工具：仅做权限验证
-      await handleServerToolCall(requestId, toolName, args, toolArgs)
+      await handleServerToolCall(requestId, toolCallId, toolName, args, toolArgs)
     }
   } catch (error) {
     console.error('[ChatDialog] 工具调用处理失败:', error)
@@ -267,17 +267,18 @@ async function handleToolCallRequest(requestId: string, data: AgentToolCallReque
  */
 async function handleClientToolCall(
   requestId: string,
+  toolCallId: string,
   toolName: string,
   args: any,
   toolArgs: string
 ): Promise<void> {
   if (!wsManager || !props.sessionCode) return
 
-  // 查找工具所属的工具集
-  const toolSet = mcpToolRegistry.findToolSetByToolName(toolName)
+  // 查找工具所属的工具集（异步）
+  const toolSet = await mcpToolRegistry.findToolSetByToolName(toolName)
   if (!toolSet) {
     console.error(`[ChatDialog] 未找到工具: ${toolName}`)
-    wsManager.sendToolResponse(requestId, toolName, toolArgs, true, false, undefined, false, '工具不存在')
+    wsManager.sendToolResponse(requestId, toolCallId, toolName, toolArgs, true, false, undefined, false, '工具不存在')
     return
   }
 
@@ -296,17 +297,18 @@ async function handleClientToolCall(
 
   if (!isAllow) {
     // 用户拒绝执行
-    wsManager.sendToolResponse(requestId, toolName, toolArgs, true, false)
+    wsManager.sendToolResponse(requestId, toolCallId, toolName, toolArgs, true, false)
     return
   }
 
   // 执行工具
   try {
-    const executionResult = await mcpToolRegistry.executeToolByName(toolName, args)
+    const executionResult = await mcpToolRegistry.executeToolByName(toolCallId, toolName, args)
 
     if (executionResult.success) {
       wsManager.sendToolResponse(
         requestId,
+        toolCallId,
         toolName,
         toolArgs,
         true,
@@ -317,6 +319,7 @@ async function handleClientToolCall(
     } else {
       wsManager.sendToolResponse(
         requestId,
+        toolCallId,
         toolName,
         toolArgs,
         true,
@@ -329,6 +332,7 @@ async function handleClientToolCall(
   } catch (error) {
     wsManager.sendToolResponse(
       requestId,
+      toolCallId,
       toolName,
       toolArgs,
       true,
@@ -345,6 +349,7 @@ async function handleClientToolCall(
  */
 async function handleServerToolCall(
   requestId: string,
+  toolCallId: string,
   toolName: string,
   args: any,
   toolArgs: string
@@ -355,7 +360,7 @@ async function handleServerToolCall(
   const isAllow = await showToolConfirmDialog(toolName, args)
 
   // 发送响应（仅包含 isAllow，不包含执行结果）
-  wsManager.sendToolResponse(requestId, toolName, toolArgs, false, isAllow)
+  wsManager.sendToolResponse(requestId, toolCallId, toolName, toolArgs, false, isAllow)
 }
 
 /**
@@ -532,7 +537,7 @@ function removeAttachment(index: number): void {
 }
 
 // 发送消息
-function handleSend(): void {
+async function handleSend(): Promise<void> {
   if (!inputValue.value.trim()) {
     toast.error('消息内容不能为空')
     return
@@ -551,7 +556,7 @@ function handleSend(): void {
   const textContent = inputValue.value.trim()
   const attachmentContents = selectedFiles.value
 
-  // 收集已启用的工具 schemas
+  // 收集已启用的工具 schemas（异步）
   let enabledToolSetIds = mcpConfigManager.getEnabledToolSetIds()
 
   // 如果 ComfyUI 服务不可用，过滤掉 ComfyUI 工具集
@@ -559,7 +564,8 @@ function handleSend(): void {
     enabledToolSetIds = enabledToolSetIds.filter(id => id !== 'comfyui-tools')
   }
 
-  const toolSchemas = mcpToolRegistry.getToolSchemas(enabledToolSetIds)
+  // 异步获取工具 schemas
+  const toolSchemas = await mcpToolRegistry.getToolSchemas(enabledToolSetIds)
 
   // 通过 WebSocket 发送消息
   wsManager.sendMessage(

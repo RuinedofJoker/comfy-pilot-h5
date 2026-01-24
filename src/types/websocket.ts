@@ -117,6 +117,8 @@ export interface UserMessageRequestData {
  * Agent 工具调用响应数据
  */
 export interface AgentToolCallResponseData {
+  /** 工具调用id */
+  toolCallId:string;
   /** 工具名称 */
   toolName: string;
   /** 是否是客户端工具 */
@@ -149,6 +151,8 @@ export interface AgentPromptData {
  * Agent 工具调用请求数据
  */
 export interface AgentToolCallRequestData {
+    /** 工具调用id */
+  toolCallId:string;
   /** 工具名称 */
   toolName: string;
   /** 工具参数（JSON字符串） */
@@ -247,6 +251,7 @@ export class MessageBuilder {
   static toolCallAllow(
     sessionCode: string,
     requestId: string,
+    toolCallId: string,
     toolName: string,
     toolArgs: string,
     isClientTool: boolean,
@@ -259,6 +264,7 @@ export class MessageBuilder {
       sessionCode,
       requestId,
       data: {
+        toolCallId,
         toolName,
         isClientTool,
         toolArgs,
@@ -277,6 +283,7 @@ export class MessageBuilder {
   static toolCallDeny(
     sessionCode: string,
     requestId: string,
+    toolCallId: string,
     toolName: string,
     toolArgs: string,
     isClientTool: boolean
@@ -286,6 +293,7 @@ export class MessageBuilder {
       sessionCode,
       requestId,
       data: {
+        toolCallId,
         toolName,
         isClientTool,
         toolArgs,

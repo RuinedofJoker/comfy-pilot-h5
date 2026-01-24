@@ -13,6 +13,7 @@ export class ComfyUIToolSet implements McpToolSet {
   id = 'comfyui-tools'
   name = 'ComfyUI 工具集'
   description = '与 ComfyUI 工作流交互的工具'
+  type: 'built-in' = 'built-in'
   isBuiltIn = true
 
   private comfyUI: ReturnType<typeof useComfyUIIntegration>
@@ -81,7 +82,7 @@ export class ComfyUIToolSet implements McpToolSet {
     ]
   }
 
-  async executeToolByName(name: string, args: any): Promise<any> {
+  async executeToolByName(toolCallId: string, name: string, args: any): Promise<any> {
     const baseUrl = this.serviceStore.selectedService?.baseUrl || 'http://localhost:8188'
 
     switch (name) {
