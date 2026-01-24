@@ -76,16 +76,28 @@
         <!-- 配置说明 -->
         <div class="f-form-section">
           <h4 class="f-section-title">配置说明</h4>
-          <div class="f-config-example">
-            <pre class="f-example-code">{{exampleConfig}}</pre>
+
+          <!-- 配置示例 -->
+          <div class="f-config-subsection">
+            <h5 class="f-subsection-title">配置示例</h5>
+            <div class="f-config-example">
+              <pre class="f-example-code">{{exampleConfig}}</pre>
+            </div>
           </div>
-          <ul class="f-config-tips">
-            <li><strong>url</strong>: MCP 服务器地址（必填，必须是有效的 URL）</li>
-            <li><strong>disabled</strong>: 是否禁用该服务（可选，默认 false）</li>
-            <li><strong>timeout</strong>: 超时时间（可选，单位秒）</li>
-            <li><strong>type</strong>: 传输协议类型（可选，支持 sse/http）</li>
-            <li><strong>headers</strong>: 自定义请求头（可选，用于认证等）</li>
-          </ul>
+
+          <!-- 字段说明 -->
+          <div class="f-config-subsection">
+            <h5 class="f-subsection-title">字段说明</h5>
+            <ul class="f-config-tips">
+              <li><strong>mcpServers</strong>: MCP 服务器配置对象（必填）</li>
+              <li><strong>服务器名称</strong>: 每个服务器的唯一标识符（必填，如 "amap-test"）</li>
+              <li><strong>url</strong>: MCP 服务器地址（必填，必须是有效的 URL）</li>
+              <li><strong>disabled</strong>: 是否禁用该服务（可选，默认 false）</li>
+              <li><strong>timeout</strong>: 超时时间（可选，单位秒，默认 60）</li>
+              <li><strong>type</strong>: 传输协议类型（可选，支持 sse/http，默认 sse）</li>
+              <li><strong>headers</strong>: 自定义请求头（可选，用于认证等）</li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -137,7 +149,17 @@ const executionPolicy = ref<ToolExecutionPolicy>('ask-every-time')
 
 // 示例配置
 const exampleConfig = `{
-  "mcpServers": {}
+  "mcpServers": {
+    "mcp-server-name": {
+      "url": "https://mcp-server-url",
+      "disabled": false,
+      "timeout": 60,
+      "type": "sse",
+      "headers": {
+        "Authorization": "Bearer your-token-here"
+      }
+    }
+  }
 }`
 
 // 初始化配置
@@ -148,8 +170,8 @@ function initConfig(): void {
   executionPolicy.value = mcpConfigManager.getGlobalExecutionPolicy()
 
   if (servers.length === 0) {
-    // 如果没有配置，使用示例配置
-    configJson.value = exampleConfig
+    // 如果没有配置，使用默认空配置
+    configJson.value = JSON.stringify({ mcpServers: {} }, null, 2)
   } else {
     // 转换现有配置为用户格式
     const mcpServers: Record<string, any> = {}
@@ -198,37 +220,63 @@ function isValidUrl(url: string): boolean {
 function validateConfig(config: any): string[] {
   const errors: string[] = []
 
-  if (!config.mcpServers || typeof config.mcpServers !== 'object') {
-    errors.push('配置必须包含 mcpServers 对象')
+  // 验证 mcpServers 字段（必填）
+  if (!config.mcpServers) {
+    errors.push('配置必须包含 mcpServers 字段')
+    return errors
+  }
+
+  if (typeof config.mcpServers !== 'object' || Array.isArray(config.mcpServers)) {
+    errors.push('mcpServers 必须是一个对象')
     return errors
   }
 
   const servers = config.mcpServers
   const serverIds = Object.keys(servers)
 
-  if (serverIds.length === 0) {
-    errors.push('至少需要配置一个 MCP 服务器')
-    return errors
-  }
-
+  // 允许空配置，只验证已配置的服务器
   serverIds.forEach(id => {
     const server = servers[id]
 
-    // 验证 URL
+    // 验证服务器名称（必填，已通过 key 存在性保证）
+    if (!id || id.trim() === '') {
+      errors.push('服务器名称不能为空')
+      return
+    }
+
+    // 验证服务器配置对象
+    if (!server || typeof server !== 'object') {
+      errors.push(`服务器 "${id}": 配置必须是一个对象`)
+      return
+    }
+
+    // 验证 URL（必填）
     if (!server.url) {
-      errors.push(`服务器 "${id}": 缺少 url 字段`)
+      errors.push(`服务器 "${id}": url 字段为必填项`)
+    } else if (typeof server.url !== 'string' || server.url.trim() === '') {
+      errors.push(`服务器 "${id}": url 不能为空`)
     } else if (!isValidUrl(server.url)) {
       errors.push(`服务器 "${id}": url 格式无效，必须是有效的 URL 地址`)
     }
 
-    // 验证 type
+    // 验证 type（可选）
     if (server.type && !['sse', 'http'].includes(server.type)) {
       errors.push(`服务器 "${id}": type 必须是 "sse" 或 "http"`)
     }
 
-    // 验证 timeout
+    // 验证 timeout（可选）
     if (server.timeout !== undefined && (typeof server.timeout !== 'number' || server.timeout <= 0)) {
       errors.push(`服务器 "${id}": timeout 必须是正数`)
+    }
+
+    // 验证 disabled（可选）
+    if (server.disabled !== undefined && typeof server.disabled !== 'boolean') {
+      errors.push(`服务器 "${id}": disabled 必须是布尔值`)
+    }
+
+    // 验证 headers（可选）
+    if (server.headers !== undefined && (typeof server.headers !== 'object' || Array.isArray(server.headers))) {
+      errors.push(`服务器 "${id}": headers 必须是一个对象`)
     }
   })
 
@@ -378,6 +426,21 @@ watch(() => props.visible, (newVal) => {
   font-size: 13px;
   color: #999999;
   line-height: 1.5;
+}
+
+.f-config-subsection {
+  margin-bottom: 20px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.f-subsection-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #cccccc;
 }
 
 .f-policy-selector {

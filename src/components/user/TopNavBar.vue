@@ -22,8 +22,8 @@
         <span>我的工作流</span>
       </button>
 
-      <!-- MCP 工具配置按钮 -->
-      <button class="f-nav-btn" @click="openMcpConfig">
+      <!-- MCP 工具配置按钮 - 仅在工作流编辑器页面显示 -->
+      <button v-if="isWorkflowEditorPage" class="f-nav-btn" @click="openMcpConfig">
         <svg class="f-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -79,7 +79,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAuthStore } from '@/stores/auth'
 import { showConfirmDialog } from 'vant'
@@ -91,10 +91,16 @@ interface Emits {
 const emit = defineEmits<Emits>()
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const authStore = useAuthStore()
 
 const showDropdown = ref(false)
+
+// 计算属性：判断是否在工作流编辑器页面
+const isWorkflowEditorPage = computed(() => {
+  return route.path.startsWith('/comfy/workflows/')
+})
 
 // 计算属性：用户名
 const userName = computed(() => userStore.username || '用户')
