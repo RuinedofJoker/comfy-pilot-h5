@@ -125,10 +125,12 @@ import type { ChatMessage } from '@/types/session'
 import type { ChatContent } from '@/types/chat-content'
 import { AgentWebSocketManager } from '@/utils/websocket'
 import { useAuthStore } from '@/stores/auth'
-import { AGENT_PROMPT_DEFAULT_MESSAGES } from '@/types/websocket'
+import { AGENT_PROMPT_DEFAULT_MESSAGES, MessageBuilder } from '@/types/websocket'
+import type { AgentToolCallRequestData } from '@/types/websocket'
 import { uploadFile } from '@/services/file'
 import * as FileContentUtil from '@/utils/file-content'
 import { toast } from '@/utils/toast'
+import { mcpToolRegistry, mcpConfigManager } from '@/mcp'
 
 // Props
 interface Props {
@@ -138,6 +140,7 @@ interface Props {
   sessionCode: string | null
   messages: ChatMessage[]
   workflowContent: string
+  isServiceAvailable: boolean
 }
 
 const props = defineProps<Props>()
@@ -212,8 +215,9 @@ function initWebSocket(sessionCode: string): void {
     console.log('[ChatDialog] Agent 完成')
   })
 
-  wsManager.on('toolRequest', async (data) => {
-    console.log('[ChatDialog] 工具调用请求:', data)
+  wsManager.on('toolRequest', async (requestId, data) => {
+    console.log('[ChatDialog] 工具调用请求:', { requestId, data })
+    await handleToolCallRequest(requestId, data)
   })
 
   wsManager.on('error', (error) => {
@@ -233,6 +237,135 @@ function disconnectWebSocket(): void {
     wsManager.disconnect()
     wsManager = null
   }
+}
+
+/**
+ * 处理工具调用请求
+ */
+async function handleToolCallRequest(requestId: string, data: AgentToolCallRequestData): Promise<void> {
+  const { toolName, toolArgs, isClientTool } = data
+
+  try {
+    // 解析工具参数
+    const args = JSON.parse(toolArgs)
+
+    if (isClientTool) {
+      // 前端工具：需要执行并返回结果
+      await handleClientToolCall(requestId, toolName, args, toolArgs)
+    } else {
+      // 后端工具：仅做权限验证
+      await handleServerToolCall(requestId, toolName, args, toolArgs)
+    }
+  } catch (error) {
+    console.error('[ChatDialog] 工具调用处理失败:', error)
+    toast.error('工具调用处理失败')
+  }
+}
+
+/**
+ * 处理前端工具调用
+ */
+async function handleClientToolCall(
+  requestId: string,
+  toolName: string,
+  args: any,
+  toolArgs: string
+): Promise<void> {
+  if (!wsManager || !props.sessionCode) return
+
+  // 查找工具所属的工具集
+  const toolSet = mcpToolRegistry.findToolSetByToolName(toolName)
+  if (!toolSet) {
+    console.error(`[ChatDialog] 未找到工具: ${toolName}`)
+    wsManager.sendToolResponse(requestId, toolName, toolArgs, true, false, undefined, false, '工具不存在')
+    return
+  }
+
+  // 获取工具集配置
+  const config = mcpConfigManager.getToolSetConfig(toolSet.id)
+  const executionPolicy = config?.executionPolicy || 'ask-every-time'
+
+  // 根据执行策略决定是否需要用户确认
+  let isAllow = false
+  if (executionPolicy === 'auto-execute') {
+    isAllow = true
+  } else {
+    // 显示确认对话框
+    isAllow = await showToolConfirmDialog(toolName, args)
+  }
+
+  if (!isAllow) {
+    // 用户拒绝执行
+    wsManager.sendToolResponse(requestId, toolName, toolArgs, true, false)
+    return
+  }
+
+  // 执行工具
+  try {
+    const executionResult = await mcpToolRegistry.executeToolByName(toolName, args)
+
+    if (executionResult.success) {
+      wsManager.sendToolResponse(
+        requestId,
+        toolName,
+        toolArgs,
+        true,
+        true,
+        JSON.stringify(executionResult.result),
+        true
+      )
+    } else {
+      wsManager.sendToolResponse(
+        requestId,
+        toolName,
+        toolArgs,
+        true,
+        true,
+        undefined,
+        false,
+        executionResult.error
+      )
+    }
+  } catch (error) {
+    wsManager.sendToolResponse(
+      requestId,
+      toolName,
+      toolArgs,
+      true,
+      true,
+      undefined,
+      false,
+      error instanceof Error ? error.message : '工具执行失败'
+    )
+  }
+}
+
+/**
+ * 处理后端工具调用（仅权限验证）
+ */
+async function handleServerToolCall(
+  requestId: string,
+  toolName: string,
+  args: any,
+  toolArgs: string
+): Promise<void> {
+  if (!wsManager || !props.sessionCode) return
+
+  // 显示确认对话框
+  const isAllow = await showToolConfirmDialog(toolName, args)
+
+  // 发送响应（仅包含 isAllow，不包含执行结果）
+  wsManager.sendToolResponse(requestId, toolName, toolArgs, false, isAllow)
+}
+
+/**
+ * 显示工具确认对话框
+ */
+async function showToolConfirmDialog(toolName: string, args: any): Promise<boolean> {
+  // TODO: 实现一个更友好的确认对话框组件
+  // 目前使用浏览器原生 confirm
+  const argsStr = JSON.stringify(args, null, 2)
+  return confirm(`是否允许执行工具？\n\n工具名称: ${toolName}\n参数:\n${argsStr}`)
 }
 
 /**
@@ -418,11 +551,21 @@ function handleSend(): void {
   const textContent = inputValue.value.trim()
   const attachmentContents = selectedFiles.value
 
+  // 收集已启用的工具 schemas
+  let enabledToolSetIds = mcpConfigManager.getEnabledToolSetIds()
+
+  // 如果 ComfyUI 服务不可用，过滤掉 ComfyUI 工具集
+  if (!props.isServiceAvailable) {
+    enabledToolSetIds = enabledToolSetIds.filter(id => id !== 'comfyui-tools')
+  }
+
+  const toolSchemas = mcpToolRegistry.getToolSchemas(enabledToolSetIds)
+
   // 通过 WebSocket 发送消息
   wsManager.sendMessage(
     textContent,
     props.workflowContent,
-    undefined, // toolSchemas 暂时不传
+    toolSchemas.length > 0 ? toolSchemas : undefined,
     attachmentContents.length > 0 ? attachmentContents : undefined
   )
 

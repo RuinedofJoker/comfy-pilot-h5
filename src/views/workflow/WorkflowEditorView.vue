@@ -57,6 +57,7 @@
           :session-code="currentSessionCode"
           :messages="messages"
           :workflow-content="editableJsonContent"
+          :is-service-available="isServiceAvailable"
           @toggle-minimize="toggleMinimize"
           @close="handleCloseChat"
         />
@@ -105,6 +106,9 @@ import { useComfyUIIntegration } from '@/composables/workflow/useComfyUIIntegrat
 // Store 导入
 import { useWorkflowStore } from '@/stores/workflow'
 import { useServiceStore } from '@/stores/service'
+
+// MCP 工具系统导入
+import { mcpToolRegistry, mcpConfigManager, ComfyUIToolSet } from '@/mcp'
 
 // 类型导入
 import type { Workflow } from '@/types/workflow'
@@ -387,6 +391,21 @@ function stopAutoSync(): void {
 // 生命周期钩子
 onMounted(async () => {
   try {
+    // 注册 ComfyUI 工具集
+    const comfyUIToolSet = new ComfyUIToolSet(comfyUIIntegration, serviceStore)
+    mcpToolRegistry.registerToolSet(comfyUIToolSet)
+
+    // 确保工具集配置存在（默认启用）
+    const existingConfig = mcpConfigManager.getToolSetConfig(comfyUIToolSet.id)
+    if (!existingConfig) {
+      mcpConfigManager.updateToolSetConfig(comfyUIToolSet.id, {
+        enabled: true,
+        executionPolicy: 'ask-every-time'
+      })
+    }
+
+    console.log('[WorkflowEditor] ComfyUI 工具集已注册')
+
     // 加载服务列表并选择当前服务
     await serviceStore.fetchEnabledServices()
     serviceStore.selectService(serviceId)

@@ -26,7 +26,7 @@ interface WebSocketCallbacks {
   onPrompt?: (data: AgentPromptData) => void
   onStream?: (content: string) => void
   onComplete?: () => void
-  onToolRequest?: (data: AgentToolCallRequestData) => Promise<void>
+  onToolRequest?: (requestId: string, data: AgentToolCallRequestData) => Promise<void>
   onError?: (error: string) => void
 }
 
@@ -102,7 +102,7 @@ export class AgentWebSocketManager {
 
       case WebSocketMessageTypeValues.AGENT_TOOL_CALL_REQUEST:
         console.log('[WebSocket] 收到 AGENT_TOOL_CALL_REQUEST:', msg.data)
-        this.callbacks.onToolRequest?.(msg.data)
+        this.callbacks.onToolRequest?.(msg.requestId, msg.data)
         break
 
       case WebSocketMessageTypeValues.PONG:
@@ -243,7 +243,7 @@ export class AgentWebSocketManager {
   on(event: 'prompt', handler: (data: AgentPromptData) => void): void
   on(event: 'stream', handler: (content: string) => void): void
   on(event: 'complete', handler: () => void): void
-  on(event: 'toolRequest', handler: (data: AgentToolCallRequestData) => Promise<void>): void
+  on(event: 'toolRequest', handler: (requestId: string, data: AgentToolCallRequestData) => Promise<void>): void
   on(event: 'error', handler: (error: string) => void): void
   on(event: string, handler: any): void {
     switch (event) {
