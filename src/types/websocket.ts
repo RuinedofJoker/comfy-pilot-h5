@@ -61,12 +61,46 @@ export const AgentPromptTypeValues = {
   ERROR: 'ERROR' as const
 }
 
+// ==================== 基础消息数据接口 ====================
+
+/**
+ * WebSocket 消息数据基础接口
+ * 所有消息数据类型都应该实现此接口
+ *
+ * 使用 Jackson 的多态反序列化机制，根据外层 WebSocketMessage 的 type 字段
+ * 自动反序列化为对应的具体类型
+ */
+export interface WebSocketMessageData {
+  /**
+   * 消息数据类型标识
+   * 对应 WebSocketMessageType，用于后端 Jackson 反序列化
+   * 注意：这个 type 字段会自动从外层 WebSocketMessage.type 复制过来
+   */
+  readonly type?: WebSocketMessageType;
+}
+
+/**
+ * 客户端 -> 服务端消息数据接口
+ */
+export interface ClientToServerMessageData extends WebSocketMessageData {}
+
+/**
+ * 服务端 -> 客户端消息数据接口
+ */
+export interface ServerToClientMessageData extends WebSocketMessageData {}
+
+/**
+ * 空消息数据（用于不需要携带额外数据的消息类型）
+ * 适用于：INTERRUPT, PING, PONG, AGENT_STREAM
+ */
+export interface VoidMessageData extends WebSocketMessageData {}
+
 // ==================== 基础消息结构 ====================
 
 /**
  * WebSocket 消息基础结构
  */
-export interface WebSocketMessage<T = any> {
+export interface WebSocketMessage<T extends WebSocketMessageData = WebSocketMessageData> {
   /** 消息类型 */
   type: WebSocketMessageType | string;
   /** 会话编码 */
@@ -103,8 +137,10 @@ export interface McpToolSchema {
 
 /**
  * 用户消息请求数据
+ * 客户端 -> 服务端
+ * 对应后端 Jackson 反序列化类型：USER_MESSAGE 或 USER_ORDER
  */
-export interface UserMessageRequestData {
+export interface UserMessageRequestData extends ClientToServerMessageData {
   /** 工作流内容（JSON字符串） */
   workflowContent: string;
   /** 客户端MCP工具schema列表 */
@@ -115,10 +151,12 @@ export interface UserMessageRequestData {
 
 /**
  * Agent 工具调用响应数据
+ * 客户端 -> 服务端
+ * 对应后端 Jackson 反序列化类型：AGENT_TOOL_CALL_RESPONSE
  */
-export interface AgentToolCallResponseData {
+export interface AgentToolCallResponseData extends ClientToServerMessageData {
   /** 工具调用id */
-  toolCallId:string;
+  toolCallId: string;
   /** 工具名称 */
   toolName: string;
   /** 是否是客户端工具 */
@@ -139,8 +177,10 @@ export interface AgentToolCallResponseData {
 
 /**
  * Agent 提示消息数据
+ * 服务端 -> 客户端
+ * 对应后端 Jackson 反序列化类型：AGENT_PROMPT
  */
-export interface AgentPromptData {
+export interface AgentPromptData extends ServerToClientMessageData {
   /** 提示类型 */
   promptType: AgentPromptType;
   /** 提示内容（可选，如果为空则使用默认提示） */
@@ -149,10 +189,12 @@ export interface AgentPromptData {
 
 /**
  * Agent 工具调用请求数据
+ * 服务端 -> 客户端
+ * 对应后端 Jackson 反序列化类型：AGENT_TOOL_CALL_REQUEST
  */
-export interface AgentToolCallRequestData {
-    /** 工具调用id */
-  toolCallId:string;
+export interface AgentToolCallRequestData extends ServerToClientMessageData {
+  /** 工具调用id */
+  toolCallId: string;
   /** 工具名称 */
   toolName: string;
   /** 工具参数（JSON字符串） */
@@ -163,8 +205,10 @@ export interface AgentToolCallRequestData {
 
 /**
  * Agent 完成响应数据
+ * 服务端 -> 客户端
+ * 对应后端 Jackson 反序列化类型：AGENT_COMPLETE
  */
-export interface AgentCompleteResponseData {
+export interface AgentCompleteResponseData extends ServerToClientMessageData {
   // 空对象，仅作为标记
 }
 
@@ -180,16 +224,16 @@ export type UserOrderMessage = WebSocketMessage<UserMessageRequestData>;
 export type ToolCallResponseMessage = WebSocketMessage<AgentToolCallResponseData>;
 
 /** 中断消息 */
-export type InterruptMessage = WebSocketMessage<void>;
+export type InterruptMessage = WebSocketMessage<VoidMessageData>;
 
 /** 心跳消息 */
-export type PingMessage = WebSocketMessage<void>;
+export type PingMessage = WebSocketMessage<VoidMessageData>;
 
 /** Agent提示消息 */
 export type AgentPromptMessage = WebSocketMessage<AgentPromptData>;
 
 /** Agent流式输出消息 */
-export type AgentStreamMessage = WebSocketMessage<void>;
+export type AgentStreamMessage = WebSocketMessage<VoidMessageData>;
 
 /** Agent完成消息 */
 export type AgentCompleteMessage = WebSocketMessage<AgentCompleteResponseData>;
@@ -198,7 +242,7 @@ export type AgentCompleteMessage = WebSocketMessage<AgentCompleteResponseData>;
 export type ToolCallRequestMessage = WebSocketMessage<AgentToolCallRequestData>;
 
 /** 心跳响应消息 */
-export type PongMessage = WebSocketMessage<void>;
+export type PongMessage = WebSocketMessage<VoidMessageData>;
 
 // ==================== 消息构建器 ====================
 
@@ -221,7 +265,12 @@ export class MessageBuilder {
       sessionCode,
       requestId: Date.now().toString(),
       content,
-      data: { workflowContent, toolSchemas, multimodalContents },
+      data: {
+        type: WebSocketMessageTypeValues.USER_MESSAGE,
+        workflowContent,
+        toolSchemas,
+        multimodalContents
+      },
       timestamp: Date.now()
     };
   }
@@ -240,7 +289,11 @@ export class MessageBuilder {
       sessionCode,
       requestId: Date.now().toString(),
       content: command,
-      data: { workflowContent, multimodalContents },
+      data: {
+        type: WebSocketMessageTypeValues.USER_ORDER,
+        workflowContent,
+        multimodalContents
+      },
       timestamp: Date.now()
     };
   }
@@ -264,6 +317,7 @@ export class MessageBuilder {
       sessionCode,
       requestId,
       data: {
+        type: WebSocketMessageTypeValues.AGENT_TOOL_CALL_RESPONSE,
         toolCallId,
         toolName,
         isClientTool,
@@ -293,6 +347,7 @@ export class MessageBuilder {
       sessionCode,
       requestId,
       data: {
+        type: WebSocketMessageTypeValues.AGENT_TOOL_CALL_RESPONSE,
         toolCallId,
         toolName,
         isClientTool,
@@ -311,6 +366,9 @@ export class MessageBuilder {
       type: WebSocketMessageTypeValues.INTERRUPT,
       sessionCode,
       requestId,
+      data: {
+        type: WebSocketMessageTypeValues.INTERRUPT
+      },
       timestamp: Date.now()
     };
   }
@@ -323,6 +381,9 @@ export class MessageBuilder {
       type: WebSocketMessageTypeValues.PING,
       sessionCode,
       requestId: Date.now().toString(),
+      data: {
+        type: WebSocketMessageTypeValues.PING
+      },
       timestamp: Date.now()
     };
   }

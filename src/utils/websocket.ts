@@ -210,11 +210,10 @@ export class AgentWebSocketManager {
   private startHeartbeat(): void {
     this.stopHeartbeat() // 先清除旧的定时器
 
-    this.heartbeatTimer = window.setInterval(() => {
+    /* this.heartbeatTimer = window.setInterval(() => {
       const msg = MessageBuilder.ping(this.sessionCode)
-      // console.log('[WebSocket] 发送 PING 心跳')
       this.send(msg)
-    }, 5000) // 5秒
+    }, 5000) // 5秒 */
   }
 
   /**

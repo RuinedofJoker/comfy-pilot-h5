@@ -64,6 +64,7 @@
           :is-service-available="isServiceAvailable"
           @toggle-minimize="toggleMinimize"
           @close="handleCloseChat"
+          @refresh-messages="handleRefreshMessages"
         />
       </div>
     </div>
@@ -366,6 +367,19 @@ async function handleMcpConfigChange(): Promise<void> {
 function handleCloseChat(): void {
   hideChat()
   unselectSession()
+}
+
+// 刷新消息列表
+async function handleRefreshMessages(): Promise<void> {
+  if (!currentSessionCode.value) return
+
+  try {
+    console.log('[WorkflowEditor] 刷新消息列表')
+    // 重新加载当前会话的消息
+    await selectSession(currentSessionCode.value)
+  } catch (error) {
+    console.error('[WorkflowEditor] 刷新消息失败:', error)
+  }
 }
 
 // 工作流相关方法

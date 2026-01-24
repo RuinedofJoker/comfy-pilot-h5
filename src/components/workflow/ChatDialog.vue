@@ -27,15 +27,45 @@
     </div>
 
     <div v-show="!isMinimized" class="f-chat-messages" ref="chatMessages">
-      <div
-        v-for="message in messages"
-        :key="message.id"
-        class="f-message"
-        :class="{ user: message.role === 'USER' }"
-      >
-        <div class="f-avatar">{{ message.role === 'USER' ? 'U' : 'AI' }}</div>
-        <div class="f-message-content">{{ message.content }}</div>
+      <!-- 本地消息列表 - 简洁展示，类似终端输出 -->
+      <template v-for="(message, index) in localMessages" :key="message.id">
+        <!-- 用户消息 - 蓝色边框 -->
+        <div v-if="message.role === 'USER'" class="f-message-user">
+          <div class="f-user-message-box">
+            {{ getMessageDisplayContent(message) }}
+          </div>
+        </div>
+
+        <!-- AI/系统消息 - 带小点和连接线 -->
+        <div v-else class="f-message-assistant-wrapper">
+          <div class="f-message-indicator">
+            <div class="f-indicator-dot"></div>
+            <div
+              v-if="shouldShowConnectLine(index)"
+              class="f-indicator-line"
+            ></div>
+          </div>
+          <div class="f-message-assistant-content">
+            {{ getMessageDisplayContent(message) }}
+          </div>
+        </div>
+      </template>
+
+      <!-- 当前流式输出的消息 -->
+      <div v-if="isStreaming && currentStreamingMessage" class="f-message-assistant-wrapper">
+        <div class="f-message-indicator">
+          <div class="f-indicator-dot"></div>
+        </div>
+        <div class="f-message-assistant-content" :class="{ 'f-streaming': !isStreamComplete }">
+          {{ currentStreamingMessage }}<span v-if="!isStreamComplete" class="f-cursor">▋</span>
+        </div>
       </div>
+
+      <!-- 动态提示指示器 -->
+      <AgentPromptIndicator
+        :visible="isShowingPrompt"
+        :text="currentPromptMessage"
+      />
 
       <!-- 附件预览区域 -->
       <div v-if="selectedFiles.length > 0" class="f-attachments-preview">
@@ -121,17 +151,19 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import type { ChatMessage } from '@/types/session'
+import type { ChatMessage, MessageRole } from '@/types/session'
 import type { ChatContent } from '@/types/chat-content'
 import { AgentWebSocketManager } from '@/utils/websocket'
 import { useAuthStore } from '@/stores/auth'
 import { AGENT_PROMPT_DEFAULT_MESSAGES, MessageBuilder } from '@/types/websocket'
-import type { AgentToolCallRequestData } from '@/types/websocket'
+import type { AgentToolCallRequestData, AgentPromptType } from '@/types/websocket'
 import { uploadFile } from '@/services/file'
 import * as FileContentUtil from '@/utils/file-content'
 import { toast } from '@/utils/toast'
 import { mcpToolRegistry, mcpConfigManager } from '@/mcp'
 import type { ToolExecutionPolicy } from '@/mcp/types'
+import { StreamParser, extractMessageContent } from '@/utils/stream-parser'
+import AgentPromptIndicator from './AgentPromptIndicator.vue'
 
 // Props
 interface Props {
@@ -151,6 +183,7 @@ const emit = defineEmits<{
   'toggle-minimize': []
   'close': []
   'send-message': [content: string, attachments?: ChatContent[]]
+  'refresh-messages': [] // 新增：请求刷新消息列表
 }>()
 
 // Auth Store
@@ -164,8 +197,24 @@ const chatHeader = ref<HTMLDivElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const selectedFiles = ref<ChatContent[]>([])
 
+// 本地消息列表（包含历史消息 + 新消息）
+const localMessages = ref<ChatMessage[]>([])
+
 // WebSocket 管理器
 let wsManager: AgentWebSocketManager | null = null
+
+// 流式消息解析器
+let streamParser: StreamParser | null = null
+
+// Agent 状态
+const currentPromptType = ref<AgentPromptType | null>(null)
+const currentPromptMessage = ref<string>('')
+const isShowingPrompt = ref(false)
+
+// 当前流式输出的消息
+const currentStreamingMessage = ref<string>('')
+const isStreaming = ref(false)
+const isStreamComplete = ref(false) // 标记流式输出是否已完成
 
 // 拖动相关状态
 const isDragging = ref(false)
@@ -175,16 +224,18 @@ const dialogPosition = ref({ x: 0, y: 0 })
 // 调整大小相关状态
 const isResizing = ref(false)
 const resizeDirection = ref<string>('')
-const dialogSize = ref({ width: 380, height: 520 })
+const dialogSize = ref({ width: 480, height: 640 })
 const resizeStartPos = ref({ x: 0, y: 0 })
 const resizeStartSize = ref({ width: 0, height: 0 })
 const resizeStartPosition = ref({ x: 0, y: 0 })
+// 保存清理函数的引用
+let resizeCleanup: (() => void) | null = null
 
 // 最小和最大尺寸限制
-const MIN_WIDTH = 300
-const MIN_HEIGHT = 400
-const MAX_WIDTH = 800
-const MAX_HEIGHT = 800
+const MIN_WIDTH = 360
+const MIN_HEIGHT = 480
+const MAX_WIDTH = 1000
+const MAX_HEIGHT = 900
 
 /**
  * 初始化 WebSocket 连接
@@ -201,19 +252,19 @@ function initWebSocket(sessionCode: string): void {
 
   console.log(`[ChatDialog] 初始化 WebSocket 连接: ${sessionCode}`)
   wsManager = new AgentWebSocketManager(sessionCode, token)
+  streamParser = new StreamParser()
 
   // 注册事件回调
   wsManager.on('prompt', (data) => {
-    const message = data.message || AGENT_PROMPT_DEFAULT_MESSAGES[data.promptType]
-    console.log('[ChatDialog] Agent 提示:', message)
+    handlePromptEvent(data.promptType, data.message)
   })
 
   wsManager.on('stream', (content) => {
-    console.log('[ChatDialog] Agent 流式输出:', content)
+    handleStreamEvent(content)
   })
 
   wsManager.on('complete', () => {
-    console.log('[ChatDialog] Agent 完成')
+    handleCompleteEvent()
   })
 
   wsManager.on('toolRequest', async (requestId, data) => {
@@ -223,6 +274,7 @@ function initWebSocket(sessionCode: string): void {
 
   wsManager.on('error', (error) => {
     console.error('[ChatDialog] WebSocket 错误:', error)
+    toast.error(`WebSocket 错误: ${error}`)
   })
 
   // 建立连接
@@ -238,6 +290,102 @@ function disconnectWebSocket(): void {
     wsManager.disconnect()
     wsManager = null
   }
+  if (streamParser) {
+    streamParser.reset()
+    streamParser = null
+  }
+}
+
+/**
+ * 处理 Prompt 事件
+ */
+function handlePromptEvent(promptType: AgentPromptType, message?: string): void {
+  console.log('[ChatDialog] Agent 提示:', promptType, message)
+
+  // ERROR 类型直接显示错误提示
+  if (promptType === 'ERROR') {
+    const errorMsg = message || AGENT_PROMPT_DEFAULT_MESSAGES[promptType]
+    toast.error(errorMsg)
+    isShowingPrompt.value = false
+    return
+  }
+
+  // THINKING、TOOL_CALLING、SUMMARY 显示动态提示
+  if (promptType === 'THINKING' || promptType === 'TOOL_CALLING' || promptType === 'SUMMARY') {
+    currentPromptType.value = promptType
+    currentPromptMessage.value = message || AGENT_PROMPT_DEFAULT_MESSAGES[promptType]
+    isShowingPrompt.value = true
+  } else {
+    // 其他类型关闭动态提示
+    isShowingPrompt.value = false
+  }
+}
+
+/**
+ * 处理流式输出事件
+ */
+function handleStreamEvent(content: string): void {
+  if (!streamParser) return
+
+  // 追加内容到解析器
+  const parsedContent = streamParser.append(content)
+
+  // 如果解析器进入了 communication 状态，关闭动态提示
+  if (streamParser.isInCommunicationState() && isShowingPrompt.value) {
+    isShowingPrompt.value = false
+  }
+
+  // 如果有完整的 communication 内容，标记为完成状态
+  if (parsedContent !== null) {
+    console.log('[ChatDialog] 收到完整的 communication 内容:', parsedContent)
+    currentStreamingMessage.value = parsedContent
+    isStreaming.value = true
+    isStreamComplete.value = true // 标记流式输出已完成
+  } else if (streamParser.isInCommunicationState()) {
+    // 实时更新当前流式内容
+    currentStreamingMessage.value = streamParser.getCurrentContent()
+    isStreaming.value = true
+    isStreamComplete.value = false // 正在流式输出中
+  }
+}
+
+/**
+ * 处理完成事件
+ */
+async function handleCompleteEvent(): Promise<void> {
+  console.log('[ChatDialog] Agent 完成')
+  isShowingPrompt.value = false
+
+  // 如果有流式消息内容，添加到本地消息列表
+  if (currentStreamingMessage.value) {
+    const assistantMessage: ChatMessage = {
+      id: `temp-assistant-${Date.now()}`, // 临时 ID
+      sessionId: props.sessionCode || '',
+      role: 'ASSISTANT',
+      content: currentStreamingMessage.value,
+      createTime: new Date().toISOString(),
+      updateTime: new Date().toISOString()
+    }
+    localMessages.value.push(assistantMessage)
+
+    // 滚动到底部
+    await nextTick()
+    scrollToBottom()
+  }
+
+  // 清空流式消息显示状态
+  isStreaming.value = false
+  isStreamComplete.value = false
+  currentStreamingMessage.value = ''
+
+  if (streamParser) {
+    streamParser.reset()
+  }
+
+  // 延迟刷新消息列表，与后端同步
+  setTimeout(() => {
+    emit('refresh-messages')
+  }, 500)
 }
 
 /**
@@ -564,6 +712,21 @@ async function handleSend(): Promise<void> {
   const textContent = inputValue.value.trim()
   const attachmentContents = selectedFiles.value
 
+  // 立即添加用户消息到本地列表
+  const userMessage: ChatMessage = {
+    id: `temp-user-${Date.now()}`, // 临时 ID
+    sessionId: props.sessionCode || '', // 使用 sessionCode 作为临时 sessionId
+    role: 'USER',
+    content: textContent,
+    createTime: new Date().toISOString(),
+    updateTime: new Date().toISOString()
+  }
+  localMessages.value.push(userMessage)
+
+  // 滚动到底部
+  await nextTick()
+  scrollToBottom()
+
   // 收集已启用的工具 schemas（异步）
   let enabledToolSetIds = mcpConfigManager.getEnabledToolSetIds()
 
@@ -591,11 +754,22 @@ async function handleSend(): Promise<void> {
   emit('send-message', textContent, attachmentContents.length > 0 ? attachmentContents : undefined)
 }
 
-// 监听消息变化，自动滚动到底部
-watch(() => props.messages, async () => {
+// 监听 props.messages 变化，同步到本地消息列表
+watch(() => props.messages, (newMessages) => {
+  // 用后端返回的消息替换本地消息列表
+  localMessages.value = [...newMessages]
+
+  // 滚动到底部
+  nextTick(() => {
+    scrollToBottom()
+  })
+}, { deep: true, immediate: true })
+
+// 监听 localMessages 变化，自动滚动到底部
+watch(() => localMessages.value.length, async () => {
   await nextTick()
   scrollToBottom()
-}, { deep: true })
+})
 
 // 滚动到底部
 function scrollToBottom(): void {
@@ -604,10 +778,53 @@ function scrollToBottom(): void {
   }
 }
 
+/**
+ * 获取消息的显示内容
+ * 处理历史消息中的 chatContent 字段
+ */
+function getMessageDisplayContent(message: ChatMessage): string {
+  return extractMessageContent(message.content, message.chatContent)
+}
+
+/**
+ * 获取消息角色前缀
+ */
+function getRolePrefix(role: MessageRole): string {
+  switch (role) {
+    case 'USER':
+      return 'User:'
+    case 'ASSISTANT':
+      return 'Assistant:'
+    case 'SYSTEM':
+      return 'System:'
+    default:
+      return ''
+  }
+}
+
+/**
+ * 判断是否显示连接线
+ * 当下一条消息也是非用户消息时，显示连接线
+ */
+function shouldShowConnectLine(index: number): boolean {
+  if (index >= localMessages.value.length - 1) {
+    // 最后一条消息，检查是否有流式消息
+    return isStreaming.value
+  }
+
+  const nextMessage = localMessages.value[index + 1]
+  return nextMessage?.role !== 'USER'
+}
+
 // 拖动开始
 function handleMouseDown(event: MouseEvent): void {
   // 只允许在头部区域拖动，且不能点击按钮
   if ((event.target as HTMLElement).closest('.f-control-btn')) {
+    return
+  }
+
+  // 如果点击的是调整大小手柄，不触发拖动
+  if ((event.target as HTMLElement).closest('.f-resize-handle')) {
     return
   }
 
@@ -624,9 +841,10 @@ function handleMouseDown(event: MouseEvent): void {
 
 // 拖动中
 function handleMouseMove(event: MouseEvent): void {
-  // 优先处理调整大小
+  console.log('[ChatDialog] mousemove 触发, isDragging:', isDragging.value, 'isResizing:', isResizing.value)
+
+  // 如果正在 resize,不处理(由 window 上的专用监听器处理)
   if (isResizing.value) {
-    handleResizeMove(event)
     return
   }
 
@@ -647,23 +865,94 @@ function handleMouseMove(event: MouseEvent): void {
 
 // 拖动结束
 function handleMouseUp(): void {
-  isDragging.value = false
-  handleResizeEnd()
+  console.log('[ChatDialog] mouseup 触发, isDragging:', isDragging.value, 'isResizing:', isResizing.value)
+
+  if (isDragging.value) {
+    console.log('[ChatDialog] 拖动结束')
+    isDragging.value = false
+  }
+
+  if (isResizing.value) {
+    console.log('[ChatDialog] 调整大小结束')
+    handleResizeEnd()
+  }
 }
 
 // 调整大小开始
 function handleResizeStart(event: MouseEvent, direction: string): void {
   event.stopPropagation()
+  event.preventDefault() // 防止文本选择等默认行为
+
+  console.log('[ChatDialog] 调整大小开始:', direction)
+
   isResizing.value = true
   resizeDirection.value = direction
   resizeStartPos.value = { x: event.clientX, y: event.clientY }
   resizeStartSize.value = { ...dialogSize.value }
   resizeStartPosition.value = { ...dialogPosition.value }
+
+  // 创建专门的 resize 事件处理器
+  const handleResizeMouseMove = (e: MouseEvent) => {
+    handleResizeMove(e)
+  }
+
+  const handleResizeMouseUp = () => {
+    console.log('[ChatDialog] resize mouseup 触发')
+    cleanup()
+  }
+
+  // 清理函数:移除监听器并结束 resize
+  const cleanup = () => {
+    window.removeEventListener('mousemove', handleResizeMouseMove, true)
+    window.removeEventListener('mouseup', handleResizeMouseUp, true)
+    window.removeEventListener('blur', handleResizeMouseUp)
+    isResizing.value = false
+    resizeDirection.value = ''
+    resizeCleanup = null
+  }
+
+  // 保存清理函数的引用
+  resizeCleanup = cleanup
+
+  // 在 window 上添加监听器,确保鼠标移出对话框时仍能捕获
+  window.addEventListener('mousemove', handleResizeMouseMove, { capture: true })
+  window.addEventListener('mouseup', handleResizeMouseUp, { capture: true, once: true })
+  window.addEventListener('blur', handleResizeMouseUp, { once: true })
 }
 
 // 调整大小中
 function handleResizeMove(event: MouseEvent): void {
+  console.log('[ChatDialog] resizeMove 执行, isResizing:', isResizing.value)
+
   if (!isResizing.value || !chatDialog.value) return
+
+  // 边界检测:如果鼠标移出对话框边缘 20px,自动停止 resize
+  const EDGE_THRESHOLD = 20 // 允许鼠标在对话框外 20px 范围内继续 resize
+  const dialogRect = chatDialog.value.getBoundingClientRect()
+  const mouseX = event.clientX
+  const mouseY = event.clientY
+
+  // 计算鼠标相对于对话框的位置
+  const distanceToLeft = mouseX - dialogRect.left
+  const distanceToRight = dialogRect.right - mouseX
+  const distanceToTop = mouseY - dialogRect.top
+  const distanceToBottom = dialogRect.bottom - mouseY
+
+  // 检查是否移出对话框边界超过阈值
+  const isOutOfBounds =
+    distanceToLeft < -EDGE_THRESHOLD ||
+    distanceToRight < -EDGE_THRESHOLD ||
+    distanceToTop < -EDGE_THRESHOLD ||
+    distanceToBottom < -EDGE_THRESHOLD
+
+  if (isOutOfBounds) {
+    console.log('[ChatDialog] 鼠标移出对话框边界,自动停止 resize')
+    // 调用清理函数,移除监听器并结束 resize
+    if (resizeCleanup) {
+      resizeCleanup()
+    }
+    return
+  }
 
   const deltaX = event.clientX - resizeStartPos.value.x
   const deltaY = event.clientY - resizeStartPos.value.y
@@ -674,45 +963,46 @@ function handleResizeMove(event: MouseEvent): void {
   let newX = resizeStartPosition.value.x
   let newY = resizeStartPosition.value.y
 
-  // 根据方向调整尺寸和位置
+  // 根据方向计算新的尺寸(未限制)
   if (direction.includes('e')) {
     newWidth = resizeStartSize.value.width + deltaX
   }
   if (direction.includes('w')) {
     newWidth = resizeStartSize.value.width - deltaX
-    newX = resizeStartPosition.value.x + deltaX
   }
   if (direction.includes('s')) {
     newHeight = resizeStartSize.value.height + deltaY
   }
   if (direction.includes('n')) {
     newHeight = resizeStartSize.value.height - deltaY
-    newY = resizeStartPosition.value.y + deltaY
   }
 
-  // 应用尺寸限制
-  newWidth = Math.max(MIN_WIDTH, Math.min(newWidth, MAX_WIDTH))
-  newHeight = Math.max(MIN_HEIGHT, Math.min(newHeight, MAX_HEIGHT))
+  // 应用尺寸限制,并记录限制前后的差异
+  const constrainedWidth = Math.max(MIN_WIDTH, Math.min(newWidth, MAX_WIDTH))
+  const constrainedHeight = Math.max(MIN_HEIGHT, Math.min(newHeight, MAX_HEIGHT))
+
+  // 计算实际应用的尺寸变化
+  const actualWidthDelta = constrainedWidth - resizeStartSize.value.width
+  const actualHeightDelta = constrainedHeight - resizeStartSize.value.height
 
   // 更新尺寸
-  dialogSize.value = { width: newWidth, height: newHeight }
+  dialogSize.value = { width: constrainedWidth, height: constrainedHeight }
 
   // 如果是从左边或上边调整,需要更新位置
+  // 关键:使用实际应用的尺寸变化(考虑了限制)来计算位置
   if (direction.includes('w') || direction.includes('n')) {
-    // 计算实际的尺寸变化
-    const actualWidthChange = newWidth - resizeStartSize.value.width
-    const actualHeightChange = newHeight - resizeStartSize.value.height
-
     if (direction.includes('w')) {
-      newX = resizeStartPosition.value.x - actualWidthChange
+      // 从左边调整:位置向左移动的距离 = 宽度增加的距离
+      newX = resizeStartPosition.value.x - actualWidthDelta
     }
     if (direction.includes('n')) {
-      newY = resizeStartPosition.value.y - actualHeightChange
+      // 从上边调整:位置向上移动的距离 = 高度增加的距离
+      newY = resizeStartPosition.value.y - actualHeightDelta
     }
 
     // 限制在视口范围内
-    newX = Math.max(0, Math.min(newX, window.innerWidth - newWidth))
-    newY = Math.max(0, Math.min(newY, window.innerHeight - newHeight))
+    newX = Math.max(0, Math.min(newX, window.innerWidth - constrainedWidth))
+    newY = Math.max(0, Math.min(newY, window.innerHeight - constrainedHeight))
 
     dialogPosition.value = { x: newX, y: newY }
   }
@@ -848,50 +1138,107 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  background: rgb(24, 24, 24);
 
-.f-message {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
+  // 自定义滚动条样式
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
 
-  &.user {
-    flex-direction: row-reverse;
+  &::-webkit-scrollbar-track {
+    background: rgb(24, 24, 24);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #3a3a3a;
+    border-radius: 4px;
+
+    &:hover {
+      background: #4a4a4a;
+    }
   }
 }
 
-.f-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #3a3a3a;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  flex-shrink: 0;
+// 用户消息 - 蓝色边框
+.f-message-user {
+  width: 100%;
 }
 
-.f-message.user .f-avatar {
-  background: #4a9eff;
-}
-
-.f-message-content {
-  flex: 1;
-  background: #2a2a2a;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  line-height: 1.5;
+.f-user-message-box {
+  padding: 10px 12px;
+  background: rgb(49, 49, 49);
+  border: 1px solid #4a9eff;
+  border-radius: 4px;
   color: #cccccc;
+  font-size: 13px;
+  line-height: 1.6;
   word-wrap: break-word;
+  white-space: pre-wrap;
 }
 
-.f-message.user .f-message-content {
-  background: #4a9eff;
-  color: #ffffff;
+// AI/系统消息 - 带小点和连接线
+.f-message-assistant-wrapper {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+// 消息指示器容器（小点+连接线）
+.f-message-indicator {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 6px;
+}
+
+// 小点
+.f-indicator-dot {
+  width: 8px;
+  height: 8px;
+  background: #666666;
+  border-radius: 50%;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+// 连接线
+.f-indicator-line {
+  width: 2px;
+  flex: 1;
+  background: #3a3a3a;
+  margin-top: 4px;
+  min-height: 20px;
+}
+
+// AI 消息内容
+.f-message-assistant-content {
+  flex: 1;
+  color: #cccccc;
+  font-size: 13px;
+  line-height: 1.6;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  padding-top: 2px;
+}
+
+// 流式输出样式
+.f-message-assistant-content.f-streaming {
+  .f-cursor {
+    display: inline-block;
+    margin-left: 2px;
+    animation: blink 1s step-end infinite;
+  }
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
 }
 
 // 附件预览区域
