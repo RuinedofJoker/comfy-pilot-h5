@@ -1289,7 +1289,8 @@ onUnmounted(() => {
 .f-user-message-box {
   display: inline-block;
   max-width: 80%;
-  padding: 10px 12px;
+  padding: 6px 12px;
+  margin: 6px 0;
   background: rgb(49, 49, 49);
   border-radius: 4px;
   color: #cccccc;
@@ -1312,13 +1313,13 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 6px;
+  padding-top: 8px; // 调整以对齐文字中间
 }
 
 // 小点
 .f-indicator-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   background: #666666;
   border-radius: 50%;
   flex-shrink: 0;
@@ -1327,10 +1328,11 @@ onUnmounted(() => {
 
 // 连接线
 .f-indicator-line {
-  width: 2px;
+  width: 1px;
   flex: 1;
   background: #3a3a3a;
-  margin-top: 4px;
+  margin-top: 0; // 移除间隙，让线紧贴点
+  margin-bottom: -20px; // 向下延伸覆盖消息间距(12px) + 下一条消息的 padding-top(8px)
   min-height: 20px;
 }
 
