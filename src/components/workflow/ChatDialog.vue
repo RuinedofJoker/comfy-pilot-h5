@@ -29,7 +29,7 @@
     <div v-show="!isMinimized" class="f-chat-messages" ref="chatMessages">
       <!-- 本地消息列表 - 简洁展示，类似终端输出 -->
       <template v-for="(message, index) in localMessages" :key="message.id">
-        <!-- 用户消息 - 蓝色边框 -->
+        <!-- 用户消息 -->
         <div v-if="message.role === 'USER'" class="f-message-user">
           <div class="f-user-message-box">
             {{ getMessageDisplayContent(message) }}
@@ -164,7 +164,6 @@ import * as FileContentUtil from '@/utils/file-content'
 import { toast } from '@/utils/toast'
 import { mcpToolRegistry, mcpConfigManager } from '@/mcp'
 import type { ToolExecutionPolicy } from '@/mcp/types'
-import { StreamParser, extractMessageContent } from '@/utils/stream-parser'
 import AgentPromptIndicator from './AgentPromptIndicator.vue'
 
 // Props
@@ -205,9 +204,6 @@ const localMessages = ref<ChatMessage[]>([])
 
 // WebSocket 管理器
 let wsManager: AgentWebSocketManager | null = null
-
-// 流式消息解析器
-let streamParser: StreamParser | null = null
 
 // Agent 状态
 const currentPromptType = ref<AgentPromptType | null>(null)
@@ -255,7 +251,6 @@ function initWebSocket(sessionCode: string): void {
 
   console.log(`[ChatDialog] 初始化 WebSocket 连接: ${sessionCode}`)
   wsManager = new AgentWebSocketManager(sessionCode, token)
-  streamParser = new StreamParser()
 
   // 注册事件回调
   wsManager.on('prompt', (data) => {
@@ -293,10 +288,6 @@ function disconnectWebSocket(): void {
     wsManager.disconnect()
     wsManager = null
   }
-  if (streamParser) {
-    streamParser.reset()
-    streamParser = null
-  }
 }
 
 /**
@@ -328,28 +319,15 @@ function handlePromptEvent(promptType: AgentPromptType, message?: string): void 
  * 处理流式输出事件
  */
 function handleStreamEvent(content: string): void {
-  if (!streamParser) return
-
-  // 追加内容到解析器
-  const parsedContent = streamParser.append(content)
-
-  // 如果解析器进入了 communication 状态，关闭动态提示
-  if (streamParser.isInCommunicationState() && isShowingPrompt.value) {
+  // 关闭动态提示（如果有的话）
+  if (isShowingPrompt.value) {
     isShowingPrompt.value = false
   }
 
-  // 如果有完整的 communication 内容，标记为完成状态
-  if (parsedContent !== null) {
-    console.log('[ChatDialog] 收到完整的 communication 内容:', parsedContent)
-    currentStreamingMessage.value = parsedContent
-    isStreaming.value = true
-    isStreamComplete.value = true // 标记流式输出已完成
-  } else if (streamParser.isInCommunicationState()) {
-    // 实时更新当前流式内容
-    currentStreamingMessage.value = streamParser.getCurrentContent()
-    isStreaming.value = true
-    isStreamComplete.value = false // 正在流式输出中
-  }
+  // 直接追加内容到当前流式消息
+  currentStreamingMessage.value += content
+  isStreaming.value = true
+  isStreamComplete.value = false // 正在流式输出中
 }
 
 /**
@@ -380,10 +358,6 @@ async function handleCompleteEvent(): Promise<void> {
   isStreaming.value = false
   isStreamComplete.value = false
   currentStreamingMessage.value = ''
-
-  if (streamParser) {
-    streamParser.reset()
-  }
 
   // 延迟刷新消息列表，与后端同步
   setTimeout(() => {
@@ -814,26 +788,25 @@ function scrollToBottom(): void {
 
 /**
  * 获取消息的显示内容
- * 处理历史消息中的 chatContent 字段
  */
 function getMessageDisplayContent(message: ChatMessage): string {
-  return extractMessageContent(message.content, message.chatContent)
-}
-
-/**
- * 获取消息角色前缀
- */
-function getRolePrefix(role: MessageRole): string {
-  switch (role) {
-    case 'USER':
-      return 'User:'
-    case 'ASSISTANT':
-      return 'Assistant:'
-    case 'SYSTEM':
-      return 'System:'
-    default:
-      return ''
+  // 优先使用 content 字段
+  if (message.content && message.content.trim()) {
+    return message.content
   }
+
+  // 如果 content 为空，尝试从 chatContent 解析
+  if (message.chatContent && message.chatContent.trim()) {
+    try {
+      const parsed = JSON.parse(message.chatContent)
+      return parsed.content || ''
+    } catch (error) {
+      console.error('[ChatDialog] 解析 chatContent 失败:', error)
+      return ''
+    }
+  }
+
+  return ''
 }
 
 /**

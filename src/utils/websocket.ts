@@ -88,7 +88,7 @@ export class AgentWebSocketManager {
     switch (msg.type) {
       case WebSocketMessageTypeValues.AGENT_PROMPT:
         console.log('[WebSocket] 收到 AGENT_PROMPT:', msg.data)
-        this.callbacks.onPrompt?.(msg.data)
+        this.callbacks.onPrompt?.(msg.data as AgentPromptData)
         break
 
       case WebSocketMessageTypeValues.AGENT_STREAM:
@@ -102,7 +102,7 @@ export class AgentWebSocketManager {
 
       case WebSocketMessageTypeValues.AGENT_TOOL_CALL_REQUEST:
         console.log('[WebSocket] 收到 AGENT_TOOL_CALL_REQUEST:', msg.data)
-        this.callbacks.onToolRequest?.(msg.requestId, msg.data)
+        this.callbacks.onToolRequest?.(msg.requestId, msg.data as AgentToolCallRequestData)
         break
 
       case WebSocketMessageTypeValues.PONG:
