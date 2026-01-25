@@ -132,7 +132,8 @@ export class AgentWebSocketManager {
     content: string,
     workflowContent: string,
     toolSchemas?: any[],
-    multimodalContents?: any[]
+    multimodalContents?: any[],
+    mcpConfig?: string
   ): void {
     // 判断是否为命令（以 / 开头）
     const isCommand = content.trim().startsWith('/')
@@ -147,7 +148,8 @@ export class AgentWebSocketManager {
           this.sessionCode,
           content,
           toolSchemas,
-          multimodalContents
+          multimodalContents,
+          mcpConfig
         )
 
     console.log(`[WebSocket] 发送${isCommand ? '命令' : '消息'}:`, content)

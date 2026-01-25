@@ -201,7 +201,6 @@ import { uploadFile } from '@/services/file'
 import * as FileContentUtil from '@/utils/file-content'
 import { toast } from '@/utils/toast'
 import { mcpToolRegistry, mcpConfigManager } from '@/mcp'
-import type { ToolExecutionPolicy } from '@/mcp/types'
 import AgentPromptIndicator from './AgentPromptIndicator.vue'
 import ToolCallConfirmation from './ToolCallConfirmation.vue'
 
@@ -463,31 +462,10 @@ async function handleClientToolCall(
 ): Promise<void> {
   if (!wsManager || !props.sessionCode) return
 
-  // 查找工具所属的工具集（异步）
-  const toolSet = await mcpToolRegistry.findToolSetByToolName(toolName)
-  if (!toolSet) {
-    console.error(`[ChatDialog] 未找到工具: ${toolName}`)
-    wsManager.sendToolResponse(requestId, toolCallId, toolName, toolArgs, true, false, false, undefined, false, '工具不存在')
-    return
-  }
-
-  // 获取执行策略
-  let executionPolicy: ToolExecutionPolicy
-  if (toolSet.type === 'external-mcp') {
-    // 外部 MCP 工具集使用全局执行策略
-    executionPolicy = mcpConfigManager.getGlobalExecutionPolicy()
-  } else {
-    // 内置工具集使用各自的执行策略
-    const config = mcpConfigManager.getToolSetConfig(toolSet.id)
-    executionPolicy = config?.executionPolicy || 'ask-every-time'
-  }
-
   // 根据执行策略决定是否需要用户确认
-  let isAllow = false
-  if (executionPolicy === 'auto-execute') {
-    isAllow = true
-  } else {
-    // 显示确认对话框
+  // 只有 MCP 工具需要用户确认，其他工具直接放行
+  let isAllow = true
+  if (isMcpTool) {
     isAllow = await showToolConfirmDialog(toolName, args)
   }
 
@@ -556,8 +534,11 @@ async function handleServerToolCall(
 ): Promise<void> {
   if (!wsManager || !props.sessionCode) return
 
-  // 显示确认对话框
-  const isAllow = await showToolConfirmDialog(toolName, args)
+  // 只有 MCP 工具需要用户确认，其他工具直接放行
+  let isAllow = true
+  if (isMcpTool) {
+    isAllow = await showToolConfirmDialog(toolName, args)
+  }
 
   // 发送响应（仅包含 isAllow，不包含执行结果）
   wsManager.sendToolResponse(requestId, toolCallId, toolName, toolArgs, false, isMcpTool, isAllow)
@@ -849,6 +830,9 @@ async function handleSend(): Promise<void> {
   // 异步获取工具 schemas
   const toolSchemas = await mcpToolRegistry.getToolSchemas(enabledToolSetIds)
 
+  // 获取 MCP 配置（JSON 字符串）
+  const mcpConfig = mcpConfigManager.exportConfig()
+
   // 生成并保存请求ID
   const requestId = Date.now().toString()
   currentRequestId.value = requestId
@@ -858,7 +842,8 @@ async function handleSend(): Promise<void> {
     textContent,
     props.workflowContent,
     toolSchemas.length > 0 ? toolSchemas : undefined,
-    attachmentContents.length > 0 ? attachmentContents : undefined
+    attachmentContents.length > 0 ? attachmentContents : undefined,
+    mcpConfig
   )
 
   // 清空输入

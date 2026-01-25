@@ -261,7 +261,8 @@ export class MessageBuilder {
     sessionCode: string,
     content: string,
     toolSchemas?: McpToolSchema[],
-    multimodalContents?: import('./chat-content').ChatContent[]
+    multimodalContents?: import('./chat-content').ChatContent[],
+    mcpConfig?: string
   ): UserMessage {
     return {
       type: WebSocketMessageTypeValues.USER_MESSAGE,
@@ -271,7 +272,8 @@ export class MessageBuilder {
       data: {
         type: WebSocketMessageTypeValues.USER_MESSAGE,
         toolSchemas,
-        multimodalContents
+        multimodalContents,
+        mcpConfig
       },
       timestamp: Date.now()
     };
