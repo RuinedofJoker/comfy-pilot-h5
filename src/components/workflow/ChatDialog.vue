@@ -121,11 +121,13 @@
         style="display: none"
         @change="handleFileSelect"
       />
-      <input
+      <textarea
+        ref="textareaRef"
         v-model="inputValue"
-        type="text"
-        placeholder="输入你的需求..."
-        @keypress.enter="handleSend"
+        placeholder="输入你的需求... (Shift+Enter 换行)"
+        rows="1"
+        @keydown="handleKeyDown"
+        @input="adjustTextareaHeight"
       />
       <button class="f-send-btn" :disabled="!inputValue.trim()" @click="handleSend">
         发送
@@ -195,6 +197,7 @@ const chatMessages = ref<HTMLDivElement | null>(null)
 const chatDialog = ref<HTMLDivElement | null>(null)
 const chatHeader = ref<HTMLDivElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const selectedFiles = ref<ChatContent[]>([])
 
 // 本地消息列表（包含历史消息 + 新消息）
@@ -692,6 +695,32 @@ function removeAttachment(index: number): void {
   selectedFiles.value.splice(index, 1)
 }
 
+// 处理键盘事件
+function handleKeyDown(event: KeyboardEvent): void {
+  // Shift + Enter: 换行（默认行为，不做处理）
+  if (event.shiftKey && event.key === 'Enter') {
+    return
+  }
+
+  // 单独按 Enter: 发送消息
+  if (event.key === 'Enter') {
+    event.preventDefault() // 阻止默认的换行行为
+    handleSend()
+  }
+}
+
+// 自动调整 textarea 高度
+function adjustTextareaHeight(): void {
+  if (!textareaRef.value) return
+
+  // 重置高度以获取正确的 scrollHeight
+  textareaRef.value.style.height = 'auto'
+
+  // 设置新高度（限制在最小和最大高度之间）
+  const newHeight = Math.min(Math.max(textareaRef.value.scrollHeight, 36), 120)
+  textareaRef.value.style.height = `${newHeight}px`
+}
+
 // 发送消息
 async function handleSend(): Promise<void> {
   if (!inputValue.value.trim()) {
@@ -749,6 +778,11 @@ async function handleSend(): Promise<void> {
   // 清空输入
   inputValue.value = ''
   selectedFiles.value = []
+
+  // 重置 textarea 高度
+  if (textareaRef.value) {
+    textareaRef.value.style.height = 'auto'
+  }
 
   // 触发事件通知父组件（用于更新 UI 等）
   emit('send-message', textContent, attachmentContents.length > 0 ? attachmentContents : undefined)
@@ -1168,7 +1202,6 @@ onUnmounted(() => {
 .f-user-message-box {
   padding: 10px 12px;
   background: rgb(49, 49, 49);
-  border: 1px solid #4a9eff;
   border-radius: 4px;
   color: #cccccc;
   font-size: 13px;
@@ -1369,8 +1402,9 @@ onUnmounted(() => {
   border-top: 1px solid #3a3a3a;
   background: #242424;
   flex-shrink: 0;
+  align-items: flex-end;
 
-  input[type="text"] {
+  textarea {
     flex: 1;
     padding: 8px 12px;
     background: #2a2a2a;
@@ -1378,7 +1412,13 @@ onUnmounted(() => {
     border-radius: 3px;
     color: #cccccc;
     font-size: 13px;
+    font-family: inherit;
+    line-height: 1.5;
     outline: none;
+    resize: none;
+    min-height: 36px;
+    max-height: 120px;
+    overflow-y: auto;
 
     &:focus {
       border-color: #4a9eff;
@@ -1386,6 +1426,24 @@ onUnmounted(() => {
 
     &::placeholder {
       color: #777777;
+    }
+
+    // 自定义滚动条
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #2a2a2a;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #3a3a3a;
+      border-radius: 3px;
+
+      &:hover {
+        background: #4a4a4a;
+      }
     }
   }
 }
