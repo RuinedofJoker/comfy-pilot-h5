@@ -418,7 +418,7 @@ async function handleCompleteEvent(): Promise<void> {
  * 处理工具调用请求
  */
 async function handleToolCallRequest(requestId: string, data: AgentToolCallRequestData): Promise<void> {
-  const { toolCallId, toolName, toolArgs, isClientTool } = data
+  const { toolCallId, toolName, toolArgs, isClientTool, isMcpTool } = data
 
   try {
     // 解析工具参数
@@ -426,10 +426,10 @@ async function handleToolCallRequest(requestId: string, data: AgentToolCallReque
 
     if (isClientTool) {
       // 前端工具：需要执行并返回结果
-      await handleClientToolCall(requestId, toolCallId, toolName, args, toolArgs)
+      await handleClientToolCall(requestId, toolCallId, toolName, args, toolArgs, isMcpTool)
     } else {
       // 后端工具：仅做权限验证
-      await handleServerToolCall(requestId, toolCallId, toolName, args, toolArgs)
+      await handleServerToolCall(requestId, toolCallId, toolName, args, toolArgs, isMcpTool)
     }
   } catch (error) {
     console.error('[ChatDialog] 工具调用处理失败:', error)
@@ -441,6 +441,7 @@ async function handleToolCallRequest(requestId: string, data: AgentToolCallReque
       toolName,
       toolArgs,
       isClientTool,
+      isMcpTool,
       true,
       String((error as Error).stack),
       false,
@@ -457,7 +458,8 @@ async function handleClientToolCall(
   toolCallId: string,
   toolName: string,
   args: any,
-  toolArgs: string
+  toolArgs: string,
+  isMcpTool: boolean
 ): Promise<void> {
   if (!wsManager || !props.sessionCode) return
 
@@ -465,7 +467,7 @@ async function handleClientToolCall(
   const toolSet = await mcpToolRegistry.findToolSetByToolName(toolName)
   if (!toolSet) {
     console.error(`[ChatDialog] 未找到工具: ${toolName}`)
-    wsManager.sendToolResponse(requestId, toolCallId, toolName, toolArgs, true, false, undefined, false, '工具不存在')
+    wsManager.sendToolResponse(requestId, toolCallId, toolName, toolArgs, true, false, false, undefined, false, '工具不存在')
     return
   }
 
@@ -491,7 +493,7 @@ async function handleClientToolCall(
 
   if (!isAllow) {
     // 用户拒绝执行
-    wsManager.sendToolResponse(requestId, toolCallId, toolName, toolArgs, true, false)
+    wsManager.sendToolResponse(requestId, toolCallId, toolName, toolArgs, true, false, isMcpTool)
     return
   }
 
@@ -507,6 +509,7 @@ async function handleClientToolCall(
         toolArgs,
         true,
         true,
+        isMcpTool,
         JSON.stringify(executionResult.result),
         true
       )
@@ -518,7 +521,8 @@ async function handleClientToolCall(
         toolArgs,
         true,
         true,
-        undefined,
+        isMcpTool,
+        "",
         false,
         executionResult.error
       )
@@ -531,6 +535,7 @@ async function handleClientToolCall(
       toolArgs,
       true,
       true,
+      isMcpTool,
       String((error as Error).stack),
       false,
       error instanceof Error ? error.message : '工具执行失败'
@@ -546,7 +551,8 @@ async function handleServerToolCall(
   toolCallId: string,
   toolName: string,
   args: any,
-  toolArgs: string
+  toolArgs: string,
+  isMcpTool: boolean
 ): Promise<void> {
   if (!wsManager || !props.sessionCode) return
 
@@ -554,7 +560,7 @@ async function handleServerToolCall(
   const isAllow = await showToolConfirmDialog(toolName, args)
 
   // 发送响应（仅包含 isAllow，不包含执行结果）
-  wsManager.sendToolResponse(requestId, toolCallId, toolName, toolArgs, false, isAllow)
+  wsManager.sendToolResponse(requestId, toolCallId, toolName, toolArgs, false, isMcpTool, isAllow)
 }
 
 /**

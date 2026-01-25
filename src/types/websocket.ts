@@ -143,6 +143,8 @@ export interface McpToolSchema {
 export interface UserMessageRequestData extends ClientToServerMessageData {
   /** 客户端MCP工具schema列表 */
   toolSchemas?: McpToolSchema[];
+  /** 客户端MCP配置(mcp.json文件内容) */
+  mcpConfig?: string;
   /** 多模态数据 */
   multimodalContents?: import('./chat-content').ChatContent[];
 }
@@ -159,6 +161,8 @@ export interface AgentToolCallResponseData extends ClientToServerMessageData {
   toolName: string;
   /** 是否是客户端工具 */
   isClientTool: boolean;
+  /** 是否是MCP工具 */
+  isMcpTool: boolean;
   /** 工具参数（JSON字符串） */
   toolArgs: string;
   /** 工具执行结果（JSON字符串或文本） */
@@ -199,6 +203,8 @@ export interface AgentToolCallRequestData extends ServerToClientMessageData {
   toolArgs: string;
   /** 是否是客户端工具（如果不是只需要返回是否允许执行） */
   isClientTool: boolean;
+    /** 是否是MCP工具 */
+  isMcpTool: boolean;
 }
 
 /**
@@ -302,6 +308,7 @@ export class MessageBuilder {
     toolName: string,
     toolArgs: string,
     isClientTool: boolean,
+    isMcpTool: boolean,
     result?: string,
     success?: boolean,
     error?: string
@@ -315,6 +322,7 @@ export class MessageBuilder {
         toolCallId,
         toolName,
         isClientTool,
+        isMcpTool,
         toolArgs,
         isAllow: true,
         result,
@@ -334,7 +342,8 @@ export class MessageBuilder {
     toolCallId: string,
     toolName: string,
     toolArgs: string,
-    isClientTool: boolean
+    isClientTool: boolean,
+    isMcpTool: boolean
   ): ToolCallResponseMessage {
     return {
       type: WebSocketMessageTypeValues.AGENT_TOOL_CALL_RESPONSE,
@@ -345,6 +354,7 @@ export class MessageBuilder {
         toolCallId,
         toolName,
         isClientTool,
+        isMcpTool,
         toolArgs,
         isAllow: false
       },

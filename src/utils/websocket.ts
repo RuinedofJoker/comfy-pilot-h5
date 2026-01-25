@@ -163,6 +163,7 @@ export class AgentWebSocketManager {
     toolName: string,
     toolArgs: string,
     isClientTool: boolean,
+    isMcpTool: boolean,
     isAllow: boolean,
     result?: string,
     success?: boolean,
@@ -176,6 +177,7 @@ export class AgentWebSocketManager {
           toolName,
           toolArgs,
           isClientTool,
+          isMcpTool,
           result,
           success,
           error
@@ -186,7 +188,8 @@ export class AgentWebSocketManager {
           toolCallId,
           toolName,
           toolArgs,
-          isClientTool
+          isClientTool,
+          isMcpTool
         )
 
     console.log('[WebSocket] 发送工具调用响应:', { toolName, isAllow })
