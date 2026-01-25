@@ -167,7 +167,7 @@ export class AgentWebSocketManager {
     isClientTool: boolean,
     isMcpTool: boolean,
     isAllow: boolean,
-    result?: string,
+    result?: string, 
     success?: boolean,
     error?: string
   ): void {

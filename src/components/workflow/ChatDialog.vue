@@ -486,8 +486,8 @@ async function handleClientToolCall(
         toolName,
         toolArgs,
         true,
-        true,
         isMcpTool,
+        true,
         JSON.stringify(executionResult.result),
         true
       )
@@ -498,8 +498,8 @@ async function handleClientToolCall(
         toolName,
         toolArgs,
         true,
-        true,
         isMcpTool,
+        true,
         "",
         false,
         executionResult.error
@@ -512,8 +512,8 @@ async function handleClientToolCall(
       toolName,
       toolArgs,
       true,
-      true,
       isMcpTool,
+      true,
       String((error as Error).stack),
       false,
       error instanceof Error ? error.message : '工具执行失败'
