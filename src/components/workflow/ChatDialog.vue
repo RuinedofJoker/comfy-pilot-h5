@@ -29,7 +29,7 @@
     <div v-show="!isMinimized" class="f-chat-messages">
       <div class="f-messages-content" ref="chatMessages">
         <!-- 本地消息列表 - 简洁展示，类似终端输出 -->
-        <template v-for="(message, index) in localMessages" :key="message.id">
+        <template v-for="(message, index) in filteredMessages" :key="message.id">
         <!-- 用户消息 -->
         <div v-if="message.role === 'USER'" class="f-message-user">
           <div class="f-user-message-box">
@@ -190,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import type { ChatMessage } from '@/types/session'
 import type { ChatContent } from '@/types/chat-content'
 import { AgentWebSocketManager } from '@/utils/websocket'
@@ -239,6 +239,14 @@ const selectedFiles = ref<ChatContent[]>([])
 
 // 本地消息列表（包含历史消息 + 新消息）
 const localMessages = ref<ChatMessage[]>([])
+
+// 过滤掉内容为空的消息（AI 调用工具时可能产生空消息）
+const filteredMessages = computed(() => {
+  return localMessages.value.filter(message => {
+    const content = getMessageDisplayContent(message)
+    return content && content.trim().length > 0
+  })
+})
 
 // WebSocket 管理器
 let wsManager: AgentWebSocketManager | null = null
@@ -911,12 +919,12 @@ function getMessageDisplayContent(message: ChatMessage): string {
  * 当下一条消息也是非用户消息时，显示连接线
  */
 function shouldShowConnectLine(index: number): boolean {
-  if (index >= localMessages.value.length - 1) {
+  if (index >= filteredMessages.value.length - 1) {
     // 最后一条消息，检查是否有流式消息
     return isStreaming.value
   }
 
-  const nextMessage = localMessages.value[index + 1]
+  const nextMessage = filteredMessages.value[index + 1]
   return nextMessage?.role !== 'USER'
 }
 
