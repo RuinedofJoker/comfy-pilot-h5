@@ -153,11 +153,11 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import type { ChatMessage, MessageRole } from '@/types/session'
+import type { ChatMessage } from '@/types/session'
 import type { ChatContent } from '@/types/chat-content'
 import { AgentWebSocketManager } from '@/utils/websocket'
 import { useAuthStore } from '@/stores/auth'
-import { AGENT_PROMPT_DEFAULT_MESSAGES, MessageBuilder } from '@/types/websocket'
+import { AGENT_PROMPT_DEFAULT_MESSAGES } from '@/types/websocket'
 import type { AgentToolCallRequestData, AgentPromptType } from '@/types/websocket'
 import { uploadFile } from '@/services/file'
 import * as FileContentUtil from '@/utils/file-content'
