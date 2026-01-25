@@ -37,10 +37,10 @@
               v-model="formData.modelIdentifier"
               type="text"
               class="f-input"
-              placeholder="不填写将自动生成"
+              placeholder="全局唯一，应该与调用时指定的模型名称一致"
               :disabled="mode === 'view'"
             />
-            <span class="f-hint-text">留空将根据模型名称自动生成</span>
+            <span class="f-hint-text">留空将使用模型名称做模型标识符</span>
           </div>
 
           <!-- 模型调用方式 -->

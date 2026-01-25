@@ -67,6 +67,15 @@
         :visible="isShowingPrompt"
         :text="currentPromptMessage"
       />
+
+      <!-- 工具调用确认 -->
+      <ToolCallConfirmation
+        :visible="isShowingToolConfirmation"
+        :tool-name="pendingToolCall?.toolName || ''"
+        :tool-args="pendingToolCall?.toolArgs"
+        @approve="handleToolApprove"
+        @reject="handleToolReject"
+      />
       </div>
 
       <!-- 输入框 -->
@@ -194,6 +203,7 @@ import { toast } from '@/utils/toast'
 import { mcpToolRegistry, mcpConfigManager } from '@/mcp'
 import type { ToolExecutionPolicy } from '@/mcp/types'
 import AgentPromptIndicator from './AgentPromptIndicator.vue'
+import ToolCallConfirmation from './ToolCallConfirmation.vue'
 
 // Props
 interface Props {
@@ -238,6 +248,14 @@ let wsManager: AgentWebSocketManager | null = null
 const currentPromptType = ref<AgentPromptType | null>(null)
 const currentPromptMessage = ref<string>('')
 const isShowingPrompt = ref(false)
+
+// 工具调用确认状态
+const isShowingToolConfirmation = ref(false)
+const pendingToolCall = ref<{
+  toolName: string
+  toolArgs: any
+  resolve: (value: boolean) => void
+} | null>(null)
 
 // 当前流式输出的消息
 const currentStreamingMessage = ref<string>('')
@@ -416,6 +434,18 @@ async function handleToolCallRequest(requestId: string, data: AgentToolCallReque
   } catch (error) {
     console.error('[ChatDialog] 工具调用处理失败:', error)
     toast.error('工具调用处理失败')
+    if (!wsManager || !props.sessionCode) return
+    wsManager.sendToolResponse(
+      requestId,
+      toolCallId,
+      toolName,
+      toolArgs,
+      isClientTool,
+      true,
+      String((error as Error).stack),
+      false,
+      error instanceof Error ? error.message : '工具执行失败'
+    )
   }
 }
 
@@ -501,7 +531,7 @@ async function handleClientToolCall(
       toolArgs,
       true,
       true,
-      undefined,
+      String((error as Error).stack),
       false,
       error instanceof Error ? error.message : '工具执行失败'
     )
@@ -531,10 +561,37 @@ async function handleServerToolCall(
  * 显示工具确认对话框
  */
 async function showToolConfirmDialog(toolName: string, args: any): Promise<boolean> {
-  // TODO: 实现一个更友好的确认对话框组件
-  // 目前使用浏览器原生 confirm
-  const argsStr = JSON.stringify(args, null, 2)
-  return confirm(`是否允许执行工具？\n\n工具名称: ${toolName}\n参数:\n${argsStr}`)
+  // 使用 Promise 来等待用户的确认或拒绝
+  return new Promise((resolve) => {
+    pendingToolCall.value = {
+      toolName,
+      toolArgs: args,
+      resolve
+    }
+    isShowingToolConfirmation.value = true
+  })
+}
+
+/**
+ * 处理工具调用批准
+ */
+function handleToolApprove(): void {
+  if (pendingToolCall.value) {
+    pendingToolCall.value.resolve(true)
+    isShowingToolConfirmation.value = false
+    pendingToolCall.value = null
+  }
+}
+
+/**
+ * 处理工具调用拒绝
+ */
+function handleToolReject(): void {
+  if (pendingToolCall.value) {
+    pendingToolCall.value.resolve(false)
+    isShowingToolConfirmation.value = false
+    pendingToolCall.value = null
+  }
 }
 
 /**
@@ -1226,10 +1283,13 @@ onUnmounted(() => {
 
 // 用户消息 - 蓝色边框
 .f-message-user {
+  display: flex;
   width: 100%;
 }
 
 .f-user-message-box {
+  display: inline-block;
+  max-width: 80%;
   padding: 10px 12px;
   background: rgb(49, 49, 49);
   border-radius: 4px;
