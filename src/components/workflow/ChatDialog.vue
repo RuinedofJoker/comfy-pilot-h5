@@ -26,9 +26,10 @@
       </div>
     </div>
 
-    <div v-show="!isMinimized" class="f-chat-messages" ref="chatMessages">
-      <!-- 本地消息列表 - 简洁展示，类似终端输出 -->
-      <template v-for="(message, index) in localMessages" :key="message.id">
+    <div v-show="!isMinimized" class="f-chat-messages">
+      <div class="f-messages-content" ref="chatMessages">
+        <!-- 本地消息列表 - 简洁展示，类似终端输出 -->
+        <template v-for="(message, index) in localMessages" :key="message.id">
         <!-- 用户消息 -->
         <div v-if="message.role === 'USER'" class="f-message-user">
           <div class="f-user-message-box">
@@ -66,72 +67,100 @@
         :visible="isShowingPrompt"
         :text="currentPromptMessage"
       />
+      </div>
 
-      <!-- 附件预览区域 -->
-      <div v-if="selectedFiles.length > 0" class="f-attachments-preview">
-        <div
-          v-for="(file, index) in selectedFiles"
-          :key="index"
-          class="f-attachment-item"
-        >
-          <!-- 图片预览 -->
-          <div v-if="file.type === 'image'" class="f-attachment-preview">
-            <img :src="getPreviewUrl(file)" alt="预览" class="f-preview-image" />
-            <button class="f-attachment-remove-overlay" @click="removeAttachment(index)" title="移除">
-              ×
-            </button>
+      <!-- 输入框 -->
+      <div class="f-chat-input">
+        <div class="f-input-container">
+          <!-- 第一行：输入框和附件区域 -->
+          <div class="f-input-row">
+            <!-- 输入框区域 -->
+            <div class="f-textarea-wrapper">
+              <textarea
+                ref="textareaRef"
+                v-model="inputValue"
+                placeholder="输入你的需求... (Shift+Enter 换行)"
+                rows="1"
+                @keydown="handleKeyDown"
+                @input="adjustTextareaHeight"
+              />
+            </div>
+
+            <!-- 附件预览区域 -->
+            <div v-if="selectedFiles.length > 0" class="f-attachments-preview">
+              <div
+                v-for="(file, index) in selectedFiles"
+                :key="index"
+                class="f-attachment-item"
+              >
+                <!-- 图片预览 -->
+                <div v-if="file.type === 'image'" class="f-attachment-preview">
+                  <img :src="getPreviewUrl(file)" alt="预览" class="f-preview-image" />
+                  <button class="f-attachment-remove-overlay" @click="removeAttachment(index)" title="移除">
+                    ×
+                  </button>
+                </div>
+
+                <!-- 视频预览 -->
+                <div v-else-if="file.type === 'video'" class="f-attachment-preview">
+                  <video :src="getPreviewUrl(file)" class="f-preview-video"></video>
+                  <button class="f-attachment-remove-overlay" @click="removeAttachment(index)" title="移除">
+                    ×
+                  </button>
+                </div>
+
+                <!-- 其他文件类型 -->
+                <div v-else class="f-attachment-file">
+                  <div class="f-file-icon">
+                    <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                    </svg>
+                  </div>
+                  <div class="f-file-info">
+                    <span class="f-file-name">{{ getFileName(file) }}</span>
+                  </div>
+                  <button class="f-attachment-remove-btn" @click="removeAttachment(index)" title="移除">
+                    ×
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <!-- 视频预览 -->
-          <div v-else-if="file.type === 'video'" class="f-attachment-preview">
-            <video :src="getPreviewUrl(file)" class="f-preview-video"></video>
-            <button class="f-attachment-remove-overlay" @click="removeAttachment(index)" title="移除">
-              ×
-            </button>
-          </div>
-
-          <!-- 其他文件类型 -->
-          <div v-else class="f-attachment-file">
-            <div class="f-file-icon">
-              <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-              </svg>
+          <!-- 第二行：左边空白 + 右边按钮组 -->
+          <div class="f-controls-row">
+            <div class="f-controls-left"></div>
+            <div class="f-controls-right">
+              <button class="f-attach-btn" @click="handleAttachClick" title="添加附件">
+                <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
+                </svg>
+              </button>
+              <input
+                ref="fileInput"
+                type="file"
+                multiple
+                style="display: none"
+                @change="handleFileSelect"
+              />
+              <button
+                class="f-send-btn"
+                :class="{ 'is-sending': isStreaming }"
+                :disabled="!inputValue.trim() && !isStreaming"
+                @click="isStreaming ? handleStop() : handleSend()"
+                :title="isStreaming ? '停止' : '发送'"
+              >
+                <svg v-if="!isStreaming" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12"/>
+                </svg>
+              </button>
             </div>
-            <div class="f-file-info">
-              <span class="f-file-name">{{ getFileName(file) }}</span>
-            </div>
-            <button class="f-attachment-remove-btn" @click="removeAttachment(index)" title="移除">
-              ×
-            </button>
           </div>
         </div>
       </div>
-    </div>
-
-    <div v-show="!isMinimized" class="f-chat-input">
-      <button class="f-attach-btn" @click="handleAttachClick" title="添加附件">
-        <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
-        </svg>
-      </button>
-      <input
-        ref="fileInput"
-        type="file"
-        multiple
-        style="display: none"
-        @change="handleFileSelect"
-      />
-      <textarea
-        ref="textareaRef"
-        v-model="inputValue"
-        placeholder="输入你的需求... (Shift+Enter 换行)"
-        rows="1"
-        @keydown="handleKeyDown"
-        @input="adjustTextareaHeight"
-      />
-      <button class="f-send-btn" :disabled="!inputValue.trim()" @click="handleSend">
-        发送
-      </button>
     </div>
 
     <!-- 调整大小手柄 -->
@@ -214,6 +243,7 @@ const isShowingPrompt = ref(false)
 const currentStreamingMessage = ref<string>('')
 const isStreaming = ref(false)
 const isStreamComplete = ref(false) // 标记流式输出是否已完成
+const currentRequestId = ref<string>('') // 当前请求ID
 
 // 拖动相关状态
 const isDragging = ref(false)
@@ -358,6 +388,7 @@ async function handleCompleteEvent(): Promise<void> {
   isStreaming.value = false
   isStreamComplete.value = false
   currentStreamingMessage.value = ''
+  currentRequestId.value = ''
 
   // 延迟刷新消息列表，与后端同步
   setTimeout(() => {
@@ -695,6 +726,20 @@ function adjustTextareaHeight(): void {
   textareaRef.value.style.height = `${newHeight}px`
 }
 
+// 中断当前请求
+function handleStop(): void {
+  if (!wsManager || !currentRequestId.value) return
+
+  console.log('[ChatDialog] 中断请求:', currentRequestId.value)
+  wsManager.interrupt(currentRequestId.value)
+
+  // 清空状态
+  isStreaming.value = false
+  currentStreamingMessage.value = ''
+  currentRequestId.value = ''
+  isShowingPrompt.value = false
+}
+
 // 发送消息
 async function handleSend(): Promise<void> {
   if (!inputValue.value.trim()) {
@@ -740,6 +785,10 @@ async function handleSend(): Promise<void> {
 
   // 异步获取工具 schemas
   const toolSchemas = await mcpToolRegistry.getToolSchemas(enabledToolSetIds)
+
+  // 生成并保存请求ID
+  const requestId = Date.now().toString()
+  currentRequestId.value = requestId
 
   // 通过 WebSocket 发送消息
   wsManager.sendMessage(
@@ -1140,13 +1189,21 @@ onUnmounted(() => {
 // 消息列表
 .f-chat-messages {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  background: rgb(24, 24, 24);
+}
+
+// 消息内容区域（可滚动）
+.f-messages-content {
+  flex: 1;
   overflow-y: auto;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  background: rgb(24, 24, 24);
 
   // 自定义滚动条样式
   &::-webkit-scrollbar {
@@ -1247,13 +1304,13 @@ onUnmounted(() => {
   }
 }
 
-// 附件预览区域
-.f-attachments-preview {
+// 附件预览区域（在输入框内部）
+.f-input-row .f-attachments-preview {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px;
-  margin-top: auto;
+  gap: 6px;
+  padding: 0 8px 8px 8px;
+  width: 100%;
 }
 
 .f-attachment-item {
@@ -1367,35 +1424,51 @@ onUnmounted(() => {
   }
 }
 
-// 输入框
+// 输入框外层容器
 .f-chat-input {
   display: flex;
-  gap: 8px;
-  padding: 12px;
-  border-top: 1px solid #3a3a3a;
-  background: #242424;
+  justify-content: center;
+  padding: 8px 0 20px;
+  background: rgb(24, 24, 24);
   flex-shrink: 0;
-  align-items: flex-end;
+}
+
+// 输入框内层容器（圆角矩形）
+.f-input-container {
+  width: 70%;
+  background: rgb(49, 49, 49);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+// 第一行：输入框和附件区域
+.f-input-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+// 输入框包装器
+.f-textarea-wrapper {
+  display: flex;
+  padding: 6px 8px;
+  min-height: 38px;
+  align-items: center;
 
   textarea {
     flex: 1;
-    padding: 8px 12px;
-    background: #2a2a2a;
-    border: 1px solid #3a3a3a;
-    border-radius: 3px;
+    padding: 6px 8px;
+    background: transparent;
+    border: none;
     color: #cccccc;
     font-size: 13px;
     font-family: inherit;
-    line-height: 1.5;
+    line-height: 1.4;
     outline: none;
     resize: none;
-    min-height: 36px;
+    min-height: 26px;
     max-height: 120px;
     overflow-y: auto;
-
-    &:focus {
-      border-color: #4a9eff;
-    }
 
     &::placeholder {
       color: #777777;
@@ -1407,7 +1480,7 @@ onUnmounted(() => {
     }
 
     &::-webkit-scrollbar-track {
-      background: #2a2a2a;
+      background: transparent;
     }
 
     &::-webkit-scrollbar-thumb {
@@ -1421,12 +1494,33 @@ onUnmounted(() => {
   }
 }
 
+// 第二行：控制按钮
+.f-controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 6px 8px;
+  min-height: 38px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.f-controls-left {
+  flex: 1;
+}
+
+.f-controls-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .f-attach-btn {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   background: transparent;
-  border: 1px solid #3a3a3a;
-  border-radius: 3px;
+  border: none;
+  border-radius: 50%;
   color: #999999;
   cursor: pointer;
   display: flex;
@@ -1436,36 +1530,50 @@ onUnmounted(() => {
   flex-shrink: 0;
 
   &:hover {
-    background: #3a3a3a;
+    background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
-    border-color: #4a9eff;
   }
 
   .f-icon {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
   }
 }
 
 .f-send-btn {
-  padding: 8px 16px;
-  background: #4a9eff;
+  width: 28px;
+  height: 28px;
+  background: #d97706;
   color: #ffffff;
   border: none;
-  border-radius: 3px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   transition: all 0.2s;
 
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+
   &:hover:not(:disabled) {
-    background: #5aa9ff;
+    background: #ea580c;
   }
 
   &:disabled {
-    background: #3a3a3a;
-    color: #777777;
+    opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  &.is-sending {
+    background: #dc2626;
+
+    &:hover {
+      background: #ef4444;
+    }
   }
 }
 
