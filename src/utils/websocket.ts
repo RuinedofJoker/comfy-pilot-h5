@@ -141,13 +141,11 @@ export class AgentWebSocketManager {
       ? MessageBuilder.userOrder(
           this.sessionCode,
           content,
-          workflowContent,
           multimodalContents
         )
       : MessageBuilder.userMessage(
           this.sessionCode,
           content,
-          workflowContent,
           toolSchemas,
           multimodalContents
         )

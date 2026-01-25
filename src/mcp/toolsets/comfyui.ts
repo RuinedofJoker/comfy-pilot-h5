@@ -31,7 +31,7 @@ export class ComfyUIToolSet implements McpToolSet {
     return [
       {
         name: 'execute_workflow',
-        description: '执行当前 ComfyUI 工作流并返回结果',
+        description: '执行客户端当前 ComfyUI 工作流并返回结果',
         inputSchema: {
           type: 'object',
           properties: {
@@ -45,7 +45,7 @@ export class ComfyUIToolSet implements McpToolSet {
       },
       {
         name: 'get_workflow',
-        description: '获取当前工作流的 JSON 内容',
+        description: '获取客户端当前工作流的 JSON 内容',
         inputSchema: {
           type: 'object',
           properties: {}
@@ -53,7 +53,21 @@ export class ComfyUIToolSet implements McpToolSet {
       },
       {
         name: 'set_workflow',
-        description: '设置工作流内容',
+        description: '以json字符串格式设置客户端 ComfyUI 中当前工作流内容',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            workflowJson: {
+              type: 'string',
+              description: '工作流 JSON 字符串'
+            }
+          },
+          required: ['workflowJson']
+        }
+      },
+      {
+        name: 'load_workflow',
+        description: '设置客户端 ComfyUI 中当前工作流内容',
         inputSchema: {
           type: 'object',
           properties: {
@@ -63,20 +77,6 @@ export class ComfyUIToolSet implements McpToolSet {
             }
           },
           required: ['workflow']
-        }
-      },
-      {
-        name: 'load_workflow',
-        description: '在 ComfyUI 中加载工作流',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            content: {
-              type: 'string',
-              description: '工作流 JSON 字符串'
-            }
-          },
-          required: ['content']
         }
       }
     ]
@@ -121,19 +121,19 @@ export class ComfyUIToolSet implements McpToolSet {
     }
   }
 
-  private async setWorkflow(workflow: any): Promise<any> {
-    await this.comfyUI.loadWorkflowInComfyUI(JSON.stringify(workflow))
+  private async setWorkflow(content: string): Promise<any> {
+    await this.comfyUI.loadWorkflowInComfyUI(content)
     return {
       success: true,
       message: '工作流已设置'
     }
   }
 
-  private async loadWorkflow(content: string): Promise<any> {
-    await this.comfyUI.loadWorkflowInComfyUI(content)
+  private async loadWorkflow(workflow: any): Promise<any> {
+    await this.comfyUI.loadWorkflowInComfyUI(JSON.stringify(workflow))
     return {
       success: true,
-      message: '工作流已加载'
+      message: '工作流已设置'
     }
   }
 }
