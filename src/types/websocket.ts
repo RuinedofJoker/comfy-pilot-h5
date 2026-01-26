@@ -43,21 +43,25 @@ export const WebSocketMessageTypeValues = {
  * Agent 提示类型
  */
 export type AgentPromptType =
+  | 'STARTED'           // 执行开始
   | 'THINKING'          // 思考中
   | 'TOOL_CALLING'      // 工具调用中
   | 'TOOL_COMPLETE'     // 工具完成
   | 'SUMMARY'           // 生成摘要中
   | 'SUMMARY_COMPLETE'  // 摘要完成
   | 'INTERRUPTED'       // 执行中断
+  | 'COMPLETE'          // 执行完成
   | 'ERROR'             // 执行错误
 
 export const AgentPromptTypeValues = {
+  STARTED: 'STARTED' as const,
   THINKING: 'THINKING' as const,
   TOOL_CALLING: 'TOOL_CALLING' as const,
   TOOL_COMPLETE: 'TOOL_COMPLETE' as const,
   SUMMARY: 'SUMMARY' as const,
   SUMMARY_COMPLETE: 'SUMMARY_COMPLETE' as const,
   INTERRUPTED: 'INTERRUPTED' as const,
+  COMPLETE: 'COMPLETE' as const,
   ERROR: 'ERROR' as const
 }
 
@@ -401,11 +405,13 @@ export class MessageBuilder {
  * Agent 提示类型默认消息
  */
 export const AGENT_PROMPT_DEFAULT_MESSAGES: Record<AgentPromptType, string> = {
+  STARTED: 'Agent已开始执行',
   THINKING: 'Agent正在分析问题...',
   TOOL_CALLING: 'Agent正在调用工具...',
   TOOL_COMPLETE: '工具调用已完成，继续分析...',
   SUMMARY: 'Agent正在生成摘要...',
   SUMMARY_COMPLETE: '摘要已生成完成',
   INTERRUPTED: '执行已被中断',
+  COMPLETE: '执行完成',
   ERROR: '执行过程中发生错误'
 };

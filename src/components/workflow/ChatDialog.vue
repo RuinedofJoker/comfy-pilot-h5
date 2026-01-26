@@ -89,6 +89,7 @@
                 v-model="inputValue"
                 placeholder="输入你的需求... (Shift+Enter 换行)"
                 rows="1"
+                :disabled="isAgentExecuting"
                 @keydown="handleKeyDown"
                 @input="adjustTextareaHeight"
               />
@@ -139,7 +140,12 @@
           <div class="f-controls-row">
             <div class="f-controls-left"></div>
             <div class="f-controls-right">
-              <button class="f-attach-btn" @click="handleAttachClick" title="添加附件">
+              <button
+                class="f-attach-btn"
+                :disabled="isAgentExecuting"
+                @click="handleAttachClick"
+                title="添加附件"
+              >
                 <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
                 </svg>
@@ -153,12 +159,12 @@
               />
               <button
                 class="f-send-btn"
-                :class="{ 'is-sending': isStreaming }"
-                :disabled="!inputValue.trim() && !isStreaming"
-                @click="isStreaming ? handleStop() : handleSend()"
-                :title="isStreaming ? '停止' : '发送'"
+                :class="{ 'is-sending': isAgentExecuting }"
+                :disabled="!inputValue.trim() && !isAgentExecuting"
+                @click="isAgentExecuting ? handleStop() : handleSend()"
+                :title="isAgentExecuting ? '停止' : '发送'"
               >
-                <svg v-if="!isStreaming" viewBox="0 0 24 24" fill="currentColor">
+                <svg v-if="!isAgentExecuting" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
                 </svg>
                 <svg v-else viewBox="0 0 24 24" fill="currentColor">
@@ -255,6 +261,8 @@ const currentStreamingMessage = ref<string>('')
 const isStreaming = ref(false)
 const isStreamComplete = ref(false) // 标记流式输出是否已完成
 const currentRequestId = ref<string>('') // 当前请求ID
+const isAgentExecuting = ref(false) // Agent 是否正在执行（用于控制发送按钮状态）
+const isAgentStarted = ref(false) // Agent 是否已开始执行（收到 STARTED 事件）
 
 /**
  * 初始化 WebSocket 连接
@@ -316,11 +324,33 @@ function disconnectWebSocket(): void {
 function handlePromptEvent(promptType: AgentPromptType, message?: string): void {
   console.log('[ChatDialog] Agent 提示:', promptType, message)
 
-  // ERROR 类型直接显示错误提示
+  // STARTED 类型表示 Agent 开始执行
+  if (promptType === 'STARTED') {
+    isAgentStarted.value = true
+    return
+  }
+
+  // INTERRUPTED、COMPLETE 类型表示执行结束，重置状态
+  if (promptType === 'INTERRUPTED' || promptType === 'COMPLETE') {
+    isAgentExecuting.value = false
+    isAgentStarted.value = false
+    isShowingPrompt.value = false
+    currentRequestId.value = '' // 清空请求ID
+    return
+  }
+
+  // ERROR 类型的处理取决于是否已收到 STARTED
   if (promptType === 'ERROR') {
     const errorMsg = message || AGENT_PROMPT_DEFAULT_MESSAGES[promptType]
     toast.error(errorMsg)
-    isShowingPrompt.value = false
+
+    // 如果还未收到 STARTED，说明是启动前的错误，需要中断执行
+    if (!isAgentStarted.value) {
+      isAgentExecuting.value = false
+      isShowingPrompt.value = false
+      currentRequestId.value = '' // 清空请求ID
+    }
+    // 如果已收到 STARTED，只是消息提醒，不结束执行
     return
   }
 
@@ -378,7 +408,8 @@ async function handleCompleteEvent(): Promise<void> {
   isStreaming.value = false
   isStreamComplete.value = false
   currentStreamingMessage.value = ''
-  currentRequestId.value = ''
+  // 注意：currentRequestId 不在这里清空，保留以便用户可以中断
+  // 注意：isAgentExecuting 不在这里重置，等待后端发送 AGENT_PROMPT(COMPLETE/ERROR/INTERRUPTED)
 
   // 延迟刷新消息列表，与后端同步
   setTimeout(() => {
@@ -770,11 +801,13 @@ function handleStop(): void {
     })
   }
 
-  // 清空状态
+  // 清空流式状态
   isStreaming.value = false
   currentStreamingMessage.value = ''
   currentRequestId.value = ''
   isShowingPrompt.value = false
+
+  // 注意：isAgentExecuting 不在这里重置，等待后端发送 AGENT_PROMPT(INTERRUPTED) 才会恢复按钮状态
 }
 
 // 发送消息
@@ -829,6 +862,10 @@ async function handleSend(): Promise<void> {
   // 生成并保存请求ID
   const requestId = Date.now().toString()
   currentRequestId.value = requestId
+
+  // 设置 Agent 执行状态（发送按钮变为中断样式）
+  isAgentExecuting.value = true
+  isAgentStarted.value = false // 重置 STARTED 状态，等待新的 STARTED 事件
 
   // 通过 WebSocket 发送消息
   wsManager.sendMessage(
@@ -1640,6 +1677,15 @@ onUnmounted(() => {
       color: #777777;
     }
 
+    &:disabled {
+      color: #666666;
+      cursor: not-allowed;
+
+      &::placeholder {
+        color: #555555;
+      }
+    }
+
     // 自定义滚动条
     &::-webkit-scrollbar {
       width: 6px;
@@ -1695,9 +1741,14 @@ onUnmounted(() => {
   transition: all 0.2s;
   flex-shrink: 0;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .f-icon {
