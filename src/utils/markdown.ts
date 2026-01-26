@@ -50,8 +50,34 @@ export function renderMarkdown(markdown: string): string {
     return ''
   }
 
+  // 智能压缩换行符：
+  // 1. 普通段落（p标签）后面允许最多2个换行
+  // 2. 其他标签（标题、列表、代码块等）后面最多1个换行
+
+  let normalizedMarkdown = markdown
+
+  // 先将所有3个及以上的连续换行压缩为2个
+  normalizedMarkdown = normalizedMarkdown.replace(/\n{3,}/g, '\n\n')
+
+  // 识别特殊标签（标题、列表、代码块、引用等）后的换行，压缩为1个
+  // 标题：# 开头的行
+  normalizedMarkdown = normalizedMarkdown.replace(/(^#{1,6}\s+.+)\n{2,}/gm, '$1\n')
+
+  // 列表：- 或 * 或数字. 开头的行
+  normalizedMarkdown = normalizedMarkdown.replace(/(^[\s]*[-*]\s+.+)\n{2,}/gm, '$1\n')
+  normalizedMarkdown = normalizedMarkdown.replace(/(^[\s]*\d+\.\s+.+)\n{2,}/gm, '$1\n')
+
+  // 代码块：``` 包裹的内容
+  normalizedMarkdown = normalizedMarkdown.replace(/(```[\s\S]*?```)\n{2,}/g, '$1\n')
+
+  // 引用：> 开头的行
+  normalizedMarkdown = normalizedMarkdown.replace(/(^>\s+.+)\n{2,}/gm, '$1\n')
+
+  // 水平线：--- 或 *** 或 ___
+  normalizedMarkdown = normalizedMarkdown.replace(/(^[-*_]{3,})\n{2,}/gm, '$1\n')
+
   try {
-    return marked.parse(markdown) as string
+    return marked.parse(normalizedMarkdown) as string
   } catch (error) {
     console.error('Markdown 渲染失败:', error)
     return markdown

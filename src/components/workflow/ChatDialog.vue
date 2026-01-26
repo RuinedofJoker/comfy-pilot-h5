@@ -1342,6 +1342,8 @@ onUnmounted(() => {
   display: flex;
   gap: 12px;
   width: 100%;
+  margin-left: 5px;
+  padding-right: 20px;
 }
 
 // 消息指示器容器（小点+连接线）
@@ -1381,7 +1383,6 @@ onUnmounted(() => {
   line-height: 1.6;
   word-wrap: break-word;
   white-space: pre-wrap;
-  padding-top: 2px;
 }
 
 // 流式输出样式
