@@ -15,6 +15,7 @@
     "axios": "^1.13.2",
     "highlight.js": "^11.11.1",
     "marked": "^17.0.1",
+    "marked-highlight": "^2.2.3",
     "monaco-editor": "^0.55.1",
     "pinia": "^3.0.4",
     "vant": "^4.9.22",

@@ -11,6 +11,9 @@ import 'vant/lib/index.css'
 import './styles/index.css'
 import './styles/main.scss'
 
+// 导入markdown样式
+import './styles/jetbrains-dark.css'
+
 const app = createApp(App)
 
 app.use(router)

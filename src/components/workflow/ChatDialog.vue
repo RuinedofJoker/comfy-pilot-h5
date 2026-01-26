@@ -46,9 +46,7 @@
               class="f-indicator-line"
             ></div>
           </div>
-          <div class="f-message-assistant-content">
-            {{ getMessageDisplayContent(message) }}
-          </div>
+          <div class="f-message-assistant-content f-markdown-content markdown-body" v-html="renderMessageContent(message)"></div>
         </div>
       </template>
 
@@ -57,8 +55,8 @@
         <div class="f-message-indicator">
           <div class="f-indicator-dot"></div>
         </div>
-        <div class="f-message-assistant-content" :class="{ 'f-streaming': !isStreamComplete }">
-          {{ currentStreamingMessage }}<span v-if="!isStreamComplete" class="f-cursor">▋</span>
+        <div class="f-message-assistant-content f-markdown-content markdown-body" :class="{ 'f-streaming': !isStreamComplete }">
+          <span v-html="renderStreamingContent()"></span><span v-if="!isStreamComplete" class="f-cursor">▋</span>
         </div>
       </div>
 
@@ -201,6 +199,7 @@ import { uploadFile } from '@/services/file'
 import * as FileContentUtil from '@/utils/file-content'
 import { toast } from '@/utils/toast'
 import { mcpToolRegistry, mcpConfigManager } from '@/mcp'
+import { renderMarkdown } from '@/utils/markdown'
 import AgentPromptIndicator from './AgentPromptIndicator.vue'
 import ToolCallConfirmation from './ToolCallConfirmation.vue'
 
@@ -785,6 +784,26 @@ function handleStop(): void {
   console.log('[ChatDialog] 中断请求:', currentRequestId.value)
   wsManager.interrupt(currentRequestId.value)
 
+  // 如果有流式消息内容，保存到消息列表
+  if (currentStreamingMessage.value.trim()) {
+    const now = new Date().toISOString()
+    const interruptedMessage: ChatMessage = {
+      id: Date.now().toString(),
+      sessionId: props.sessionCode || '',
+      role: 'ASSISTANT',
+      content: currentStreamingMessage.value,
+      chatContent: JSON.stringify({ content: currentStreamingMessage.value }),
+      createTime: now,
+      updateTime: now
+    }
+    localMessages.value.push(interruptedMessage)
+
+    // 滚动到底部
+    nextTick(() => {
+      scrollToBottom()
+    })
+  }
+
   // 清空状态
   isStreaming.value = false
   currentStreamingMessage.value = ''
@@ -912,6 +931,23 @@ function getMessageDisplayContent(message: ChatMessage): string {
   }
 
   return ''
+}
+
+/**
+ * 渲染消息内容为 HTML（Markdown）
+ */
+function renderMessageContent(message: ChatMessage): string {
+  const content = getMessageDisplayContent(message)
+  if (!content) return ''
+  return renderMarkdown(content)
+}
+
+/**
+ * 渲染流式消息内容为 HTML（Markdown）
+ */
+function renderStreamingContent(): string {
+  if (!currentStreamingMessage.value) return ''
+  return renderMarkdown(currentStreamingMessage.value)
 }
 
 /**
@@ -1155,6 +1191,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
+
 // Agent 对话框
 .f-chat-dialog {
   position: absolute;
