@@ -79,7 +79,15 @@
 
       <!-- 输入框 -->
       <div class="f-chat-input">
-        <div class="f-input-container">
+        <div class="f-input-container" style="position: relative;">
+          <!-- 命令提示 -->
+          <CommandSuggestion
+            ref="commandSuggestionRef"
+            :visible="isShowingCommandSuggestion"
+            :input-value="inputValue"
+            @select="handleCommandSelect"
+          />
+
           <!-- 第一行：输入框和附件区域 -->
           <div class="f-input-row">
             <!-- 输入框区域 -->
@@ -195,6 +203,7 @@ import { mcpToolRegistry, mcpConfigManager } from '@/mcp'
 import { renderMarkdown } from '@/utils/markdown'
 import AgentPromptIndicator from './AgentPromptIndicator.vue'
 import ToolCallConfirmation from './ToolCallConfirmation.vue'
+import CommandSuggestion from './CommandSuggestion.vue'
 
 // Props
 interface Props {
@@ -228,6 +237,13 @@ const chatHeader = ref<HTMLDivElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const selectedFiles = ref<ChatContent[]>([])
+const commandSuggestionRef = ref<InstanceType<typeof CommandSuggestion> | null>(null)
+
+// 命令提示状态 - 只有当输入以 / 开头且不在执行中时才可能显示
+// 注意：实际是否显示还取决于 CommandSuggestion 组件内部的 filteredCommands 是否为空
+const isShowingCommandSuggestion = computed(() => {
+  return inputValue.value.startsWith('/') && !isAgentExecuting.value
+})
 
 // 本地消息列表（包含历史消息 + 新消息）
 const localMessages = ref<ChatMessage[]>([])
@@ -772,8 +788,41 @@ function removeAttachment(index: number): void {
   selectedFiles.value.splice(index, 1)
 }
 
+// 处理命令选中
+function handleCommandSelect(command: { name: string; description: string }): void {
+  inputValue.value = command.name
+  // 聚焦到输入框末尾
+  nextTick(() => {
+    if (textareaRef.value) {
+      textareaRef.value.focus()
+      textareaRef.value.setSelectionRange(inputValue.value.length, inputValue.value.length)
+    }
+  })
+}
+
 // 处理键盘事件
 function handleKeyDown(event: KeyboardEvent): void {
+  // 如果命令提示正在显示且有可用命令，处理上下箭头和回车
+  if (isShowingCommandSuggestion.value && commandSuggestionRef.value?.hasCommands()) {
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      commandSuggestionRef.value.handleArrowKey('up')
+      return
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      commandSuggestionRef.value.handleArrowKey('down')
+      return
+    }
+
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      commandSuggestionRef.value.handleEnter()
+      return
+    }
+  }
+
   // Shift + Enter: 换行（默认行为，不做处理）
   if (event.shiftKey && event.key === 'Enter') {
     return
@@ -1664,7 +1713,7 @@ onUnmounted(() => {
   width: 90%;
   background: rgb(49, 49, 49);
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible; // 改为 visible，允许命令提示框显示在容器外
 }
 
 // 第一行：输入框和附件区域

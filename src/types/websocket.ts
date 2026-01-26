@@ -207,7 +207,7 @@ export interface AgentToolCallRequestData extends ServerToClientMessageData {
   toolArgs: string;
   /** 是否是客户端工具（如果不是只需要返回是否允许执行） */
   isClientTool: boolean;
-    /** 是否是MCP工具 */
+  /** 是否是MCP工具 */
   isMcpTool: boolean;
 }
 
@@ -217,7 +217,18 @@ export interface AgentToolCallRequestData extends ServerToClientMessageData {
  * 对应后端 Jackson 反序列化类型：AGENT_COMPLETE
  */
 export interface AgentCompleteResponseData extends ServerToClientMessageData {
-  // 空对象，仅作为标记
+  /** 最大token数 */
+  maxTokens: number;
+  /** 最大消息数 */
+  maxMessages: number;
+  /** 输入token数 */
+  inputTokens: number;
+  /** 输出token数 */
+  outputTokens: number;
+  /** 总token数 */
+  totalTokens: number;
+  /** 累计消息数 */
+  messageCount: number;
 }
 
 // ==================== 类型化消息定义 ====================
