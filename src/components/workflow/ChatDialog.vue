@@ -12,8 +12,9 @@
       width: `${dialogSize.width}px`,
       height: isMinimized ? '48px' : `${dialogSize.height}px`
     }"
+    @mousedown="handleMouseDown"
   >
-    <div ref="chatHeader" class="f-chat-header" @mousedown="handleMouseDown">
+    <div ref="chatHeader" class="f-chat-header">
       <div class="f-chat-title">
         <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
           <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/>
@@ -170,20 +171,6 @@
       </div>
     </div>
 
-    <!-- 调整大小手柄 -->
-    <div v-show="!isMinimized" class="f-resize-handles">
-      <!-- 四个角 -->
-      <div class="f-resize-handle f-resize-nw" @mousedown="handleResizeStart($event, 'nw')"></div>
-      <div class="f-resize-handle f-resize-ne" @mousedown="handleResizeStart($event, 'ne')"></div>
-      <div class="f-resize-handle f-resize-sw" @mousedown="handleResizeStart($event, 'sw')"></div>
-      <div class="f-resize-handle f-resize-se" @mousedown="handleResizeStart($event, 'se')"></div>
-
-      <!-- 四条边 -->
-      <div class="f-resize-handle f-resize-n" @mousedown="handleResizeStart($event, 'n')"></div>
-      <div class="f-resize-handle f-resize-s" @mousedown="handleResizeStart($event, 's')"></div>
-      <div class="f-resize-handle f-resize-w" @mousedown="handleResizeStart($event, 'w')"></div>
-      <div class="f-resize-handle f-resize-e" @mousedown="handleResizeStart($event, 'e')"></div>
-    </div>
   </div>
 </template>
 
@@ -268,27 +255,6 @@ const currentStreamingMessage = ref<string>('')
 const isStreaming = ref(false)
 const isStreamComplete = ref(false) // 标记流式输出是否已完成
 const currentRequestId = ref<string>('') // 当前请求ID
-
-// 拖动相关状态
-const isDragging = ref(false)
-const dragOffset = ref({ x: 0, y: 0 })
-const dialogPosition = ref({ x: 0, y: 0 })
-
-// 调整大小相关状态
-const isResizing = ref(false)
-const resizeDirection = ref<string>('')
-const dialogSize = ref({ width: 480, height: 640 })
-const resizeStartPos = ref({ x: 0, y: 0 })
-const resizeStartSize = ref({ width: 0, height: 0 })
-const resizeStartPosition = ref({ x: 0, y: 0 })
-// 保存清理函数的引用
-let resizeCleanup: (() => void) | null = null
-
-// 最小和最大尺寸限制
-const MIN_WIDTH = 360
-const MIN_HEIGHT = 480
-const MAX_WIDTH = 1000
-const MAX_HEIGHT = 900
 
 /**
  * 初始化 WebSocket 连接
@@ -964,39 +930,159 @@ function shouldShowConnectLine(index: number): boolean {
   return nextMessage?.role !== 'USER'
 }
 
-// 拖动开始
+// 拖动相关状态
+const isDragging = ref(false)
+const dragOffset = ref({ x: 0, y: 0 })
+const dialogPosition = ref({ x: 0, y: 0 })
+
+// 调整大小相关状态
+const isResizing = ref(false)
+const resizeDirection = ref<string>('')
+const dialogSize = ref({ width: window.innerWidth * 0.4, height: window.innerHeight * 0.8 })
+const resizeStartPos = ref({ x: 0, y: 0 })
+const resizeStartSize = ref({ width: 0, height: 0 })
+const resizeStartPosition = ref({ x: 0, y: 0 })
+
+// 最小和最大尺寸限制
+const MIN_WIDTH = 360
+const MIN_HEIGHT = 480
+const MAX_WIDTH = 1200
+const MAX_HEIGHT = 1400
+
+// 边缘识别区域大小
+const EDGE_THRESHOLD = 10
+
+/**
+ * 检测鼠标是否在对话框边缘区域(用于调整大小)
+ * @returns 边缘方向 ('n', 's', 'w', 'e', 'nw', 'ne', 'sw', 'se') 或 null
+ */
+function getEdgeDirection(event: MouseEvent): string | null {
+  if (!chatDialog.value) return null
+
+  const rect = chatDialog.value.getBoundingClientRect()
+  const x = event.clientX
+  const y = event.clientY
+
+  // 检查是否在对话框范围内(正负 EDGE_THRESHOLD)
+  const inHorizontalRange = x >= rect.left - EDGE_THRESHOLD && x <= rect.right + EDGE_THRESHOLD
+  const inVerticalRange = y >= rect.top - EDGE_THRESHOLD && y <= rect.bottom + EDGE_THRESHOLD
+
+  if (!inHorizontalRange || !inVerticalRange) return null
+
+  // 判断具体方向
+  const isNear = {
+    top: y >= rect.top - EDGE_THRESHOLD && y <= rect.top + EDGE_THRESHOLD,
+    bottom: y >= rect.bottom - EDGE_THRESHOLD && y <= rect.bottom + EDGE_THRESHOLD,
+    left: x >= rect.left - EDGE_THRESHOLD && x <= rect.left + EDGE_THRESHOLD,
+    right: x >= rect.right - EDGE_THRESHOLD && x <= rect.right + EDGE_THRESHOLD
+  }
+
+  // 优先判断角
+  if (isNear.top && isNear.left) return 'nw'
+  if (isNear.top && isNear.right) return 'ne'
+  if (isNear.bottom && isNear.left) return 'sw'
+  if (isNear.bottom && isNear.right) return 'se'
+
+  // 判断边
+  if (isNear.top) return 'n'
+  if (isNear.bottom) return 's'
+  if (isNear.left) return 'w'
+  if (isNear.right) return 'e'
+
+  return null
+}
+
+/**
+ * 检测鼠标是否在 header 的可拖动区域
+ */
+function isInDraggableArea(event: MouseEvent): boolean {
+  if (!chatHeader.value || !chatDialog.value) return false
+  if (getEdgeDirection(event) != null) return false
+
+  const headerRect = chatHeader.value.getBoundingClientRect()
+  const x = event.clientX
+  const y = event.clientY
+
+  // 必须在 header 区域内
+  if (x < headerRect.left || x > headerRect.right || y < headerRect.top || y > headerRect.bottom) {
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 处理鼠标按下事件 - 统一入口
+ */
 function handleMouseDown(event: MouseEvent): void {
-  // 只允许在头部区域拖动，且不能点击按钮
+  // 排除控制按钮
   if ((event.target as HTMLElement).closest('.f-control-btn')) {
     return
   }
 
-  // 如果点击的是调整大小手柄，不触发拖动
-  if ((event.target as HTMLElement).closest('.f-resize-handle')) {
+  // 检查是否在边缘区域(调整大小)
+  /* const edgeDir = getEdgeDirection(event)
+  if (edgeDir != null) {
+    startResize(event, edgeDir)
     return
-  }
+  } */
 
-  isDragging.value = true
-
-  if (chatDialog.value) {
-    const rect = chatDialog.value.getBoundingClientRect()
-    dragOffset.value = {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
-    }
+  // 检查是否在可拖动区域
+  if (isInDraggableArea(event)) {
+    startDrag(event)
+    return
   }
 }
 
-// 拖动中
-function handleMouseMove(event: MouseEvent): void {
-  console.log('[ChatDialog] mousemove 触发, isDragging:', isDragging.value, 'isResizing:', isResizing.value)
+/**
+ * 开始拖动
+ */
+function startDrag(event: MouseEvent): void {
+  if (!chatDialog.value) return
 
-  // 如果正在 resize,不处理(由 window 上的专用监听器处理)
-  if (isResizing.value) {
+  if (isResizing.value) return
+
+  isDragging.value = true
+
+  const rect = chatDialog.value.getBoundingClientRect()
+  dragOffset.value = {
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top
+  }
+}
+
+/**
+ * 处理鼠标移动事件 - 统一入口
+ */
+function handleMouseMove(event: MouseEvent): void {
+
+  // 调整大小逻辑
+  /* if (isResizing.value) {
+    handleResizeMove(event)
+    return
+  } */
+
+  // 拖动逻辑
+  if (isDragging.value) {
+    handleDragMove(event)
     return
   }
 
-  if (!isDragging.value || !chatDialog.value) return
+  // 更新鼠标样式(根据是否在边缘区域)
+  updateCursor(event)
+}
+
+/**
+ * 拖动中
+ */
+function handleDragMove(event: MouseEvent): void {
+  if (!chatDialog.value) return
+
+  // 检查是否离开了可拖动区域
+  if (!isInDraggableArea(event)) {
+    stopDrag()
+    return
+  }
 
   const x = event.clientX - dragOffset.value.x
   const y = event.clientY - dragOffset.value.y
@@ -1011,94 +1097,75 @@ function handleMouseMove(event: MouseEvent): void {
   }
 }
 
-// 拖动结束
-function handleMouseUp(): void {
-  console.log('[ChatDialog] mouseup 触发, isDragging:', isDragging.value, 'isResizing:', isResizing.value)
+/**
+ * 停止拖动
+ */
+function stopDrag(): void {
+  isDragging.value = false
+}
 
-  if (isDragging.value) {
-    console.log('[ChatDialog] 拖动结束')
-    isDragging.value = false
-  }
+/**
+ * 更新鼠标样式
+ */
+function updateCursor(event: MouseEvent): void {
+  if (!chatDialog.value) return
 
-  if (isResizing.value) {
-    console.log('[ChatDialog] 调整大小结束')
-    handleResizeEnd()
+  /* const edgeDir = getEdgeDirection(event)
+  if (edgeDir) {
+    const cursorMap: Record<string, string> = {
+      'n': 'n-resize',
+      's': 's-resize',
+      'w': 'w-resize',
+      'e': 'e-resize',
+      'nw': 'nw-resize',
+      'ne': 'ne-resize',
+      'sw': 'sw-resize',
+      'se': 'se-resize'
+    }
+    chatDialog.value.style.cursor = cursorMap[edgeDir] || 'default'
+  } else  */if (isInDraggableArea(event)) {
+    chatDialog.value.style.cursor = 'move'
+  } else {
+    chatDialog.value.style.cursor = 'default'
   }
 }
 
-// 调整大小开始
-function handleResizeStart(event: MouseEvent, direction: string): void {
-  event.stopPropagation()
-  event.preventDefault() // 防止文本选择等默认行为
+/**
+ * 处理鼠标松开事件 - 统一入口
+ */
+function handleMouseUp(): void {
+  if (isDragging.value) {
+    stopDrag()
+  }
 
-  console.log('[ChatDialog] 调整大小开始:', direction)
+  if (isResizing.value) {
+    stopResize()
+  }
+}
+
+/**
+ * 开始调整大小
+ */
+function startResize(event: MouseEvent, direction: string): void {
+  if (!chatDialog.value) return
 
   isResizing.value = true
   resizeDirection.value = direction
   resizeStartPos.value = { x: event.clientX, y: event.clientY }
   resizeStartSize.value = { ...dialogSize.value }
   resizeStartPosition.value = { ...dialogPosition.value }
-
-  // 创建专门的 resize 事件处理器
-  const handleResizeMouseMove = (e: MouseEvent) => {
-    handleResizeMove(e)
-  }
-
-  const handleResizeMouseUp = () => {
-    console.log('[ChatDialog] resize mouseup 触发')
-    cleanup()
-  }
-
-  // 清理函数:移除监听器并结束 resize
-  const cleanup = () => {
-    window.removeEventListener('mousemove', handleResizeMouseMove, true)
-    window.removeEventListener('mouseup', handleResizeMouseUp, true)
-    window.removeEventListener('blur', handleResizeMouseUp)
-    isResizing.value = false
-    resizeDirection.value = ''
-    resizeCleanup = null
-  }
-
-  // 保存清理函数的引用
-  resizeCleanup = cleanup
-
-  // 在 window 上添加监听器,确保鼠标移出对话框时仍能捕获
-  window.addEventListener('mousemove', handleResizeMouseMove, { capture: true })
-  window.addEventListener('mouseup', handleResizeMouseUp, { capture: true, once: true })
-  window.addEventListener('blur', handleResizeMouseUp, { once: true })
 }
 
-// 调整大小中
+/**
+ * 调整大小中
+ */
 function handleResizeMove(event: MouseEvent): void {
-  console.log('[ChatDialog] resizeMove 执行, isResizing:', isResizing.value)
-
   if (!isResizing.value || !chatDialog.value) return
 
-  // 边界检测:如果鼠标移出对话框边缘 20px,自动停止 resize
-  const EDGE_THRESHOLD = 20 // 允许鼠标在对话框外 20px 范围内继续 resize
-  const dialogRect = chatDialog.value.getBoundingClientRect()
-  const mouseX = event.clientX
-  const mouseY = event.clientY
-
-  // 计算鼠标相对于对话框的位置
-  const distanceToLeft = mouseX - dialogRect.left
-  const distanceToRight = dialogRect.right - mouseX
-  const distanceToTop = mouseY - dialogRect.top
-  const distanceToBottom = dialogRect.bottom - mouseY
-
-  // 检查是否移出对话框边界超过阈值
-  const isOutOfBounds =
-    distanceToLeft < -EDGE_THRESHOLD ||
-    distanceToRight < -EDGE_THRESHOLD ||
-    distanceToTop < -EDGE_THRESHOLD ||
-    distanceToBottom < -EDGE_THRESHOLD
-
-  if (isOutOfBounds) {
-    console.log('[ChatDialog] 鼠标移出对话框边界,自动停止 resize')
-    // 调用清理函数,移除监听器并结束 resize
-    if (resizeCleanup) {
-      resizeCleanup()
-    }
+  // 检查是否离开了边缘区域
+  const edgeDir = getEdgeDirection(event)
+  if (edgeDir == null) {
+    stopResize()
     return
   }
 
@@ -1111,7 +1178,7 @@ function handleResizeMove(event: MouseEvent): void {
   let newX = resizeStartPosition.value.x
   let newY = resizeStartPosition.value.y
 
-  // 根据方向计算新的尺寸(未限制)
+  // 根据方向计算新的尺寸
   if (direction.includes('e')) {
     newWidth = resizeStartSize.value.width + deltaX
   }
@@ -1125,7 +1192,7 @@ function handleResizeMove(event: MouseEvent): void {
     newHeight = resizeStartSize.value.height - deltaY
   }
 
-  // 应用尺寸限制,并记录限制前后的差异
+  // 应用尺寸限制
   const constrainedWidth = Math.max(MIN_WIDTH, Math.min(newWidth, MAX_WIDTH))
   const constrainedHeight = Math.max(MIN_HEIGHT, Math.min(newHeight, MAX_HEIGHT))
 
@@ -1137,14 +1204,11 @@ function handleResizeMove(event: MouseEvent): void {
   dialogSize.value = { width: constrainedWidth, height: constrainedHeight }
 
   // 如果是从左边或上边调整,需要更新位置
-  // 关键:使用实际应用的尺寸变化(考虑了限制)来计算位置
   if (direction.includes('w') || direction.includes('n')) {
     if (direction.includes('w')) {
-      // 从左边调整:位置向左移动的距离 = 宽度增加的距离
       newX = resizeStartPosition.value.x - actualWidthDelta
     }
     if (direction.includes('n')) {
-      // 从上边调整:位置向上移动的距离 = 高度增加的距离
       newY = resizeStartPosition.value.y - actualHeightDelta
     }
 
@@ -1156,8 +1220,10 @@ function handleResizeMove(event: MouseEvent): void {
   }
 }
 
-// 调整大小结束
-function handleResizeEnd(): void {
+/**
+ * 停止调整大小
+ */
+function stopResize(): void {
   isResizing.value = false
   resizeDirection.value = ''
 }
@@ -1197,8 +1263,8 @@ onUnmounted(() => {
   position: absolute;
   right: 12px;
   bottom: 12px;
-  width: 380px;
-  height: 520px;
+  width: 40vw;
+  height: 80vh;
   background: #282828;
   border: 1px solid #3a3a3a;
   border-radius: 4px;
@@ -1675,88 +1741,5 @@ onUnmounted(() => {
       background: #ef4444;
     }
   }
-}
-
-// 调整大小手柄容器
-.f-resize-handles {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-// 调整大小手柄基础样式
-.f-resize-handle {
-  position: absolute;
-  pointer-events: auto;
-  z-index: 10;
-}
-
-// 四个角的手柄 (8x8 像素)
-.f-resize-nw {
-  top: -4px;
-  left: -4px;
-  width: 8px;
-  height: 8px;
-  cursor: nw-resize;
-}
-
-.f-resize-ne {
-  top: -4px;
-  right: -4px;
-  width: 8px;
-  height: 8px;
-  cursor: ne-resize;
-}
-
-.f-resize-sw {
-  bottom: -4px;
-  left: -4px;
-  width: 8px;
-  height: 8px;
-  cursor: sw-resize;
-}
-
-.f-resize-se {
-  bottom: -4px;
-  right: -4px;
-  width: 8px;
-  height: 8px;
-  cursor: se-resize;
-}
-
-// 四条边的手柄 (4 像素宽度)
-.f-resize-n {
-  top: -2px;
-  left: 8px;
-  right: 8px;
-  height: 4px;
-  cursor: n-resize;
-}
-
-.f-resize-s {
-  bottom: -2px;
-  left: 8px;
-  right: 8px;
-  height: 4px;
-  cursor: s-resize;
-}
-
-.f-resize-w {
-  left: -2px;
-  top: 8px;
-  bottom: 8px;
-  width: 4px;
-  cursor: w-resize;
-}
-
-.f-resize-e {
-  right: -2px;
-  top: 8px;
-  bottom: 8px;
-  width: 4px;
-  cursor: e-resize;
 }
 </style>
