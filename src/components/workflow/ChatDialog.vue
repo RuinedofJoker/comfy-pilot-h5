@@ -1293,6 +1293,7 @@ onUnmounted(() => {
 .f-messages-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px;
   display: flex;
   flex-direction: column;
