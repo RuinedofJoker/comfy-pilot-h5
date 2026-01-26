@@ -281,16 +281,16 @@ function initWebSocket(sessionCode: string): void {
   wsManager = new AgentWebSocketManager(sessionCode, token)
 
   // 注册事件回调
-  wsManager.on('prompt', (data) => {
-    handlePromptEvent(data.promptType, data.message)
+  wsManager.on('prompt', (requestId, data) => {
+    handlePromptEvent(requestId, data.promptType, data.message)
   })
 
-  wsManager.on('stream', (content) => {
-    handleStreamEvent(content)
+  wsManager.on('stream', (requestId, content) => {
+    handleStreamEvent(requestId, content)
   })
 
-  wsManager.on('complete', () => {
-    handleCompleteEvent()
+  wsManager.on('complete', (requestId) => {
+    handleCompleteEvent(requestId)
   })
 
   wsManager.on('toolRequest', async (requestId, data) => {
@@ -321,7 +321,13 @@ function disconnectWebSocket(): void {
 /**
  * 处理 Prompt 事件
  */
-function handlePromptEvent(promptType: AgentPromptType, message?: string): void {
+function handlePromptEvent(requestId: string, promptType: AgentPromptType, message?: string): void {
+  // 验证 requestId 是否匹配
+  if (requestId !== currentRequestId.value) {
+    console.log('[ChatDialog] 忽略不匹配的 Prompt 事件:', { requestId, currentRequestId: currentRequestId.value })
+    return
+  }
+
   console.log('[ChatDialog] Agent 提示:', promptType, message)
 
   // STARTED 类型表示 Agent 开始执行
@@ -368,7 +374,13 @@ function handlePromptEvent(promptType: AgentPromptType, message?: string): void 
 /**
  * 处理流式输出事件
  */
-function handleStreamEvent(content: string): void {
+function handleStreamEvent(requestId: string, content: string): void {
+  // 验证 requestId 是否匹配
+  if (requestId !== currentRequestId.value) {
+    console.log('[ChatDialog] 忽略不匹配的 Stream 事件:', { requestId, currentRequestId: currentRequestId.value })
+    return
+  }
+
   // 关闭动态提示（如果有的话）
   if (isShowingPrompt.value) {
     isShowingPrompt.value = false
@@ -383,7 +395,13 @@ function handleStreamEvent(content: string): void {
 /**
  * 处理完成事件
  */
-async function handleCompleteEvent(): Promise<void> {
+async function handleCompleteEvent(requestId: string): Promise<void> {
+  // 验证 requestId 是否匹配
+  if (requestId !== currentRequestId.value) {
+    console.log('[ChatDialog] 忽略不匹配的 Complete 事件:', { requestId, currentRequestId: currentRequestId.value })
+    return
+  }
+
   console.log('[ChatDialog] Agent 完成')
   isShowingPrompt.value = false
 
@@ -421,6 +439,12 @@ async function handleCompleteEvent(): Promise<void> {
  * 处理工具调用请求
  */
 async function handleToolCallRequest(requestId: string, data: AgentToolCallRequestData): Promise<void> {
+  // 验证 requestId 是否匹配
+  if (requestId !== currentRequestId.value) {
+    console.log('[ChatDialog] 忽略不匹配的 ToolCallRequest 事件:', { requestId, currentRequestId: currentRequestId.value })
+    return
+  }
+
   const { toolCallId, toolName, toolArgs, isClientTool, isMcpTool } = data
 
   try {
@@ -804,7 +828,6 @@ function handleStop(): void {
   // 清空流式状态
   isStreaming.value = false
   currentStreamingMessage.value = ''
-  currentRequestId.value = ''
   isShowingPrompt.value = false
 
   // 注意：isAgentExecuting 不在这里重置，等待后端发送 AGENT_PROMPT(INTERRUPTED) 才会恢复按钮状态

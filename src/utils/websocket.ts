@@ -23,9 +23,9 @@ import {
  * WebSocket 事件回调类型
  */
 interface WebSocketCallbacks {
-  onPrompt?: (data: AgentPromptData) => void
-  onStream?: (content: string) => void
-  onComplete?: () => void
+  onPrompt?: (requestId: string, data: AgentPromptData) => void
+  onStream?: (requestId: string, content: string) => void
+  onComplete?: (requestId: string) => void
   onToolRequest?: (requestId: string, data: AgentToolCallRequestData) => Promise<void>
   onError?: (error: string) => void
 }
@@ -88,16 +88,16 @@ export class AgentWebSocketManager {
     switch (msg.type) {
       case WebSocketMessageTypeValues.AGENT_PROMPT:
         console.log('[WebSocket] 收到 AGENT_PROMPT:', msg.data)
-        this.callbacks.onPrompt?.(msg.data as AgentPromptData)
+        this.callbacks.onPrompt?.(msg.requestId, msg.data as AgentPromptData)
         break
 
       case WebSocketMessageTypeValues.AGENT_STREAM:
-        this.callbacks.onStream?.(msg.content || '')
+        this.callbacks.onStream?.(msg.requestId, msg.content || '')
         break
 
       case WebSocketMessageTypeValues.AGENT_COMPLETE:
         console.log('[WebSocket] 收到 AGENT_COMPLETE')
-        this.callbacks.onComplete?.()
+        this.callbacks.onComplete?.(msg.requestId)
         break
 
       case WebSocketMessageTypeValues.AGENT_TOOL_CALL_REQUEST:
@@ -245,9 +245,9 @@ export class AgentWebSocketManager {
   /**
    * 注册事件回调
    */
-  on(event: 'prompt', handler: (data: AgentPromptData) => void): void
-  on(event: 'stream', handler: (content: string) => void): void
-  on(event: 'complete', handler: () => void): void
+  on(event: 'prompt', handler: (requestId: string, data: AgentPromptData) => void): void
+  on(event: 'stream', handler: (requestId: string, content: string) => void): void
+  on(event: 'complete', handler: (requestId: string) => void): void
   on(event: 'toolRequest', handler: (requestId: string, data: AgentToolCallRequestData) => Promise<void>): void
   on(event: 'error', handler: (error: string) => void): void
   on(event: string, handler: any): void {
