@@ -218,17 +218,17 @@ export interface AgentToolCallRequestData extends ServerToClientMessageData {
  */
 export interface AgentCompleteResponseData extends ServerToClientMessageData {
   /** 最大token数 */
-  maxTokens: number;
+  maxTokens?: number;
   /** 最大消息数 */
-  maxMessages: number;
+  maxMessages?: number;
   /** 输入token数 */
-  inputTokens: number;
+  inputTokens?: number;
   /** 输出token数 */
-  outputTokens: number;
+  outputTokens?: number;
   /** 总token数 */
-  totalTokens: number;
+  totalTokens?: number;
   /** 累计消息数 */
-  messageCount: number;
+  messageCount?: number;
 }
 
 // ==================== 类型化消息定义 ====================

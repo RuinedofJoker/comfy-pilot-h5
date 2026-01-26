@@ -11,7 +11,8 @@
 import type {
   WebSocketMessage,
   AgentPromptData,
-  AgentToolCallRequestData
+  AgentToolCallRequestData,
+  AgentCompleteResponseData
 } from '@/types/websocket'
 
 import {
@@ -25,7 +26,7 @@ import {
 interface WebSocketCallbacks {
   onPrompt?: (requestId: string, data: AgentPromptData) => void
   onStream?: (requestId: string, content: string) => void
-  onComplete?: (requestId: string) => void
+  onComplete?: (requestId: string, data?: AgentCompleteResponseData) => void
   onToolRequest?: (requestId: string, data: AgentToolCallRequestData) => Promise<void>
   onError?: (error: string) => void
 }
@@ -97,7 +98,7 @@ export class AgentWebSocketManager {
 
       case WebSocketMessageTypeValues.AGENT_COMPLETE:
         console.log('[WebSocket] 收到 AGENT_COMPLETE')
-        this.callbacks.onComplete?.(msg.requestId)
+        this.callbacks.onComplete?.(msg.requestId, msg.data as AgentCompleteResponseData)
         break
 
       case WebSocketMessageTypeValues.AGENT_TOOL_CALL_REQUEST:
@@ -247,7 +248,7 @@ export class AgentWebSocketManager {
    */
   on(event: 'prompt', handler: (requestId: string, data: AgentPromptData) => void): void
   on(event: 'stream', handler: (requestId: string, content: string) => void): void
-  on(event: 'complete', handler: (requestId: string) => void): void
+  on(event: 'complete', handler: (requestId: string, data?: AgentCompleteResponseData) => void): void
   on(event: 'toolRequest', handler: (requestId: string, data: AgentToolCallRequestData) => Promise<void>): void
   on(event: 'error', handler: (error: string) => void): void
   on(event: string, handler: any): void {

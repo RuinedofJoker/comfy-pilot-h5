@@ -144,9 +144,14 @@
             </div>
           </div>
 
-          <!-- 第二行：左边空白 + 右边按钮组 -->
+          <!-- 第二行：左边 token 使用率 + 右边按钮组 -->
           <div class="f-controls-row">
-            <div class="f-controls-left"></div>
+            <div class="f-controls-left">
+              <!-- Token 使用率显示 -->
+              <TokenUsageIndicator
+                :percentage="usagePercentage"
+              />
+            </div>
             <div class="f-controls-right">
               <button
                 class="f-attach-btn"
@@ -204,6 +209,7 @@ import { renderMarkdown } from '@/utils/markdown'
 import AgentPromptIndicator from './AgentPromptIndicator.vue'
 import ToolCallConfirmation from './ToolCallConfirmation.vue'
 import CommandSuggestion from './CommandSuggestion.vue'
+import TokenUsageIndicator from './TokenUsageIndicator.vue'
 
 // Props
 interface Props {
@@ -280,6 +286,27 @@ const currentRequestId = ref<string>('') // 当前请求ID
 const isAgentExecuting = ref(false) // Agent 是否正在执行（用于控制发送按钮状态）
 const isAgentStarted = ref(false) // Agent 是否已开始执行（收到 STARTED 事件）
 
+// Token 使用统计
+const tokenStats = ref<{
+  maxTokens?: number
+  maxMessages?: number
+  totalTokens?: number
+  messageCount?: number
+}>({})
+
+// 计算使用率百分比
+const usagePercentage = computed(() => {
+  // 优先使用 token 占比
+  if (tokenStats.value.totalTokens && tokenStats.value.maxTokens) {
+    return Math.round((tokenStats.value.totalTokens / tokenStats.value.maxTokens) * 100)
+  }
+  // 降级使用消息数占比
+  if (tokenStats.value.messageCount && tokenStats.value.maxMessages) {
+    return Math.round((tokenStats.value.messageCount / tokenStats.value.maxMessages) * 100)
+  }
+  return 0
+})
+
 /**
  * 初始化 WebSocket 连接
  */
@@ -305,8 +332,8 @@ function initWebSocket(sessionCode: string): void {
     handleStreamEvent(requestId, content)
   })
 
-  wsManager.on('complete', (requestId) => {
-    handleCompleteEvent(requestId)
+  wsManager.on('complete', (requestId, data) => {
+    handleCompleteEvent(requestId, data)
   })
 
   wsManager.on('toolRequest', async (requestId, data) => {
@@ -411,15 +438,25 @@ function handleStreamEvent(requestId: string, content: string): void {
 /**
  * 处理完成事件
  */
-async function handleCompleteEvent(requestId: string): Promise<void> {
+async function handleCompleteEvent(requestId: string, data?: import('@/types/websocket').AgentCompleteResponseData): Promise<void> {
   // 验证 requestId 是否匹配
   if (requestId !== currentRequestId.value) {
     console.log('[ChatDialog] 忽略不匹配的 Complete 事件:', { requestId, currentRequestId: currentRequestId.value })
     return
   }
 
-  console.log('[ChatDialog] Agent 完成')
+  console.log('[ChatDialog] Agent 完成', data)
   isShowingPrompt.value = false
+
+  // 更新 token 统计数据
+  if (data) {
+    tokenStats.value = {
+      maxTokens: data.maxTokens,
+      maxMessages: data.maxMessages,
+      totalTokens: data.totalTokens,
+      messageCount: data.messageCount
+    }
+  }
 
   // 如果有流式消息内容，添加到本地消息列表
   if (currentStreamingMessage.value) {
@@ -1791,6 +1828,8 @@ onUnmounted(() => {
 
 .f-controls-left {
   flex: 1;
+  display: flex;
+  align-items: center;
 }
 
 .f-controls-right {
