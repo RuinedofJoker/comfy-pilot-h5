@@ -285,6 +285,7 @@ const isStreamComplete = ref(false) // 标记流式输出是否已完成
 const currentRequestId = ref<string>('') // 当前请求ID
 const isAgentExecuting = ref(false) // Agent 是否正在执行（用于控制发送按钮状态）
 const isAgentStarted = ref(false) // Agent 是否已开始执行（收到 STARTED 事件）
+const shouldForceScrollOnNextUpdate = ref(false) // 标记下次消息更新时是否强制滚动
 
 // Token 使用统计
 const tokenStats = ref<{
@@ -405,12 +406,30 @@ function handlePromptEvent(requestId: string, promptType: AgentPromptType, messa
 
   // THINKING、TOOL_CALLING、SUMMARY 显示动态提示
   if (promptType === 'THINKING' || promptType === 'TOOL_CALLING' || promptType === 'SUMMARY') {
+    // 在显示动态提示前，检查用户是否在底部
+    const wasAtBottom = isScrollAtBottom()
+
     currentPromptType.value = promptType
     currentPromptMessage.value = message || AGENT_PROMPT_DEFAULT_MESSAGES[promptType]
     isShowingPrompt.value = true
+
+    // 动态提示出现后，如果用户原本在底部，强制滚动到新的底部
+    nextTick(() => {
+      if (wasAtBottom) {
+        scrollToBottom()
+      }
+    })
   } else {
     // 其他类型关闭动态提示
+    const wasAtBottom = isScrollAtBottom()
     isShowingPrompt.value = false
+
+    // 动态提示消失后，如果用户原本在底部，强制滚动到新的底部
+    nextTick(() => {
+      if (wasAtBottom) {
+        scrollToBottom()
+      }
+    })
   }
 }
 
@@ -433,6 +452,11 @@ function handleStreamEvent(requestId: string, content: string): void {
   currentStreamingMessage.value += content
   isStreaming.value = true
   isStreamComplete.value = false // 正在流式输出中
+
+  // 流式消息更新时，仅当用户在底部时才滚动
+  nextTick(() => {
+    scrollToBottomIfNeeded()
+  })
 }
 
 /**
@@ -1003,22 +1027,58 @@ watch(() => props.messages, (newMessages) => {
   // 用后端返回的消息替换本地消息列表
   localMessages.value = [...newMessages]
 
-  // 滚动到底部
+  // 根据标记决定是强制滚动还是智能滚动
   nextTick(() => {
-    scrollToBottom()
+    if (shouldForceScrollOnNextUpdate.value) {
+      scrollToBottom()
+      shouldForceScrollOnNextUpdate.value = false // 重置标记
+    } else {
+      scrollToBottomIfNeeded()
+    }
   })
 }, { deep: true, immediate: true })
 
 // 监听 localMessages 变化，自动滚动到底部
 watch(() => localMessages.value.length, async () => {
   await nextTick()
-  scrollToBottom()
+  scrollToBottomIfNeeded()
 })
 
-// 滚动到底部
+// 检查滚动条是否在底部（允许一定误差）
+function isScrollAtBottom(): boolean {
+  if (!chatMessages.value) return true
+
+  const threshold = 50 // 50px 的误差范围
+  const scrollTop = chatMessages.value.scrollTop
+  const scrollHeight = chatMessages.value.scrollHeight
+  const clientHeight = chatMessages.value.clientHeight
+
+  return scrollHeight - scrollTop - clientHeight < threshold
+}
+
+// 滚动到底部（仅当用户已在底部时）
+function scrollToBottomIfNeeded(): void {
+  if (!chatMessages.value) return
+
+  // 只有当用户已经在底部时才自动滚动
+  if (isScrollAtBottom()) {
+    requestAnimationFrame(() => {
+      if (chatMessages.value) {
+        chatMessages.value.scrollTop = chatMessages.value.scrollHeight
+      }
+    })
+  }
+}
+
+// 强制滚动到底部（用于用户主动发送消息等场景）
 function scrollToBottom(): void {
   if (chatMessages.value) {
-    chatMessages.value.scrollTop = chatMessages.value.scrollHeight
+    // 使用 requestAnimationFrame 确保在 DOM 渲染完成后执行
+    requestAnimationFrame(() => {
+      if (chatMessages.value) {
+        chatMessages.value.scrollTop = chatMessages.value.scrollHeight
+      }
+    })
   }
 }
 
@@ -1379,6 +1439,9 @@ watch(() => props.sessionCode, (newSessionCode, oldSessionCode) => {
   if (newSessionCode && newSessionCode !== oldSessionCode) {
     console.log(`[ChatDialog] 会话切换: ${oldSessionCode} -> ${newSessionCode}`)
     initWebSocket(newSessionCode)
+
+    // 会话切换时，设置标记让下次消息更新时强制滚动到底部
+    shouldForceScrollOnNextUpdate.value = true
   }
 })
 
@@ -1391,6 +1454,11 @@ onMounted(() => {
   if (props.sessionCode) {
     initWebSocket(props.sessionCode)
   }
+
+  // 组件挂载后，滚动到底部
+  nextTick(() => {
+    scrollToBottom()
+  })
 })
 
 onUnmounted(() => {
