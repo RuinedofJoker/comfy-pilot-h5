@@ -1601,7 +1601,7 @@ onUnmounted(() => {
 
 // 输入框内层容器（圆角矩形）
 .f-input-container {
-  width: 70%;
+  width: 90%;
   background: rgb(49, 49, 49);
   border-radius: 8px;
   overflow: hidden;
