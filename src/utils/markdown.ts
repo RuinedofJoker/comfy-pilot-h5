@@ -54,7 +54,7 @@ export function renderMarkdown(markdown: string): string {
   // 1. 普通段落（p标签）后面允许最多2个换行
   // 2. 其他标签（标题、列表、代码块等）后面最多1个换行
 
-  let normalizedMarkdown = markdown
+/*   let normalizedMarkdown = markdown
 
   // 先将所有3个及以上的连续换行压缩为2个
   normalizedMarkdown = normalizedMarkdown.replace(/\n{3,}/g, '\n\n')
@@ -74,10 +74,10 @@ export function renderMarkdown(markdown: string): string {
   normalizedMarkdown = normalizedMarkdown.replace(/(^>\s+.+)\n{2,}/gm, '$1\n')
 
   // 水平线：--- 或 *** 或 ___
-  normalizedMarkdown = normalizedMarkdown.replace(/(^[-*_]{3,})\n{2,}/gm, '$1\n')
+  normalizedMarkdown = normalizedMarkdown.replace(/(^[-*_]{3,})\n{2,}/gm, '$1\n') */
 
   try {
-    return marked.parse(normalizedMarkdown) as string
+    return marked.parse(markdown) as string
   } catch (error) {
     console.error('Markdown 渲染失败:', error)
     return markdown
