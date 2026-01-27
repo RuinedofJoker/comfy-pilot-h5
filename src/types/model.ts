@@ -88,6 +88,8 @@ export interface AiModel {
   modelName: string
   /** 模型标识符 */
   modelIdentifier: string
+  /** 模型显示名 */
+  modelDisplayName: string
   /** 接入方式 */
   accessType: AccessType
   /** 模型类型 */

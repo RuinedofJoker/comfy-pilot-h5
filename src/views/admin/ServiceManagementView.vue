@@ -204,7 +204,7 @@
               v-model="formData.sshAuthType"
               :options="[
                 { label: '密码', value: 'PASSWORD' },
-                { label: '密钥', value: 'KEY' }
+                // { label: '密钥', value: 'KEY' }
               ]"
             />
           </BaseFormGroup>
@@ -236,7 +236,7 @@
         <div class="f-divider">ComfyUI目录配置</div>
 
         <!-- 其他高级配置 -->
-        <BaseFormGroup label="工作目录" required>
+        <BaseFormGroup label="工作目录（连接到终端后的默认目录）" required>
           <BaseInput
             v-model="formData.workingDirectory"
             placeholder="~"
@@ -244,77 +244,37 @@
           />
         </BaseFormGroup>
 
-        <BaseFormGroup label="ComfyUI安装路径" required>
-          <BaseInput
-            v-model="formData.comfyuiInstallPath"
-            placeholder="/path/to/ComfyUI"
-            required
-          />
-        </BaseFormGroup>
-
-        <BaseFormGroup label="基础目录">
-          <BaseInput
-            v-model="formData.baseDirectory"
-            placeholder="/path/to/base"
-          />
-        </BaseFormGroup>
-
-        <BaseFormGroup label="输出目录">
-          <BaseInput
-            v-model="formData.outputDirectory"
-            placeholder="/path/to/output"
-          />
-        </BaseFormGroup>
-
-        <BaseFormGroup label="临时目录">
-          <BaseInput
-            v-model="formData.tempDirectory"
-            placeholder="/path/to/temp"
-          />
-        </BaseFormGroup>
-
-        <BaseFormGroup label="输入目录">
-          <BaseInput
-            v-model="formData.inputDirectory"
-            placeholder="/path/to/input"
-          />
-        </BaseFormGroup>
-
-        <BaseFormGroup label="用户目录">
-          <BaseInput
-            v-model="formData.userDirectory"
-            placeholder="/path/to/user"
-          />
-        </BaseFormGroup>
-
-        <BaseFormGroup label="前端根目录">
-          <BaseInput
-            v-model="formData.frontEndRoot"
-            placeholder="/path/to/frontend"
-          />
-        </BaseFormGroup>
-
-        <BaseFormGroup label="额外模型路径配置">
-          <BaseInput
-            v-model="formData.extraModelPathsConfig"
-            placeholder="/path/to/extra-model-paths.yaml"
-          />
-        </BaseFormGroup>
-
-        <BaseFormGroup label="Python命令">
+        <BaseFormGroup label="Python命令（ComfyUI启动使用的Python位置）">
           <BaseInput
             v-model="formData.pythonCommand"
-            placeholder="python3"
+            placeholder="/path/to/python 或 C:/ComfyUI_windows_portable/python_embeded/python.exe 等"
           />
         </BaseFormGroup>
 
         <BaseFormGroup label="环境初始化脚本">
           <BaseTextarea
             v-model="formData.environmentInitScript"
-            placeholder="#!/bin/bash&#10;source /path/to/venv/bin/activate"
+            placeholder="#!/bin/bash&#10;source /path/to/venv/bin/activate 等"
             :rows="4"
           />
         </BaseFormGroup>
+
+        <BaseFormGroup label="ComfyUI安装路径" required>
+          <BaseInput
+            v-model="formData.comfyuiInstallPath"
+            placeholder="/path/to/ComfyUI 或 C:/ComfyUI_windows_portable 等"
+            required
+          />
+        </BaseFormGroup>
+
+        <BaseFormGroup label="ComfyUI启动脚本路径">
+          <BaseInput
+            v-model="formData.comfyuiStartupPath"
+            placeholder="/path/to/ComfyUI/run.sh 或 /path/to/ComfyUI/run_amd_gpu.bat 等"
+            required
+          />
+        </BaseFormGroup>
+
       </template>
     </BaseAdminModal>
   </div>
@@ -365,13 +325,7 @@ const formData = reactive({
   pythonCommand: '',
   // directoryConfig 字段
   comfyuiInstallPath: '',
-  baseDirectory: '',
-  outputDirectory: '',
-  tempDirectory: '',
-  inputDirectory: '',
-  userDirectory: '',
-  frontEndRoot: '',
-  extraModelPathsConfig: ''
+  comfyuiStartupPath: ''
 })
 
 // 计算属性

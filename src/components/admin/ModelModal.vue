@@ -12,10 +12,10 @@
       <!-- 模态框内容 -->
       <div class="f-modal-body">
         <form @submit.prevent="handleSubmit">
-          <!-- 模型名称 -->
+          <!-- 模型名 -->
           <div class="f-form-item">
             <label class="f-label">
-              模型名称 <span class="f-required">*</span>
+              模型名（调用时将使用该名字进行调用） <span class="f-required">*</span>
             </label>
             <input
               v-model="formData.modelName"
@@ -28,6 +28,18 @@
             <span v-if="errors.modelName" class="f-error-text">
               {{ errors.modelName }}
             </span>
+          </div>
+
+          <!-- 模型显示名称 -->
+          <div class="f-form-item">
+            <label class="f-label">模型显示名称</label>
+            <input
+              v-model="formData.modelDisplayName"
+              type="text"
+              class="f-input"
+              placeholder="模型页面上的显示名称"
+              :disabled="mode === 'view'"
+            />
           </div>
 
           <!-- 模型标识符 -->
@@ -244,6 +256,7 @@ const configPlaceholder = ref('')
 const formData = ref({
   modelName: '',
   modelIdentifier: '',
+  modelDisplayName: '',
   modelCallingType: '' as ModelCallingType | '',
   providerId: '',
   apiBaseUrl: '',
@@ -367,6 +380,7 @@ const loadModelDetail = async () => {
     formData.value = {
       modelName: model.modelName,
       modelIdentifier: model.modelIdentifier,
+      modelDisplayName: model.modelDisplayName,
       modelCallingType: model.modelCallingType,
       providerId: model.providerId || '',
       apiBaseUrl: model.apiBaseUrl || '',

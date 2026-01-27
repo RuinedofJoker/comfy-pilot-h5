@@ -214,7 +214,7 @@ function getModelOptions(modelCallingType?: string): Array<{ text: string; value
     return []
   }
   return modelCache.value[modelCallingType].map(model => ({
-    text: model.modelName,
+    text: model.modelDisplayName,
     value: model.modelIdentifier
   }))
 }
