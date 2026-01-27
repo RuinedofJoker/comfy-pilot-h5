@@ -78,6 +78,22 @@ export class ComfyUIToolSet implements McpToolSet {
           },
           required: ['workflow']
         }
+      },
+      {
+        name: 'check_service_available',
+        description: '检查客户端当前页面上的 ComfyUI 服务是否可用',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'refresh_comfyui_iframe',
+        description: '手动刷新客户端 WorkflowViewer 组件中的 ComfyUI iframe',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
       }
     ]
   }
@@ -97,6 +113,12 @@ export class ComfyUIToolSet implements McpToolSet {
 
       case 'load_workflow':
         return await this.loadWorkflow(args.content)
+
+      case 'check_service_available':
+        return await this.checkServiceAvailable()
+
+      case 'refresh_comfyui_iframe':
+        return await this.refreshComfyUIIframe()
 
       default:
         throw new Error(`未知工具: ${name}`)
@@ -134,6 +156,49 @@ export class ComfyUIToolSet implements McpToolSet {
     return {
       success: true,
       message: '工作流已设置'
+    }
+  }
+
+  private async checkServiceAvailable(): Promise<any> {
+    const currentService = this.serviceStore.selectedService
+
+    if (!currentService) {
+      return {
+        success: true,
+        available: false,
+        message: '未选择 ComfyUI 服务'
+      }
+    }
+
+    const isAvailable = currentService.healthStatus === 'HEALTHY'
+
+    return {
+      success: true,
+      available: isAvailable,
+      serviceName: currentService.serverName,
+      baseUrl: currentService.baseUrl,
+      healthStatus: currentService.healthStatus,
+      message: isAvailable ? 'ComfyUI 服务可用' : 'ComfyUI 服务不可用'
+    }
+  }
+
+  private async refreshComfyUIIframe(): Promise<any> {
+    try {
+      // 重新检测 iframe 连接状态
+      const connected = await this.comfyUI.checkIframeConnection()
+
+      return {
+        success: true,
+        connected,
+        message: connected ? 'ComfyUI iframe 刷新成功，连接正常' : 'ComfyUI iframe 刷新完成，但连接失败'
+      }
+    } catch (error) {
+      return {
+        success: false,
+        connected: false,
+        error: error instanceof Error ? error.message : '刷新失败',
+        message: 'ComfyUI iframe 刷新失败'
+      }
     }
   }
 }

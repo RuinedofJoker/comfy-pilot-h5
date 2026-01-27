@@ -42,12 +42,20 @@ export function useComfyUIIntegration() {
         const currentLocation = comfyuiFrame.value.contentWindow?.location.href
         if (currentLocation && currentLocation !== 'about:blank' &&
             comfyuiFrame.value.contentDocument?.readyState === 'complete') {
-          console.log('[ComfyUI Integration] iframe 已经加载完成:', currentLocation)
+          console.log('[ComfyUI Integration] iframe 已经加载完成（同源）:', currentLocation)
           resolve()
           return
         }
       } catch (e) {
-        // 跨域情况下无法访问 location，继续等待 load 事件
+        // 跨域情况下无法访问 location
+        // 检查 iframe 的 src 属性和 readyState
+        const iframeSrc = comfyuiFrame.value.src
+        if (iframeSrc && iframeSrc !== 'about:blank') {
+          // 跨域 iframe 已经有 src，假设已加载完成
+          console.log('[ComfyUI Integration] iframe 已经加载完成（跨域）:', iframeSrc)
+          resolve()
+          return
+        }
       }
 
       // 监听 load 事件
