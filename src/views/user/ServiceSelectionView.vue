@@ -1,7 +1,10 @@
 <template>
   <div class="g-service-selection-view">
     <!-- 顶部导航栏 -->
-    <TopNavBar />
+    <TopNavBar @open-agent-config="showAgentConfigModal = true" />
+
+    <!-- Agent 配置弹窗 -->
+    <AgentConfigModal v-model:visible="showAgentConfigModal" />
 
     <!-- 主内容区 -->
     <div class="m-main-container">
@@ -45,8 +48,10 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import TopNavBar from '@/components/user/TopNavBar.vue'
 import ServiceCard from '@/components/user/ServiceCard.vue'
+import AgentConfigModal from '@/components/user/AgentConfigModal.vue'
 import { useServiceSelection } from '@/composables/useServiceSelection'
 
 const {
@@ -55,6 +60,9 @@ const {
   selectService,
   updateService
 } = useServiceSelection()
+
+// Agent 配置弹窗状态
+const showAgentConfigModal = ref(false)
 </script>
 
 <style scoped lang="scss">

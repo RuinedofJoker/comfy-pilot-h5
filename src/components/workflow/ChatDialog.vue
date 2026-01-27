@@ -144,9 +144,11 @@
             </div>
           </div>
 
-          <!-- 第二行：左边 token 使用率 + 右边按钮组 -->
+          <!-- 第二行：左边 Agent 选择器 + token 使用率 + 右边按钮组 -->
           <div class="f-controls-row">
             <div class="f-controls-left">
+              <!-- Agent 选择器 -->
+              <AgentSelector />
               <!-- Token 使用率显示 -->
               <TokenUsageIndicator
                 :percentage="usagePercentage"
@@ -210,6 +212,7 @@ import AgentPromptIndicator from './AgentPromptIndicator.vue'
 import ToolCallConfirmation from './ToolCallConfirmation.vue'
 import CommandSuggestion from './CommandSuggestion.vue'
 import TokenUsageIndicator from './TokenUsageIndicator.vue'
+import AgentSelector from './AgentSelector.vue'
 
 // Props
 interface Props {
@@ -1898,6 +1901,7 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
 .f-controls-right {

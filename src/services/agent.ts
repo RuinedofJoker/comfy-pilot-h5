@@ -4,7 +4,8 @@
 import request from './http'
 import type {
   AgentConfig,
-  AgentRuntimeConfig
+  AgentRuntimeConfig,
+  UserAgentConfig
 } from '@/types/agent'
 
 /**
@@ -63,5 +64,21 @@ export const agentRuntimeApi = {
    */
   getAgentByCode: (agentCode: string): Promise<AgentRuntimeConfig> => {
     return request.get(`/api/v1/agents/runtime/code/${agentCode}`)
+  },
+
+  /**
+   * 获取当前用户的所有 Agent 配置
+   */
+  getUserAgentConfigs: (): Promise<UserAgentConfig[]> => {
+    return request.get('/api/v1/agents/runtime/getUserAgentConfigs')
+  },
+
+  /**
+   * 更新当前用户的特定 Agent 配置
+   */
+  updateUserAgentConfig: (data: UserAgentConfig): Promise<UserAgentConfig> => {
+    return request.post('/api/v1/agents/runtime/updateUserAgentConfig', null, {
+      params: data
+    })
   }
 }

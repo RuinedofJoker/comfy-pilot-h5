@@ -11,7 +11,8 @@ export const StorageKeys = {
   USER_INFO: 'comfy_pilot_user_info',
   REMEMBER_ME: 'comfy_pilot_remember_me',
   THEME: 'comfy_pilot_theme',
-  LANGUAGE: 'comfy_pilot_language'
+  LANGUAGE: 'comfy_pilot_language',
+  SELECTED_AGENT_CODE: 'comfy_pilot_selected_agent_code'
 } as const
 
 /**
@@ -123,4 +124,25 @@ export function setUserInfo(userInfo: import('@/types/auth').UserInfo): void {
  */
 export function removeUserInfo(): void {
   removeStorageItem(StorageKeys.USER_INFO)
+}
+
+/**
+ * 获取选中的 Agent Code
+ */
+export function getSelectedAgentCode(): string | null {
+  return getStorageItem<string>(StorageKeys.SELECTED_AGENT_CODE)
+}
+
+/**
+ * 设置选中的 Agent Code
+ */
+export function setSelectedAgentCode(agentCode: string): void {
+  setStorageItem(StorageKeys.SELECTED_AGENT_CODE, agentCode)
+}
+
+/**
+ * 移除选中的 Agent Code
+ */
+export function removeSelectedAgentCode(): void {
+  removeStorageItem(StorageKeys.SELECTED_AGENT_CODE)
 }

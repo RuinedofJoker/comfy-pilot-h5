@@ -1,7 +1,10 @@
 <template>
   <div class="g-workflow-list-view">
     <!-- 顶部导航栏 -->
-    <TopNavBar />
+    <TopNavBar @open-agent-config="showAgentConfigModal = true" />
+
+    <!-- Agent 配置弹窗 -->
+    <AgentConfigModal v-model:visible="showAgentConfigModal" />
 
     <!-- 用户菜单 -->
     <UserMenu v-model:show="showUserMenu" />
@@ -170,6 +173,7 @@ import { showToast } from 'vant'
 import { useRouter } from 'vue-router'
 import TopNavBar from '@/components/user/TopNavBar.vue'
 import UserMenu from '@/components/user/UserMenu.vue'
+import AgentConfigModal from '@/components/user/AgentConfigModal.vue'
 import BaseAdminModal from '@/components/admin/BaseAdminModal.vue'
 import BaseFormGroup from '@/components/admin/BaseFormGroup.vue'
 import BaseInput from '@/components/admin/BaseInput.vue'
@@ -181,6 +185,7 @@ import type { Workflow } from '@/types/workflow'
 
 const router = useRouter()
 const showUserMenu = ref(false)
+const showAgentConfigModal = ref(false)
 const showEditDialog = ref(false)
 const editingWorkflow = ref<Workflow | null>(null)
 const filterType = ref<'all' | 'favorite'>('all')

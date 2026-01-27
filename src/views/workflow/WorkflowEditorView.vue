@@ -1,7 +1,10 @@
 <template>
   <div class="g-workflow-editor">
     <!-- 顶部导航栏 -->
-    <TopNavBar @open-mcp-config="showMcpConfig = true" />
+    <TopNavBar
+      @open-mcp-config="showMcpConfig = true"
+      @open-agent-config="showAgentConfigModal = true"
+    />
 
     <div class="m-editor-container">
       <!-- 左侧会话管理区域 -->
@@ -86,6 +89,9 @@
       @confirm="handleConfirmSession"
     />
 
+    <!-- Agent 配置弹窗 -->
+    <AgentConfigModal v-model:visible="showAgentConfigModal" />
+
     <!-- MCP 工具配置弹窗 -->
     <McpConfigDialog
       v-model:visible="showMcpConfig"
@@ -108,6 +114,7 @@ import WorkflowViewer from '@/components/workflow/WorkflowViewer.vue'
 import ChatDialog from '@/components/workflow/ChatDialog.vue'
 import CreateWorkflowModal from '@/components/workflow/CreateWorkflowModal.vue'
 import SessionModal from '@/components/workflow/SessionModal.vue'
+import AgentConfigModal from '@/components/user/AgentConfigModal.vue'
 import McpConfigDialog from '@/components/mcp/McpConfigDialog.vue'
 
 // Composables 导入
@@ -119,6 +126,7 @@ import { useWorkflowHistory } from '@/composables/workflow/useWorkflowHistory'
 // Store 导入
 import { useWorkflowStore } from '@/stores/workflow'
 import { useServiceStore } from '@/stores/service'
+import { useUserAgentConfigStore } from '@/stores/userAgentConfig'
 
 // MCP 工具系统导入
 import { mcpToolRegistry, mcpConfigManager, ComfyUIToolSet, ExternalMcpToolSet } from '@/mcp'
@@ -131,6 +139,7 @@ const route = useRoute()
 const router = useRouter()
 const workflowStore = useWorkflowStore()
 const serviceStore = useServiceStore()
+const userAgentConfigStore = useUserAgentConfigStore()
 
 // 从路由获取服务 ID
 const serviceId = route.params.serviceId as string
@@ -197,6 +206,7 @@ const {
 // 本地状态
 const showCreateModal = ref(false)
 const showSessionModal = ref(false)
+const showAgentConfigModal = ref(false)
 const showMcpConfig = ref(false)
 const isEditMode = ref(false)
 const editingSessionCode = ref<string | undefined>(undefined)
@@ -306,22 +316,18 @@ function handleOpenEditSessionModal(sessionCode: string): void {
 }
 
 // 确认会话操作(新建或编辑)
-async function handleConfirmSession(data: { title?: string; agentCode: string; agentConfig: string }): Promise<void> {
+async function handleConfirmSession(data: { title?: string }): Promise<void> {
   try {
     if (isEditMode.value && editingSessionCode.value) {
       // 编辑模式
       await handleUpdateSession(editingSessionCode.value, {
-        title: data.title,
-        agentCode: data.agentCode,
-        agentConfig: data.agentConfig
+        title: data.title
       })
     } else {
       // 新建模式
       await handleCreateSession({
         comfyuiServerId: serviceId,
-        title: data.title,
-        agentCode: data.agentCode,
-        agentConfig: data.agentConfig
+        title: data.title
       })
     }
     showSessionModal.value = false
@@ -646,6 +652,9 @@ onMounted(async () => {
     // 加载服务列表并选择当前服务
     await serviceStore.fetchEnabledServices()
     serviceStore.selectService(serviceId)
+
+    // 初始化用户 Agent 配置
+    await userAgentConfigStore.initData()
 
     // 加载会话列表
     await loadSessions()

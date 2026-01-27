@@ -31,6 +31,15 @@
         <span>MCP 工具</span>
       </button>
 
+      <!-- Agent 配置按钮 -->
+      <button class="f-nav-btn" @click="openAgentConfig">
+        <svg class="f-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+        <span>Agent 配置</span>
+      </button>
+
       <!-- 用户菜单 -->
       <div class="f-user-menu" :class="{ active: showDropdown }">
         <div class="f-user-info" @click="toggleDropdown">
@@ -86,6 +95,7 @@ import { showConfirmDialog } from 'vant'
 
 interface Emits {
   (e: 'open-mcp-config'): void
+  (e: 'open-agent-config'): void
 }
 
 const emit = defineEmits<Emits>()
@@ -133,6 +143,11 @@ function goToWorkflows(): void {
 // 打开 MCP 配置
 function openMcpConfig(): void {
   emit('open-mcp-config')
+}
+
+// 打开 Agent 配置
+function openAgentConfig(): void {
+  emit('open-agent-config')
 }
 
 // 跳转到个人信息

@@ -63,8 +63,6 @@ export interface ChatMessage {
 export interface CreateSessionRequest {
   comfyuiServerId: string
   title?: string
-  agentCode: string
-  agentConfig?: string
 }
 
 /**
@@ -72,6 +70,4 @@ export interface CreateSessionRequest {
  */
 export interface UpdateSessionRequest {
   title?: string
-  agentCode?: string
-  agentConfig?: string
 }

@@ -1,7 +1,10 @@
 <template>
   <div class="g-user-profile-view">
     <!-- 顶部导航栏 -->
-    <TopNavBar />
+    <TopNavBar @open-agent-config="showAgentConfigModal = true" />
+
+    <!-- Agent 配置弹窗 -->
+    <AgentConfigModal v-model:visible="showAgentConfigModal" />
 
     <!-- 主内容区 -->
     <div class="m-main-container">
@@ -255,12 +258,17 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import { showToast, showConfirmDialog } from 'vant'
+import { ref, computed } from 'vue'
 import TopNavBar from '@/components/user/TopNavBar.vue'
+import AgentConfigModal from '@/components/user/AgentConfigModal.vue'
 import { useUserStore } from '@/stores/user'
 import { useAuthStore } from '@/stores/auth'
 
 const userStore = useUserStore()
 const authStore = useAuthStore()
+
+// Agent 配置弹窗状态
+const showAgentConfigModal = ref(false)
 
 // 状态管理
 const showPasswordModal = ref(false)

@@ -119,3 +119,13 @@ export interface AgentRuntimeConfig {
   /** Agent 运行时配置定义 */
   agentConfigDefinitions?: AgentConfigDefinition[]
 }
+
+/**
+ * 用户 Agent 配置信息
+ */
+export interface UserAgentConfig {
+  /** Agent 编码 */
+  agentCode: string
+  /** Agent 配置（JSON 字符串） */
+  agentConfig?: string
+}
