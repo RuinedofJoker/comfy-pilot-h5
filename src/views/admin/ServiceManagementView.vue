@@ -406,13 +406,6 @@ async function handleEdit(service: ComfyUIService): Promise<void> {
       // 目录配置
       if (advanced.directoryConfig) {
         formData.comfyuiInstallPath = advanced.directoryConfig.comfyuiInstallPath || ''
-        formData.baseDirectory = advanced.directoryConfig.baseDirectory || ''
-        formData.outputDirectory = advanced.directoryConfig.outputDirectory || ''
-        formData.tempDirectory = advanced.directoryConfig.tempDirectory || ''
-        formData.inputDirectory = advanced.directoryConfig.inputDirectory || ''
-        formData.userDirectory = advanced.directoryConfig.userDirectory || ''
-        formData.frontEndRoot = advanced.directoryConfig.frontEndRoot || ''
-        formData.extraModelPathsConfig = advanced.directoryConfig.extraModelPathsConfig || ''
       }
     } else {
       formData.advancedFeaturesEnabled = false
@@ -505,14 +498,7 @@ async function handleConfirm(): Promise<void> {
         environmentInitScript: formData.environmentInitScript || undefined,
         pythonCommand: formData.pythonCommand || undefined,
         directoryConfig: {
-          comfyuiInstallPath: formData.comfyuiInstallPath || undefined,
-          baseDirectory: formData.baseDirectory || undefined,
-          outputDirectory: formData.outputDirectory || undefined,
-          tempDirectory: formData.tempDirectory || undefined,
-          inputDirectory: formData.inputDirectory || undefined,
-          userDirectory: formData.userDirectory || undefined,
-          frontEndRoot: formData.frontEndRoot || undefined,
-          extraModelPathsConfig: formData.extraModelPathsConfig || undefined
+          comfyuiInstallPath: formData.comfyuiInstallPath || undefined
         }
       }
 
@@ -576,13 +562,6 @@ function resetForm(): void {
   formData.environmentInitScript = ''
   formData.pythonCommand = ''
   formData.comfyuiInstallPath = ''
-  formData.baseDirectory = ''
-  formData.outputDirectory = ''
-  formData.tempDirectory = ''
-  formData.inputDirectory = ''
-  formData.userDirectory = ''
-  formData.frontEndRoot = ''
-  formData.extraModelPathsConfig = ''
   editingService.value = null
 }
 

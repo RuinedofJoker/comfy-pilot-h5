@@ -526,6 +526,7 @@ const handleCancel = () => {
     formData.value = {
       modelName: '',
       modelIdentifier: '',
+      modelDisplayName: '',
       modelCallingType: '',
       providerId: '',
       apiBaseUrl: '',
