@@ -41,13 +41,21 @@
         <!-- AI/系统消息 - 带小点和连接线 -->
         <div v-else class="f-message-assistant-wrapper">
           <div class="f-message-indicator">
-            <div class="f-indicator-dot"></div>
+            <div class="f-indicator-dot" :class="{ 'f-indicator-dot--green': message.chatData?.type === 'todo_list' }"></div>
             <div
               v-if="shouldShowConnectLine(index)"
               class="f-indicator-line"
             ></div>
           </div>
-          <div class="f-message-assistant-content f-markdown-content markdown-body" v-html="renderMessageContent(message)"></div>
+
+          <!-- 待办事项消息 -->
+          <TodoListMessage
+            v-if="message.chatData?.type === 'todo_list'"
+            :todos-json="message.chatData.content"
+          />
+
+          <!-- 普通 AI 消息 -->
+          <div v-else class="f-message-assistant-content f-markdown-content markdown-body" v-html="renderMessageContent(message)"></div>
         </div>
       </template>
 
@@ -214,6 +222,7 @@ import ToolCallConfirmation from './ToolCallConfirmation.vue'
 import CommandSuggestion from './CommandSuggestion.vue'
 import TokenUsageIndicator from './TokenUsageIndicator.vue'
 import AgentSelector from './AgentSelector.vue'
+import TodoListMessage from './TodoListMessage.vue'
 
 // Props
 interface Props {
@@ -264,6 +273,12 @@ const localMessages = ref<ChatMessage[]>([])
 // 过滤掉内容为空的消息（AI 调用工具时可能产生空消息）
 const filteredMessages = computed(() => {
   return localMessages.value.filter(message => {
+    // 待办事项消息不过滤
+    if (message.chatData?.type === 'todo_list') {
+      return true
+    }
+
+    // 其他消息需要有内容
     const content = getMessageDisplayContent(message)
     return content && content.trim().length > 0
   })
@@ -384,6 +399,37 @@ function handlePromptEvent(requestId: string, promptType: AgentPromptType, messa
   // STARTED 类型表示 Agent 开始执行
   if (promptType === 'STARTED') {
     isAgentStarted.value = true
+    return
+  }
+
+  // TODO_WRITE 类型表示待办事项更新，添加待办事项消息
+  if (promptType === 'TODO_WRITE' && message) {
+    const wasAtBottom = isScrollAtBottom()
+
+    // 创建待办事项消息
+    const todoMessage: ChatMessage = {
+      id: `todo-${Date.now()}`,
+      sessionId: props.sessionCode || '',
+      role: 'ASSISTANT',
+      content: '', // content 为空，使用 chatData 存储结构化数据
+      chatData: {
+        type: 'todo_list',
+        content: message
+      },
+      createTime: new Date().toISOString(),
+      updateTime: new Date().toISOString()
+    }
+
+    // 添加到本地消息列表
+    localMessages.value.push(todoMessage)
+
+    // 如果用户在底部，滚动到新的底部
+    nextTick(() => {
+      if (wasAtBottom) {
+        scrollToBottom()
+      }
+    })
+
     return
   }
 
@@ -1654,6 +1700,10 @@ onUnmounted(() => {
   background: #666666;
   border-radius: 50%;
   flex-shrink: 0;
+
+  &--green {
+    background: #4ade80;
+  }
   z-index: 1;
 }
 

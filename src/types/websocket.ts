@@ -52,6 +52,7 @@ export type AgentPromptType =
   | 'INTERRUPTED'       // 执行中断
   | 'COMPLETE'          // 执行完成
   | 'ERROR'             // 执行错误
+  | 'TODO_WRITE'        // 待办事项更新
 
 export const AgentPromptTypeValues = {
   STARTED: 'STARTED' as const,
@@ -62,7 +63,8 @@ export const AgentPromptTypeValues = {
   SUMMARY_COMPLETE: 'SUMMARY_COMPLETE' as const,
   INTERRUPTED: 'INTERRUPTED' as const,
   COMPLETE: 'COMPLETE' as const,
-  ERROR: 'ERROR' as const
+  ERROR: 'ERROR' as const,
+  TODO_WRITE: 'TODO_WRITE' as const
 }
 
 // ==================== 基础消息数据接口 ====================
@@ -428,5 +430,25 @@ export const AGENT_PROMPT_DEFAULT_MESSAGES: Record<AgentPromptType, string> = {
   SUMMARY_COMPLETE: '摘要已生成完成',
   INTERRUPTED: '执行已被中断',
   COMPLETE: '执行完成',
-  ERROR: '执行过程中发生错误'
+  ERROR: '执行过程中发生错误',
+  TODO_WRITE: '待办事项已更新'
+}
+
+// ==================== 待办事项相关类型定义 ====================
+
+/**
+ * 待办事项状态
+ */
+export type TodoStatus = 'pending' | 'in_progress' | 'completed'
+
+/**
+ * 待办事项数据结构
+ */
+export interface TodoItem {
+  /** 任务内容 */
+  content: string
+  /** 进行中形式 */
+  activeForm: string
+  /** 任务状态 */
+  status: TodoStatus
 };

@@ -8,7 +8,7 @@ import type { ChatContent } from './chat-content'
 /**
  * 消息类型
  */
-export type PersistableMessageType = 'system' | 'user' | 'ai' | 'tool_execution_result'
+export type PersistableMessageType = 'system' | 'user' | 'ai' | 'tool_execution_result' | 'todo_list'
 
 /**
  * 工具调用请求
@@ -69,10 +69,21 @@ export interface ChatToolExecutionResultMessage {
 }
 
 /**
+ * 待办事项列表消息
+ * 用于展示 Agent 的任务规划和执行进度
+ */
+export interface ChatTodoListMessage {
+  type: 'todo_list'
+  /** 待办事项列表（JSON格式字符串） */
+  content: string
+}
+
+/**
  * 可持久化的聊天消息联合类型
  */
 export type PersistableChatMessage =
   | ChatSystemMessage
   | ChatUserMessage
   | ChatAiMessage
+  | ChatTodoListMessage
   | ChatToolExecutionResultMessage
