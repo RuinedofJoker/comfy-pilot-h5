@@ -135,7 +135,8 @@ export class AgentWebSocketManager {
     toolSchemas?: any[],
     multimodalContents?: any[],
     mcpConfig?: string,
-    agentCode?: string
+    agentCode?: string,
+    requestId?: string
   ): void {
     // 判断是否为命令（以 / 开头）
     const isCommand = content.trim().startsWith('/')
@@ -144,7 +145,9 @@ export class AgentWebSocketManager {
       ? MessageBuilder.userOrder(
           this.sessionCode,
           content,
-          multimodalContents
+          multimodalContents,
+          requestId,
+          agentCode
         )
       : MessageBuilder.userMessage(
           this.sessionCode,
@@ -152,7 +155,8 @@ export class AgentWebSocketManager {
           toolSchemas,
           multimodalContents,
           mcpConfig,
-          agentCode
+          agentCode,
+          requestId
         )
 
     console.log(`[WebSocket] 发送${isCommand ? '命令' : '消息'}:`, content)

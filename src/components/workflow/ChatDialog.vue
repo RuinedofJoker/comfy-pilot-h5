@@ -31,14 +31,14 @@
       <div class="f-messages-content" ref="chatMessages">
         <!-- 本地消息列表 - 简洁展示，类似终端输出 -->
         <template v-for="(message, index) in filteredMessages" :key="message.id">
-        <!-- 用户消息 -->
-        <div v-if="message.role === 'USER'" class="f-message-user">
+        <!-- 用户消息 (USER 和 USER_ORDER) -->
+        <div v-if="message.role === 'USER' || message.role === 'USER_ORDER'" class="f-message-user">
           <div class="f-user-message-box">
             {{ getMessageDisplayContent(message) }}
           </div>
         </div>
 
-        <!-- AI/系统/Agent计划消息 - 带小点和连接线 -->
+        <!-- AI/系统/Agent计划/Agent消息 - 带小点和连接线 -->
         <div v-else class="f-message-assistant-wrapper">
           <div class="f-message-indicator">
             <div class="f-indicator-dot" :class="{ 'f-indicator-dot--green': message.role === 'AGENT_PLAN' }"></div>
@@ -53,6 +53,11 @@
             v-if="message.role === 'AGENT_PLAN'"
             :todos-json="message.content"
           />
+
+          <!-- Agent 消息块 -->
+          <div v-else-if="message.role === 'AGENT_MESSAGE'" class="f-agent-message-block">
+            {{ message.content }}
+          </div>
 
           <!-- 普通 AI 消息 -->
           <div v-else class="f-message-assistant-content f-markdown-content markdown-body" v-html="renderMessageContent(message)"></div>
@@ -278,6 +283,11 @@ const filteredMessages = computed(() => {
       return true
     }
 
+    // AGENT_MESSAGE 消息不过滤
+    if (message.role === 'AGENT_MESSAGE') {
+      return true
+    }
+
     // 其他消息需要有内容
     const content = getMessageDisplayContent(message)
     return content && content.trim().length > 0
@@ -432,6 +442,43 @@ function handlePromptEvent(requestId: string, promptType: AgentPromptType, messa
       }
     })
 
+    return
+  }
+
+  // AGENT_MESSAGE_BLOCK 类型表示 Agent 消息块，添加 AGENT_MESSAGE 消息
+  if (promptType === 'AGENT_MESSAGE_BLOCK' && message) {
+    console.log('[ChatDialog] 处理 AGENT_MESSAGE_BLOCK 事件，创建 Agent 消息')
+    const wasAtBottom = isScrollAtBottom()
+
+    // 创建 Agent 消息
+    const agentMessage: ChatMessage = {
+      id: `agent-message-${Date.now()}`,
+      sessionId: props.sessionCode || '',
+      role: 'AGENT_MESSAGE',
+      content: message,
+      createTime: new Date().toISOString(),
+      updateTime: new Date().toISOString()
+    }
+
+    console.log('[ChatDialog] Agent 消息已创建:', agentMessage)
+
+    // 添加到本地消息列表
+    localMessages.value.push(agentMessage)
+
+    // 如果用户在底部，滚动到新的底部
+    nextTick(() => {
+      if (wasAtBottom) {
+        scrollToBottom()
+      }
+    })
+
+    return
+  }
+
+  // CLEAR 类型表示清空消息列表
+  if (promptType === 'CLEAR') {
+    console.log('[ChatDialog] 处理 CLEAR 事件，清空消息列表')
+    localMessages.value = []
     return
   }
 
@@ -1058,14 +1105,15 @@ async function handleSend(): Promise<void> {
   isAgentExecuting.value = true
   isAgentStarted.value = false // 重置 STARTED 状态，等待新的 STARTED 事件
 
-  // 通过 WebSocket 发送消息
+  // 通过 WebSocket 发送消息，传入 requestId 确保一致性
   wsManager.sendMessage(
     textContent,
     props.workflowContent,
     toolSchemas.length > 0 ? toolSchemas : undefined,
     attachmentContents.length > 0 ? attachmentContents : undefined,
     mcpConfig,
-    agentCode
+    agentCode,
+    requestId
   )
 
   // 清空输入
@@ -1723,6 +1771,21 @@ onUnmounted(() => {
 .f-message-assistant-content {
   flex: 1;
   color: #cccccc;
+  font-size: 13px;
+  line-height: 1.6;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+// Agent 消息块样式
+.f-agent-message-block {
+  width: calc(100% - 16px); // 左右各留 8px 外边距
+  margin: 0 8px;
+  padding: 12px 16px;
+  background: rgb(49, 49, 49);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #e5e5e5;
   font-size: 13px;
   line-height: 1.6;
   word-wrap: break-word;

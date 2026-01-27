@@ -48,11 +48,12 @@ export type AgentPromptType =
   | 'TOOL_CALLING'      // 工具调用中
   | 'TOOL_COMPLETE'     // 工具完成
   | 'SUMMARY'           // 生成摘要中
-  | 'SUMMARY_COMPLETE'  // 摘要完成
+  | 'AGENT_MESSAGE_BLOCK'  // Agent消息块
   | 'INTERRUPTED'       // 执行中断
   | 'COMPLETE'          // 执行完成
   | 'ERROR'             // 执行错误
   | 'TODO_WRITE'        // 待办事项更新
+  | 'CLEAR'             // 清空消息列表
 
 export const AgentPromptTypeValues = {
   STARTED: 'STARTED' as const,
@@ -60,11 +61,12 @@ export const AgentPromptTypeValues = {
   TOOL_CALLING: 'TOOL_CALLING' as const,
   TOOL_COMPLETE: 'TOOL_COMPLETE' as const,
   SUMMARY: 'SUMMARY' as const,
-  SUMMARY_COMPLETE: 'SUMMARY_COMPLETE' as const,
+  AGENT_MESSAGE_BLOCK: 'AGENT_MESSAGE_BLOCK' as const,
   INTERRUPTED: 'INTERRUPTED' as const,
   COMPLETE: 'COMPLETE' as const,
   ERROR: 'ERROR' as const,
-  TODO_WRITE: 'TODO_WRITE' as const
+  TODO_WRITE: 'TODO_WRITE' as const,
+  CLEAR: 'CLEAR' as const
 }
 
 // ==================== 基础消息数据接口 ====================
@@ -282,12 +284,13 @@ export class MessageBuilder {
     toolSchemas?: McpToolSchema[],
     multimodalContents?: import('./chat-content').ChatContent[],
     mcpConfig?: string,
-    agentCode?: string
+    agentCode?: string,
+    requestId?: string
   ): UserMessage {
     return {
       type: WebSocketMessageTypeValues.USER_MESSAGE,
       sessionCode,
-      requestId: Date.now().toString(),
+      requestId: requestId || Date.now().toString(),
       content,
       data: {
         type: WebSocketMessageTypeValues.USER_MESSAGE,
@@ -306,15 +309,18 @@ export class MessageBuilder {
   static userOrder(
     sessionCode: string,
     command: string,
-    multimodalContents?: import('./chat-content').ChatContent[]
+    multimodalContents?: import('./chat-content').ChatContent[],
+    requestId?: string,
+    agentCode?: string
   ): UserOrderMessage {
     return {
       type: WebSocketMessageTypeValues.USER_ORDER,
       sessionCode,
-      requestId: Date.now().toString(),
+      requestId: requestId || Date.now().toString(),
       content: command,
       data: {
         type: WebSocketMessageTypeValues.USER_ORDER,
+        agentCode,
         multimodalContents
       },
       timestamp: Date.now()
@@ -427,11 +433,12 @@ export const AGENT_PROMPT_DEFAULT_MESSAGES: Record<AgentPromptType, string> = {
   TOOL_CALLING: 'Agent正在调用工具...',
   TOOL_COMPLETE: '工具调用已完成，继续分析...',
   SUMMARY: 'Agent正在生成摘要...',
-  SUMMARY_COMPLETE: '摘要已生成完成',
+  AGENT_MESSAGE_BLOCK: 'Agent消息块',
   INTERRUPTED: '执行已被中断',
   COMPLETE: '执行完成',
   ERROR: '执行过程中发生错误',
-  TODO_WRITE: '待办事项已更新'
+  TODO_WRITE: '待办事项已更新',
+  CLEAR: '清空消息列表'
 }
 
 // ==================== 待办事项相关类型定义 ====================

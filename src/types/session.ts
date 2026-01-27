@@ -17,13 +17,15 @@ export const SessionStatusValues = {
 /**
  * 消息角色
  */
-export type MessageRole = 'USER' | 'ASSISTANT' | 'SYSTEM' | 'AGENT_PLAN'
+export type MessageRole = 'USER' | 'ASSISTANT' | 'SYSTEM' | 'AGENT_PLAN' | 'USER_ORDER' | 'AGENT_MESSAGE'
 
 export const MessageRoleValues = {
   USER: 'USER' as const,
   ASSISTANT: 'ASSISTANT' as const,
   SYSTEM: 'SYSTEM' as const,
-  AGENT_PLAN: 'AGENT_PLAN' as const
+  AGENT_PLAN: 'AGENT_PLAN' as const,
+  USER_ORDER: 'USER_ORDER' as const,
+  AGENT_MESSAGE: 'AGENT_MESSAGE' as const
 }
 
 /**
