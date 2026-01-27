@@ -2,7 +2,7 @@
  * MCP 工具配置管理 (localStorage)
  */
 
-import type { McpConfig, McpToolSetConfig, McpServerConfig, ToolExecutionPolicy } from './types'
+import type { McpConfig, McpToolSetConfig, ToolExecutionPolicy } from './types'
 
 const STORAGE_KEY = 'mcp-config'
 const DEFAULT_VERSION = '1.0.0'
@@ -13,7 +13,7 @@ const DEFAULT_VERSION = '1.0.0'
 const DEFAULT_CONFIG: McpConfig = {
   version: DEFAULT_VERSION,
   toolSets: [],
-  externalServers: [],
+  mcpConfigJson: '',
   globalExecutionPolicy: 'ask-every-time'
 }
 
@@ -145,107 +145,24 @@ export class McpConfigManager {
     }
   }
 
-  // ==================== 外部 MCP 服务器配置管理 ====================
+  // ==================== MCP 配置 JSON 管理 ====================
 
   /**
-   * 获取所有外部服务器配置
+   * 获取 MCP 配置 JSON 字符串
    */
-  getAllExternalServers(): McpServerConfig[] {
+  getMcpConfigJson(): string {
     const config = this.loadConfig()
-    return config.externalServers || []
+    return config.mcpConfigJson || ''
   }
 
   /**
-   * 获取外部服务器配置
+   * 保存 MCP 配置 JSON 字符串
    */
-  getExternalServer(serverId: string): McpServerConfig | undefined {
+  saveMcpConfigJson(jsonString: string): void {
     const config = this.loadConfig()
-    return config.externalServers?.find(s => s.id === serverId)
-  }
-
-  /**
-   * 添加外部服务器配置
-   */
-  addExternalServer(serverConfig: McpServerConfig): void {
-    const config = this.loadConfig()
-
-    // 确保 externalServers 数组存在
-    if (!config.externalServers) {
-      config.externalServers = []
-    }
-
-    // 检查是否已存在
-    const exists = config.externalServers.some(s => s.id === serverConfig.id)
-    if (exists) {
-      throw new Error(`服务器 ID ${serverConfig.id} 已存在`)
-    }
-
-    config.externalServers.push(serverConfig)
+    config.mcpConfigJson = jsonString
     this.saveConfig(config)
-    console.log('[MCP Config] 外部服务器已添加:', serverConfig.name)
-  }
-
-  /**
-   * 更新外部服务器配置
-   */
-  updateExternalServer(serverId: string, updates: Partial<Omit<McpServerConfig, 'id'>>): void {
-    const config = this.loadConfig()
-
-    if (!config.externalServers) {
-      config.externalServers = []
-    }
-
-    const index = config.externalServers.findIndex(s => s.id === serverId)
-
-    if (index >= 0) {
-      const existing = config.externalServers[index]!
-      config.externalServers[index] = {
-        id: existing.id,
-        name: updates.name ?? existing.name,
-        description: updates.description ?? existing.description,
-        url: updates.url ?? existing.url,
-        transport: updates.transport ?? existing.transport,
-        auth: updates.auth ?? existing.auth,
-        enabled: updates.enabled ?? existing.enabled,
-        executionPolicy: updates.executionPolicy ?? existing.executionPolicy
-      }
-      this.saveConfig(config)
-      console.log('[MCP Config] 外部服务器已更新:', serverId)
-    } else {
-      throw new Error(`服务器 ID ${serverId} 不存在`)
-    }
-  }
-
-  /**
-   * 删除外部服务器配置
-   */
-  removeExternalServer(serverId: string): boolean {
-    const config = this.loadConfig()
-
-    if (!config.externalServers) {
-      return false
-    }
-
-    const index = config.externalServers.findIndex(s => s.id === serverId)
-
-    if (index >= 0) {
-      config.externalServers.splice(index, 1)
-      this.saveConfig(config)
-      console.log('[MCP Config] 外部服务器已删除:', serverId)
-      return true
-    }
-
-    return false
-  }
-
-  /**
-   * 获取所有启用的外部服务器 ID
-   */
-  getEnabledExternalServerIds(): string[] {
-    const config = this.loadConfig()
-    return (config.externalServers || [])
-      .filter(s => s.enabled)
-      .map(s => s.id)
+    console.log('[MCP Config] MCP 配置 JSON 已保存')
   }
 
   // ==================== 全局执行策略管理 ====================

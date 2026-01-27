@@ -124,8 +124,8 @@
 import { ref, watch } from 'vue'
 import { showToast } from 'vant'
 import MonacoJsonEditor from '@/components/workflow/MonacoJsonEditor.vue'
-import { mcpConfigManager, mcpToolRegistry, ExternalMcpToolSet } from '@/mcp'
-import type { McpServerConfig, ToolExecutionPolicy } from '@/mcp'
+import { mcpConfigManager } from '@/mcp'
+import type { ToolExecutionPolicy } from '@/mcp'
 
 interface Props {
   visible: boolean
@@ -164,35 +164,17 @@ const exampleConfig = `{
 
 // 初始化配置
 function initConfig(): void {
-  const servers = mcpConfigManager.getAllExternalServers()
-
   // 获取全局执行策略
   executionPolicy.value = mcpConfigManager.getGlobalExecutionPolicy()
 
-  if (servers.length === 0) {
+  // 获取已保存的 MCP 配置 JSON
+  const savedJson = mcpConfigManager.getMcpConfigJson()
+
+  if (savedJson) {
+    configJson.value = savedJson
+  } else {
     // 如果没有配置，使用默认空配置
     configJson.value = JSON.stringify({ mcpServers: {} }, null, 2)
-  } else {
-    // 转换现有配置为用户格式
-    const mcpServers: Record<string, any> = {}
-
-    servers.forEach(server => {
-      mcpServers[server.id] = {
-        url: server.url,
-        disabled: !server.enabled,
-        timeout: 60,
-        type: server.transport,
-        ...(server.auth && {
-          headers: {
-            Authorization: server.auth.type === 'bearer'
-              ? `Bearer ${server.auth.token}`
-              : server.auth.token
-          }
-        })
-      }
-    })
-
-    configJson.value = JSON.stringify({ mcpServers }, null, 2)
   }
 }
 
@@ -206,82 +188,6 @@ function handleValidate(valid: boolean, errors: string[]): void {
   }
 }
 
-// 验证 URL 格式
-function isValidUrl(url: string): boolean {
-  try {
-    new URL(url)
-    return true
-  } catch {
-    return false
-  }
-}
-
-// 验证配置内容
-function validateConfig(config: any): string[] {
-  const errors: string[] = []
-
-  // 验证 mcpServers 字段（必填）
-  if (!config.mcpServers) {
-    errors.push('配置必须包含 mcpServers 字段')
-    return errors
-  }
-
-  if (typeof config.mcpServers !== 'object' || Array.isArray(config.mcpServers)) {
-    errors.push('mcpServers 必须是一个对象')
-    return errors
-  }
-
-  const servers = config.mcpServers
-  const serverIds = Object.keys(servers)
-
-  // 允许空配置，只验证已配置的服务器
-  serverIds.forEach(id => {
-    const server = servers[id]
-
-    // 验证服务器名称（必填，已通过 key 存在性保证）
-    if (!id || id.trim() === '') {
-      errors.push('服务器名称不能为空')
-      return
-    }
-
-    // 验证服务器配置对象
-    if (!server || typeof server !== 'object') {
-      errors.push(`服务器 "${id}": 配置必须是一个对象`)
-      return
-    }
-
-    // 验证 URL（必填）
-    if (!server.url) {
-      errors.push(`服务器 "${id}": url 字段为必填项`)
-    } else if (typeof server.url !== 'string' || server.url.trim() === '') {
-      errors.push(`服务器 "${id}": url 不能为空`)
-    } else if (!isValidUrl(server.url)) {
-      errors.push(`服务器 "${id}": url 格式无效，必须是有效的 URL 地址`)
-    }
-
-    // 验证 type（可选）
-    if (server.type && !['sse', 'http'].includes(server.type)) {
-      errors.push(`服务器 "${id}": type 必须是 "sse" 或 "http"`)
-    }
-
-    // 验证 timeout（可选）
-    if (server.timeout !== undefined && (typeof server.timeout !== 'number' || server.timeout <= 0)) {
-      errors.push(`服务器 "${id}": timeout 必须是正数`)
-    }
-
-    // 验证 disabled（可选）
-    if (server.disabled !== undefined && typeof server.disabled !== 'boolean') {
-      errors.push(`服务器 "${id}": disabled 必须是布尔值`)
-    }
-
-    // 验证 headers（可选）
-    if (server.headers !== undefined && (typeof server.headers !== 'object' || Array.isArray(server.headers))) {
-      errors.push(`服务器 "${id}": headers 必须是一个对象`)
-    }
-  })
-
-  return errors
-}
 
 // 保存配置
 async function handleSave(): Promise<void> {
@@ -293,68 +199,14 @@ async function handleSave(): Promise<void> {
   saving.value = true
 
   try {
-    // 解析 JSON
-    const config = JSON.parse(configJson.value)
-
-    // 验证配置内容
-    const errors = validateConfig(config)
-    if (errors.length > 0) {
-      validationErrors.value = errors
-      isValid.value = false
-      showToast('配置验证失败，请检查错误提示')
-      return
-    }
+    // 验证 JSON 格式（尝试解析）
+    JSON.parse(configJson.value)
 
     // 保存全局执行策略
     mcpConfigManager.setGlobalExecutionPolicy(executionPolicy.value)
 
-    // 清空现有的外部服务器配置
-    const existingServers = mcpConfigManager.getAllExternalServers()
-    existingServers.forEach(server => {
-      mcpConfigManager.removeExternalServer(server.id)
-      // 从注册表中注销工具集
-      mcpToolRegistry.unregisterToolSet(server.id)
-    })
-
-    // 保存新配置
-    const servers = config.mcpServers
-    const serverIds = Object.keys(servers)
-
-    for (const id of serverIds) {
-      const server = servers[id]
-
-      // 解析认证信息
-      let auth: any = undefined
-      if (server.headers?.Authorization) {
-        const authHeader = server.headers.Authorization
-        if (authHeader.startsWith('Bearer ')) {
-          auth = {
-            type: 'bearer',
-            token: authHeader.substring(7)
-          }
-        } else {
-          auth = {
-            type: 'api-key',
-            token: authHeader
-          }
-        }
-      }
-
-      // 创建服务器配置
-      const serverConfig: McpServerConfig = {
-        id,
-        name: id,
-        description: `外部 MCP 服务器: ${id}`,
-        url: server.url,
-        transport: server.type || 'sse',
-        auth,
-        enabled: !server.disabled,
-        executionPolicy: executionPolicy.value // 使用全局执行策略
-      }
-
-      // 保存到配置管理器
-      mcpConfigManager.addExternalServer(serverConfig)
-    }
+    // 保存 MCP 配置 JSON 字符串（不解析内容）
+    mcpConfigManager.saveMcpConfigJson(configJson.value)
 
     showToast('配置保存成功')
     emit('saved')
