@@ -38,10 +38,10 @@
           </div>
         </div>
 
-        <!-- AI/系统消息 - 带小点和连接线 -->
+        <!-- AI/系统/Agent计划消息 - 带小点和连接线 -->
         <div v-else class="f-message-assistant-wrapper">
           <div class="f-message-indicator">
-            <div class="f-indicator-dot" :class="{ 'f-indicator-dot--green': message.chatData?.type === 'todo_list' }"></div>
+            <div class="f-indicator-dot" :class="{ 'f-indicator-dot--green': message.role === 'AGENT_PLAN' }"></div>
             <div
               v-if="shouldShowConnectLine(index)"
               class="f-indicator-line"
@@ -50,8 +50,8 @@
 
           <!-- 待办事项消息 -->
           <TodoListMessage
-            v-if="message.chatData?.type === 'todo_list'"
-            :todos-json="message.chatData.content"
+            v-if="message.role === 'AGENT_PLAN'"
+            :todos-json="message.content"
           />
 
           <!-- 普通 AI 消息 -->
@@ -273,8 +273,8 @@ const localMessages = ref<ChatMessage[]>([])
 // 过滤掉内容为空的消息（AI 调用工具时可能产生空消息）
 const filteredMessages = computed(() => {
   return localMessages.value.filter(message => {
-    // 待办事项消息不过滤
-    if (message.chatData?.type === 'todo_list') {
+    // AGENT_PLAN 消息（待办事项）不过滤
+    if (message.role === 'AGENT_PLAN') {
       return true
     }
 
@@ -404,24 +404,26 @@ function handlePromptEvent(requestId: string, promptType: AgentPromptType, messa
 
   // TODO_WRITE 类型表示待办事项更新，添加待办事项消息
   if (promptType === 'TODO_WRITE' && message) {
+    console.log('[ChatDialog] 处理 TODO_WRITE 事件，创建待办事项消息')
     const wasAtBottom = isScrollAtBottom()
 
     // 创建待办事项消息
     const todoMessage: ChatMessage = {
       id: `todo-${Date.now()}`,
       sessionId: props.sessionCode || '',
-      role: 'ASSISTANT',
-      content: '', // content 为空，使用 chatData 存储结构化数据
-      chatData: {
-        type: 'todo_list',
-        content: message
-      },
+      role: 'AGENT_PLAN',
+      content: message, // 直接存储 todo JSON 字符串
       createTime: new Date().toISOString(),
       updateTime: new Date().toISOString()
     }
 
+    console.log('[ChatDialog] 待办事项消息已创建:', todoMessage)
+
     // 添加到本地消息列表
     localMessages.value.push(todoMessage)
+
+    console.log('[ChatDialog] 本地消息列表长度:', localMessages.value.length)
+    console.log('[ChatDialog] 过滤后消息列表长度:', filteredMessages.value.length)
 
     // 如果用户在底部，滚动到新的底部
     nextTick(() => {
