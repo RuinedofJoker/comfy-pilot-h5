@@ -30,12 +30,19 @@
             />
           </div>
 
-          <!-- 提示信息 -->
-          <div class="f-info-box">
-            <svg class="f-icon" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-            </svg>
-            <span>Agent 配置已移至顶部导航栏的"Agent 配置"按钮中统一管理</span>
+          <!-- Rules 配置 -->
+          <div class="f-form-item">
+            <label class="f-label">
+              Rules 配置
+            </label>
+            <van-field
+              v-model="formData.rules"
+              type="textarea"
+              placeholder="请输入 Rules 配置"
+              :border="false"
+              class="f-input"
+              rows="20"
+            />
           </div>
         </div>
       </div>
@@ -73,7 +80,7 @@ const props = withDefaults(defineProps<Props>(), {
 // Emits
 const emit = defineEmits<{
   'update:visible': [value: boolean]
-  'confirm': [data: { title?: string }]
+  'confirm': [data: { title?: string; rules?: string }]
 }>()
 
 // 状态
@@ -81,19 +88,22 @@ const loading = ref(false)
 
 // 表单数据
 const formData = ref({
-  title: ''
+  title: '',
+  rules: ''
 })
 
 // 处理确认
 function handleConfirm() {
   emit('confirm', {
-    title: formData.value.title || undefined
+    title: formData.value.title || undefined,
+    rules: formData.value.rules || undefined
   })
 }
 
 // 清空表单
 function resetForm() {
   formData.value.title = ''
+  formData.value.rules = ''
 }
 
 // 处理关闭
@@ -109,6 +119,7 @@ async function initForm() {
     try {
       const session = await getSessionByCode(props.sessionCode)
       formData.value.title = session.title || ''
+      formData.value.rules = session.rules || ''
     } catch (error) {
       console.error('加载会话详情失败:', error)
       toast.error('加载会话详情失败')
@@ -248,6 +259,29 @@ watch(() => props.visible, (newVal) => {
 
   :deep(.van-field__control::placeholder) {
     color: #555555;
+  }
+
+  // 自定义滚动条样式（纵向）
+  :deep(.van-field__control::-webkit-scrollbar) {
+    width: 8px;
+  }
+
+  :deep(.van-field__control::-webkit-scrollbar-track) {
+    background: #1e1e1e;
+  }
+
+  :deep(.van-field__control::-webkit-scrollbar-thumb) {
+    background: #3a3a3a;
+    border-radius: 4px;
+
+    &:hover {
+      background: #4a4a4a;
+    }
+  }
+
+  // 自定义滚动条样式（横向）
+  :deep(.van-field__control::-webkit-scrollbar:horizontal) {
+    height: 8px;
   }
 
   &:focus-within {

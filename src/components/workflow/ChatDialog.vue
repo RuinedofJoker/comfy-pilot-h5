@@ -201,6 +201,7 @@ import type { ChatMessage } from '@/types/session'
 import type { ChatContent } from '@/types/chat-content'
 import { AgentWebSocketManager } from '@/utils/websocket'
 import { useAuthStore } from '@/stores/auth'
+import { useUserAgentConfigStore } from '@/stores/userAgentConfig'
 import { AGENT_PROMPT_DEFAULT_MESSAGES } from '@/types/websocket'
 import type { AgentToolCallRequestData, AgentPromptType } from '@/types/websocket'
 import { uploadFile } from '@/services/file'
@@ -237,6 +238,9 @@ const emit = defineEmits<{
 
 // Auth Store
 const authStore = useAuthStore()
+
+// UserAgentConfig Store
+const userAgentConfigStore = useUserAgentConfigStore()
 
 // 本地状态
 const inputValue = ref('')
@@ -995,6 +999,9 @@ async function handleSend(): Promise<void> {
   // 获取 MCP 配置（JSON 字符串）
   const mcpConfig = mcpConfigManager.exportConfig()
 
+  // 获取当前选中的 Agent Code
+  const agentCode = userAgentConfigStore.currentAgent?.agentCode
+
   // 生成并保存请求ID
   const requestId = Date.now().toString()
   currentRequestId.value = requestId
@@ -1009,7 +1016,8 @@ async function handleSend(): Promise<void> {
     props.workflowContent,
     toolSchemas.length > 0 ? toolSchemas : undefined,
     attachmentContents.length > 0 ? attachmentContents : undefined,
-    mcpConfig
+    mcpConfig,
+    agentCode
   )
 
   // 清空输入

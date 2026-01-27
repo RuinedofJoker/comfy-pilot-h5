@@ -145,6 +145,8 @@ export interface McpToolSchema {
  * 对应后端 Jackson 反序列化类型：USER_MESSAGE 或 USER_ORDER
  */
 export interface UserMessageRequestData extends ClientToServerMessageData {
+  /** Agent 编码 */
+  agentCode?: string;
   /** 客户端MCP工具schema列表 */
   toolSchemas?: McpToolSchema[];
   /** 客户端MCP配置(mcp.json文件内容) */
@@ -277,7 +279,8 @@ export class MessageBuilder {
     content: string,
     toolSchemas?: McpToolSchema[],
     multimodalContents?: import('./chat-content').ChatContent[],
-    mcpConfig?: string
+    mcpConfig?: string,
+    agentCode?: string
   ): UserMessage {
     return {
       type: WebSocketMessageTypeValues.USER_MESSAGE,
@@ -286,6 +289,7 @@ export class MessageBuilder {
       content,
       data: {
         type: WebSocketMessageTypeValues.USER_MESSAGE,
+        agentCode,
         toolSchemas,
         multimodalContents,
         mcpConfig

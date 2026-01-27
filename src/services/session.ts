@@ -49,8 +49,8 @@ export function getSessionMessages(sessionCode: string): Promise<ChatMessage[]> 
 }
 
 /**
- * 归档会话
+ * 删除会话
  */
-export function archiveSession(sessionCode: string): Promise<void> {
-  return http.post(`/api/v1/sessions/${sessionCode}/archive`)
+export function deleteSession(sessionCode: string): Promise<void> {
+  return http.delete(`/api/v1/sessions/${sessionCode}`)
 }

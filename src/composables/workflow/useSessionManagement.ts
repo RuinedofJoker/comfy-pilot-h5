@@ -5,7 +5,8 @@ import {
   getSessionByCode,
   getSessionMessages,
   createSession,
-  updateSession
+  updateSession,
+  deleteSession
 } from '@/services/session'
 import type { ChatSession, ChatMessage, CreateSessionRequest, UpdateSessionRequest } from '@/types/session'
 
@@ -81,6 +82,25 @@ export function useSessionManagement(serviceId: string) {
     }
   }
 
+  // 删除会话
+  async function handleDeleteSession(sessionCode: string): Promise<void> {
+    try {
+      await deleteSession(sessionCode)
+      await loadSessions()
+
+      // 如果删除的是当前会话，清空当前会话状态
+      if (currentSessionCode.value === sessionCode) {
+        unselectSession()
+      }
+
+      toast.success('会话删除成功')
+    } catch (error) {
+      console.error('删除会话失败:', error)
+      toast.error('删除会话失败')
+      throw error
+    }
+  }
+
   return {
     sessions,
     currentSessionCode,
@@ -90,6 +110,7 @@ export function useSessionManagement(serviceId: string) {
     selectSession,
     unselectSession,
     handleCreateSession,
-    handleUpdateSession
+    handleUpdateSession,
+    handleDeleteSession
   }
 }

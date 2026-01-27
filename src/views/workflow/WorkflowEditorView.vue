@@ -14,6 +14,7 @@
         @create-session="handleOpenCreateSessionModal"
         @select-session="handleSelectSession"
         @edit-session="handleOpenEditSessionModal"
+        @delete-session="handleDeleteSessionWithConfirm"
         @go-back="handleGoBack"
       />
 
@@ -92,6 +93,13 @@
     <!-- Agent 配置弹窗 -->
     <AgentConfigModal v-model:visible="showAgentConfigModal" />
 
+    <!-- 删除会话确认弹窗 -->
+    <DeleteSessionModal
+      v-model:visible="showDeleteModal"
+      :session-title="deletingSessionTitle"
+      @confirm="handleConfirmDelete"
+    />
+
     <!-- MCP 工具配置弹窗 -->
     <McpConfigDialog
       v-model:visible="showMcpConfig"
@@ -114,6 +122,7 @@ import WorkflowViewer from '@/components/workflow/WorkflowViewer.vue'
 import ChatDialog from '@/components/workflow/ChatDialog.vue'
 import CreateWorkflowModal from '@/components/workflow/CreateWorkflowModal.vue'
 import SessionModal from '@/components/workflow/SessionModal.vue'
+import DeleteSessionModal from '@/components/workflow/DeleteSessionModal.vue'
 import AgentConfigModal from '@/components/user/AgentConfigModal.vue'
 import McpConfigDialog from '@/components/mcp/McpConfigDialog.vue'
 
@@ -160,7 +169,8 @@ const {
   selectSession,
   unselectSession,
   handleCreateSession,
-  handleUpdateSession
+  handleUpdateSession,
+  handleDeleteSession
 } = sessionManagement
 
 // 从 chatDialog 解构状态和方法
@@ -208,8 +218,11 @@ const showCreateModal = ref(false)
 const showSessionModal = ref(false)
 const showAgentConfigModal = ref(false)
 const showMcpConfig = ref(false)
+const showDeleteModal = ref(false)
 const isEditMode = ref(false)
 const editingSessionCode = ref<string | undefined>(undefined)
+const deletingSessionCode = ref<string | undefined>(undefined)
+const deletingSessionTitle = ref<string>('')
 const workflowViewerRef = ref<InstanceType<typeof WorkflowViewer> | null>(null)
 const currentWorkflowId = ref<string | null>(null)
 const originalContent = ref<string>('')
@@ -315,19 +328,41 @@ function handleOpenEditSessionModal(sessionCode: string): void {
   showSessionModal.value = true
 }
 
+// 打开删除会话确认弹窗
+function handleDeleteSessionWithConfirm(sessionCode: string): void {
+  const session = sessions.value.find(s => s.sessionCode === sessionCode)
+  deletingSessionCode.value = sessionCode
+  deletingSessionTitle.value = session?.title || '未命名会话'
+  showDeleteModal.value = true
+}
+
+// 确认删除会话
+async function handleConfirmDelete(): Promise<void> {
+  if (!deletingSessionCode.value) return
+
+  try {
+    await handleDeleteSession(deletingSessionCode.value)
+    showDeleteModal.value = false
+  } catch (error) {
+    console.error('删除会话失败:', error)
+  }
+}
+
 // 确认会话操作(新建或编辑)
-async function handleConfirmSession(data: { title?: string }): Promise<void> {
+async function handleConfirmSession(data: { title?: string; rules?: string }): Promise<void> {
   try {
     if (isEditMode.value && editingSessionCode.value) {
       // 编辑模式
       await handleUpdateSession(editingSessionCode.value, {
-        title: data.title
+        title: data.title,
+        rules: data.rules
       })
     } else {
       // 新建模式
       await handleCreateSession({
         comfyuiServerId: serviceId,
-        title: data.title
+        title: data.title,
+        rules: data.rules
       })
     }
     showSessionModal.value = false

@@ -38,6 +38,7 @@ export interface ChatSession {
   agentCode: string
   agentConfig?: string
   title?: string
+  rules?: string
   status: SessionStatus
 }
 
@@ -63,6 +64,7 @@ export interface ChatMessage {
 export interface CreateSessionRequest {
   comfyuiServerId: string
   title?: string
+  rules?: string
 }
 
 /**
@@ -70,4 +72,5 @@ export interface CreateSessionRequest {
  */
 export interface UpdateSessionRequest {
   title?: string
+  rules?: string
 }
