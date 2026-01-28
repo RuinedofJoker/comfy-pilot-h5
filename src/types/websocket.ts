@@ -55,6 +55,7 @@ export type AgentPromptType =
   | 'COMPLETE'          // 执行完成
   | 'ERROR'             // 执行错误
   | 'TODO_WRITE'        // 待办事项更新
+  | 'STATUS_UPDATE'     // 状态更新
   | 'CLEAR'             // 清空消息列表
 
 export const AgentPromptTypeValues = {
@@ -70,6 +71,7 @@ export const AgentPromptTypeValues = {
   COMPLETE: 'COMPLETE' as const,
   ERROR: 'ERROR' as const,
   TODO_WRITE: 'TODO_WRITE' as const,
+  STATUS_UPDATE: 'STATUS_UPDATE' as const,
   CLEAR: 'CLEAR' as const
 }
 
@@ -444,6 +446,7 @@ export const AGENT_PROMPT_DEFAULT_MESSAGES: Record<AgentPromptType, string> = {
   COMPLETE: '执行完成',
   ERROR: '执行过程中发生错误',
   TODO_WRITE: '待办事项已更新',
+  STATUS_UPDATE: '状态已更新',
   CLEAR: '清空消息列表'
 }
 
