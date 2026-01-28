@@ -91,6 +91,11 @@
             </button>
           </div>
 
+          <!-- Agent 终端输出 -->
+          <div v-else-if="message.role === 'AGENT_TERMINAL'" class="f-agent-terminal-block">
+            <pre class="f-terminal-content" v-html="renderTerminalContent(message)"></pre>
+          </div>
+
           <!-- 普通 AI 消息 -->
           <div v-else class="f-message-assistant-content f-markdown-content markdown-body" v-html="renderMessageContent(message)"></div>
         </div>
@@ -101,16 +106,8 @@
         <div class="f-message-indicator">
           <div class="f-indicator-dot"></div>
         </div>
-        <div class="f-message-assistant-content f-markdown-content markdown-body" :class="{ 'f-streaming': !isStreamComplete }">
-          <span v-html="renderStreamingContent()"></span><span v-if="!isStreamComplete" class="f-cursor">▋</span>
-        </div>
+        <div class="f-message-assistant-content f-markdown-content markdown-body" :class="{ 'f-streaming': !isStreamComplete }" v-html="renderStreamingContent()"></div>
       </div>
-
-      <!-- 动态提示指示器 -->
-      <AgentPromptIndicator
-        :visible="isShowingPrompt"
-        :text="currentPromptMessage"
-      />
 
       <!-- 工具调用确认 -->
       <ToolCallConfirmation
@@ -120,6 +117,14 @@
         @approve="handleToolApprove"
         @reject="handleToolReject"
       />
+      </div>
+
+      <!-- 动态提示区域（固定高度，独立于消息列表） -->
+      <div class="f-prompt-area">
+        <AgentPromptIndicator
+          :visible="isShowingPrompt"
+          :text="currentPromptMessage"
+        />
       </div>
 
       <!-- 输入框 -->
@@ -513,6 +518,43 @@ function handlePromptEvent(requestId: string, promptType: AgentPromptType, messa
     return
   }
 
+  // TERMINAL_OUTPUT_START 类型表示终端输出开始，创建终端消息
+  if (promptType === 'TERMINAL_OUTPUT_START') {
+    console.log('[ChatDialog] 处理 TERMINAL_OUTPUT_START 事件，创建终端消息')
+    const wasAtBottom = isScrollAtBottom()
+
+    // 创建终端消息
+    const terminalMessage: ChatMessage = {
+      id: `terminal-${Date.now()}`,
+      sessionId: props.sessionCode || '',
+      role: 'AGENT_TERMINAL',
+      content: message || '',
+      createTime: new Date().toISOString(),
+      updateTime: new Date().toISOString()
+    }
+
+    console.log('[ChatDialog] 终端消息已创建:', terminalMessage)
+
+    // 添加到本地消息列表
+    localMessages.value.push(terminalMessage)
+
+    // 如果用户在底部，滚动到新的底部
+    nextTick(() => {
+      if (wasAtBottom) {
+        scrollToBottom()
+      }
+    })
+
+    return
+  }
+
+  // TERMINAL_OUTPUT_END 类型表示终端输出结束
+  if (promptType === 'TERMINAL_OUTPUT_END') {
+    console.log('[ChatDialog] 处理 TERMINAL_OUTPUT_END 事件，终端输出结束')
+    // 终端输出结束，不需要特殊处理，流式输出会自然停止
+    return
+  }
+
   // CLEAR 类型表示清空消息列表
   if (promptType === 'CLEAR') {
     console.log('[ChatDialog] 处理 CLEAR 事件，清空消息列表')
@@ -567,30 +609,12 @@ function handlePromptEvent(requestId: string, promptType: AgentPromptType, messa
 
   // THINKING、TOOL_CALLING、SUMMARY 显示动态提示
   if (promptType === 'THINKING' || promptType === 'TOOL_CALLING' || promptType === 'SUMMARY') {
-    // 在显示动态提示前，检查用户是否在底部
-    const wasAtBottom = isScrollAtBottom()
-
     currentPromptType.value = promptType
     currentPromptMessage.value = message || AGENT_PROMPT_DEFAULT_MESSAGES[promptType]
     isShowingPrompt.value = true
-
-    // 动态提示出现后，如果用户原本在底部，强制滚动到新的底部
-    nextTick(() => {
-      if (wasAtBottom) {
-        scrollToBottom()
-      }
-    })
   } else {
     // 其他类型关闭动态提示
-    const wasAtBottom = isScrollAtBottom()
     isShowingPrompt.value = false
-
-    // 动态提示消失后，如果用户原本在底部，强制滚动到新的底部
-    nextTick(() => {
-      if (wasAtBottom) {
-        scrollToBottom()
-      }
-    })
   }
 }
 
@@ -609,8 +633,42 @@ function handleStreamEvent(requestId: string, content: string): void {
     isShowingPrompt.value = false
   }
 
-  // 直接追加内容到当前流式消息
-  currentStreamingMessage.value += content
+  // 检查最后一条消息是否是 AGENT_TERMINAL 类型
+  const lastMessage = localMessages.value[localMessages.value.length - 1]
+  if (lastMessage && lastMessage.role === 'AGENT_TERMINAL') {
+    // 提取颜色标识（前两个字符：'0 ' 或 '1 '）
+    const colorFlag = content.substring(0, 2)
+    const actualContent = content.substring(2)
+
+    // 判断颜色类型：'0 ' = 正常绿色，'1 ' = 红色
+    const isError = colorFlag === '1 '
+
+    // 更新 AGENT_TERMINAL 消息内容
+    const newContent = lastMessage.content + actualContent
+    lastMessage.content = processTerminalContent(newContent)
+    lastMessage.updateTime = new Date().toISOString()
+
+    // 存储终端片段数据到 metadata
+    if (!lastMessage.metadata) {
+      lastMessage.metadata = { terminalSegments: [] }
+    }
+    if (!lastMessage.metadata.terminalSegments) {
+      lastMessage.metadata.terminalSegments = []
+    }
+
+    // 添加新的终端片段
+    lastMessage.metadata.terminalSegments.push({
+      content: actualContent,
+      isError: isError
+    })
+
+    // 触发响应式更新
+    localMessages.value = [...localMessages.value]
+  } else {
+    // 普通 ASSISTANT 消息的流式输出
+    currentStreamingMessage.value += content
+  }
+
   isStreaming.value = true
   isStreamComplete.value = false // 正在流式输出中
 
@@ -1235,6 +1293,60 @@ function checkAgentMessageHeights(): void {
   }, 100)
 }
 
+/**
+ * 处理终端输出内容（处理 \r 回车符）
+ * \r 会覆盖当前行的内容，类似终端的行为
+ */
+function processTerminalContent(content: string): string {
+  // 按行分割内容
+  const lines = content.split('\n')
+  const processedLines: string[] = []
+
+  for (const line of lines) {
+    // 如果行中包含 \r，处理回车符覆盖逻辑
+    if (line.includes('\r')) {
+      const parts = line.split('\r')
+      // \r 会覆盖之前的内容，所以只保留最后一部分
+      processedLines.push(parts[parts.length - 1])
+    } else {
+      processedLines.push(line)
+    }
+  }
+
+  return processedLines.join('\n')
+}
+
+/**
+ * 渲染带颜色的终端内容
+ */
+function renderTerminalContent(message: ChatMessage): string {
+  // 如果没有终端片段数据，直接返回普通内容
+  if (!message.metadata?.terminalSegments || message.metadata.terminalSegments.length === 0) {
+    return message.content
+  }
+
+  // 重新组合终端片段，应用颜色
+  let result = ''
+  for (const segment of message.metadata.terminalSegments) {
+    if (segment.isError) {
+      result += `<span class="f-terminal-error">${escapeHtml(segment.content)}</span>`
+    } else {
+      result += escapeHtml(segment.content)
+    }
+  }
+
+  return result
+}
+
+/**
+ * HTML 转义
+ */
+function escapeHtml(text: string): string {
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
+}
+
 // 监听 localMessages 变化，自动滚动到底部
 watch(() => localMessages.value.length, async () => {
   await nextTick()
@@ -1333,10 +1445,18 @@ function renderMessageContent(message: ChatMessage): string {
 
 /**
  * 渲染流式消息内容为 HTML（Markdown）
+ * 流式输出时，在内容末尾添加光标
  */
 function renderStreamingContent(): string {
   if (!currentStreamingMessage.value) return ''
-  return renderMarkdown(currentStreamingMessage.value)
+  const markdownHtml = renderMarkdown(currentStreamingMessage.value)
+
+  // 如果流式输出未完成，在末尾添加光标
+  if (!isStreamComplete.value) {
+    return markdownHtml + '<span class="f-cursor">▋</span>'
+  }
+
+  return markdownHtml
 }
 
 /**
@@ -1790,7 +1910,8 @@ onUnmounted(() => {
 
 // 消息内容区域（可滚动）
 .f-messages-content {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 12px;
@@ -1988,6 +2109,32 @@ onUnmounted(() => {
   white-space: pre-wrap;
 }
 
+// Agent 终端输出块样式
+.f-agent-terminal-block {
+  flex: 1;
+  padding: 12px 16px;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-family: 'Courier New', Courier, monospace;
+  overflow-x: auto;
+}
+
+.f-terminal-content {
+  margin: 0;
+  color: #00ff00;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre;
+  word-wrap: normal;
+  overflow-wrap: normal;
+
+  // 终端错误文本（红色）
+  .f-terminal-error {
+    color: #ff4444;
+  }
+}
+
 // 流式输出样式
 .f-message-assistant-content.f-streaming {
   .f-cursor {
@@ -2124,6 +2271,16 @@ onUnmounted(() => {
   &:hover {
     color: #ff4444;
   }
+}
+
+// 动态提示区域（固定高度，独立于消息列表）
+.f-prompt-area {
+  min-height: 48px;
+  padding: 8px 12px;
+  background: rgb(24, 24, 24);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 // 输入框外层容器

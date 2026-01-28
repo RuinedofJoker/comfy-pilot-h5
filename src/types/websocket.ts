@@ -49,6 +49,8 @@ export type AgentPromptType =
   | 'TOOL_COMPLETE'     // 工具完成
   | 'SUMMARY'           // 生成摘要中
   | 'AGENT_MESSAGE_BLOCK'  // Agent消息块
+  | 'TERMINAL_OUTPUT_START'   // 终端输出开始
+  | 'TERMINAL_OUTPUT_END'     // 终端输出结束
   | 'INTERRUPTED'       // 执行中断
   | 'COMPLETE'          // 执行完成
   | 'ERROR'             // 执行错误
@@ -62,6 +64,8 @@ export const AgentPromptTypeValues = {
   TOOL_COMPLETE: 'TOOL_COMPLETE' as const,
   SUMMARY: 'SUMMARY' as const,
   AGENT_MESSAGE_BLOCK: 'AGENT_MESSAGE_BLOCK' as const,
+  TERMINAL_OUTPUT_START: 'TERMINAL_OUTPUT_START' as const,
+  TERMINAL_OUTPUT_END: 'TERMINAL_OUTPUT_END' as const,
   INTERRUPTED: 'INTERRUPTED' as const,
   COMPLETE: 'COMPLETE' as const,
   ERROR: 'ERROR' as const,
@@ -434,6 +438,8 @@ export const AGENT_PROMPT_DEFAULT_MESSAGES: Record<AgentPromptType, string> = {
   TOOL_COMPLETE: '工具调用已完成，继续分析...',
   SUMMARY: 'Agent正在生成摘要...',
   AGENT_MESSAGE_BLOCK: 'Agent消息块',
+  TERMINAL_OUTPUT_START: '终端输出开始',
+  TERMINAL_OUTPUT_END: '终端输出结束',
   INTERRUPTED: '执行已被中断',
   COMPLETE: '执行完成',
   ERROR: '执行过程中发生错误',
