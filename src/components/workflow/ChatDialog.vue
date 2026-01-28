@@ -1957,6 +1957,8 @@ onUnmounted(() => {
   line-height: 1.6;
   word-wrap: break-word;
   white-space: pre-wrap;
+  cursor: text;
+  user-select: text;
 }
 
 // AI/系统消息 - 带小点和连接线
@@ -2013,6 +2015,8 @@ onUnmounted(() => {
   line-height: 1.6;
   word-wrap: break-word;
   white-space: pre-wrap;
+  cursor: text;
+  user-select: text;
 }
 
 // Agent 消息块样式
@@ -2028,6 +2032,8 @@ onUnmounted(() => {
   line-height: 1.6;
   word-wrap: break-word;
   white-space: pre-wrap;
+  cursor: text;
+  user-select: text;
 
   // 折叠状态
   &.is-collapsed {
@@ -2108,6 +2114,8 @@ onUnmounted(() => {
   line-height: 1.6;
   word-wrap: break-word;
   white-space: pre-wrap;
+  cursor: text;
+  user-select: text;
 }
 
 // Agent 终端输出块样式
@@ -2119,6 +2127,8 @@ onUnmounted(() => {
   border-radius: 4px;
   font-family: 'Courier New', Courier, monospace;
   overflow-x: auto;
+  cursor: text;
+  user-select: text;
 }
 
 .f-terminal-content {
