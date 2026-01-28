@@ -1307,7 +1307,8 @@ function processTerminalContent(content: string): string {
     if (line.includes('\r')) {
       const parts = line.split('\r')
       // \r 会覆盖之前的内容，所以只保留最后一部分
-      processedLines.push(parts[parts.length - 1])
+      const lastPart = parts[parts.length - 1]
+      processedLines.push(lastPart || '')
     } else {
       processedLines.push(line)
     }
@@ -1449,7 +1450,7 @@ function renderMessageContent(message: ChatMessage): string {
  */
 function renderStreamingContent(): string {
   if (!currentStreamingMessage.value) return ''
-  const markdownHtml = renderMarkdown(currentStreamingMessage.value)
+  const markdownHtml: string = renderMarkdown(currentStreamingMessage.value)
 
   // 如果流式输出未完成，在末尾添加光标
   if (!isStreamComplete.value) {
