@@ -98,7 +98,7 @@ export class ComfyUIToolSet implements McpToolSet {
     ]
   }
 
-  async executeToolByName(toolCallId: string, name: string, args: any): Promise<any> {
+  async executeToolByName(_toolCallId: string, name: string, args: any): Promise<any> {
     const baseUrl = this.serviceStore.selectedService?.baseUrl || 'http://localhost:8188'
 
     switch (name) {

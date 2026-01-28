@@ -78,8 +78,8 @@ function deepEqual(
 
     const allKeys = new Set([...filteredKeys1, ...filteredKeys2])
     if (allKeys.size !== filteredKeys1.length) {
-      const diff1 = filteredKeys1.filter(k => !filteredKeys2.includes(k))
-      const diff2 = filteredKeys2.filter(k => !filteredKeys1.includes(k))
+      // const diff1 = filteredKeys1.filter(k => !filteredKeys2.includes(k))
+      // const diff2 = filteredKeys2.filter(k => !filteredKeys1.includes(k))
       // console.log(`[差异] 路径: ${path.join('.')} | 对象 key 不一致 | 仅在obj1: [${diff1}] | 仅在obj2: [${diff2}]`)
       return false
     }

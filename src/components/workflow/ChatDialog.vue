@@ -1108,7 +1108,6 @@ async function handleSend(): Promise<void> {
   // 通过 WebSocket 发送消息，传入 requestId 确保一致性
   wsManager.sendMessage(
     textContent,
-    props.workflowContent,
     toolSchemas.length > 0 ? toolSchemas : undefined,
     attachmentContents.length > 0 ? attachmentContents : undefined,
     mcpConfig,
@@ -1252,15 +1251,15 @@ const dialogPosition = ref({ x: 0, y: 0 })
 const isResizing = ref(false)
 const resizeDirection = ref<string>('')
 const dialogSize = ref({ width: window.innerWidth * 0.4, height: window.innerHeight * 0.8 })
-const resizeStartPos = ref({ x: 0, y: 0 })
-const resizeStartSize = ref({ width: 0, height: 0 })
-const resizeStartPosition = ref({ x: 0, y: 0 })
+// const resizeStartPos = ref({ x: 0, y: 0 })
+// const resizeStartSize = ref({ width: 0, height: 0 })
+// const resizeStartPosition = ref({ x: 0, y: 0 })
 
-// 最小和最大尺寸限制
-const MIN_WIDTH = 360
-const MIN_HEIGHT = 480
-const MAX_WIDTH = 1200
-const MAX_HEIGHT = 1400
+// // 最小和最大尺寸限制
+// const MIN_WIDTH = 360
+// const MIN_HEIGHT = 480
+// const MAX_WIDTH = 1200
+// const MAX_HEIGHT = 1400
 
 // 边缘识别区域大小
 const EDGE_THRESHOLD = 10
@@ -1456,9 +1455,10 @@ function handleMouseUp(): void {
   }
 }
 
+/* 暂时注释掉未使用的调整大小函数
 /**
  * 开始调整大小
- */
+ *
 function startResize(event: MouseEvent, direction: string): void {
   if (!chatDialog.value) return
 
@@ -1471,7 +1471,7 @@ function startResize(event: MouseEvent, direction: string): void {
 
 /**
  * 调整大小中
- */
+ *
 function handleResizeMove(event: MouseEvent): void {
   if (!isResizing.value || !chatDialog.value) return
 

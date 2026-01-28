@@ -140,9 +140,6 @@ import { useUserAgentConfigStore } from '@/stores/userAgentConfig'
 // MCP 工具系统导入
 import { mcpToolRegistry, mcpConfigManager, ComfyUIToolSet } from '@/mcp'
 
-// 类型导入
-import type { Workflow } from '@/types/workflow'
-
 // 路由和 Store
 const route = useRoute()
 const router = useRouter()

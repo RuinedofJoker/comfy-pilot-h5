@@ -140,7 +140,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 // Refs
-const editorRef = ref<InstanceType<typeof MonacoJsonEditor> | null>(null)
+// const editorRef = ref<InstanceType<typeof MonacoJsonEditor> | null>(null)
 const configJson = ref('')
 const isValid = ref(true)
 const validationErrors = ref<string[]>([])

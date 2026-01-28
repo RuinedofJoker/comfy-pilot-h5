@@ -152,7 +152,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { ModelProvider } from '@/types/model'
+import type { ProviderType } from '@/types/model'
 import { modelProviderApi } from '@/services/model'
 import { showToast } from 'vant'
 
@@ -178,7 +178,7 @@ const emit = defineEmits<{
 // 表单数据
 interface FormData {
   providerName: string
-  providerType: string
+  providerType: ProviderType
   apiBaseUrl: string
   apiKey: string
   isEnabled: boolean
@@ -187,7 +187,7 @@ interface FormData {
 
 const formData = ref<FormData>({
   providerName: '',
-  providerType: '',
+  providerType: 'openai',
   apiBaseUrl: '',
   apiKey: '',
   isEnabled: true,
@@ -320,7 +320,7 @@ const handleCancel = () => {
   setTimeout(() => {
     formData.value = {
       providerName: '',
-      providerType: '',
+      providerType: 'openai',
       apiBaseUrl: '',
       apiKey: '',
       isEnabled: true,

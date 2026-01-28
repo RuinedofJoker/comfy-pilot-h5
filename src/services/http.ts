@@ -11,10 +11,28 @@ import { toast } from '@/utils/toast'
 let isRedirectingToLogin = false
 
 /**
+ * 获取 API Base URL
+ * - 嵌入式模式：直接使用当前域名（后端和前端在同一服务器）
+ * - 非嵌入式模式：使用环境变量或默认值
+ */
+function getApiBaseURL(): string {
+  // 嵌入式模式：使用当前域名（优先级最高）
+  if (typeof __EMBED_MODE__ !== 'undefined' && __EMBED_MODE__) {
+    console.log('[HTTP] 嵌入式模式：使用当前域名', window.location.origin)
+    return window.location.origin
+  }
+
+  // 非嵌入式模式：使用环境变量或默认值
+  const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+  console.log('[HTTP] 开发/生产模式：使用配置的 baseURL', baseURL)
+  return baseURL
+}
+
+/**
  * 创建 Axios 实例
  */
 const http: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
+  baseURL: getApiBaseURL(),
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'

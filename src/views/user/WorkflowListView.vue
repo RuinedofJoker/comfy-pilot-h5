@@ -170,7 +170,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { showToast } from 'vant'
-import { useRouter } from 'vue-router'
 import TopNavBar from '@/components/user/TopNavBar.vue'
 import UserMenu from '@/components/user/UserMenu.vue'
 import AgentConfigModal from '@/components/user/AgentConfigModal.vue'
@@ -180,17 +179,14 @@ import BaseInput from '@/components/admin/BaseInput.vue'
 import BaseTextarea from '@/components/admin/BaseTextarea.vue'
 import { useWorkflowList } from '@/composables/useWorkflowList'
 import { useWorkflowStore } from '@/stores/workflow'
-import { useUserStore } from '@/stores/user'
 import type { Workflow } from '@/types/workflow'
 
-const router = useRouter()
 const showUserMenu = ref(false)
 const showAgentConfigModal = ref(false)
 const showEditDialog = ref(false)
 const editingWorkflow = ref<Workflow | null>(null)
 const filterType = ref<'all' | 'favorite'>('all')
 const workflowStore = useWorkflowStore()
-const userStore = useUserStore()
 
 const editForm = reactive({
   workflowName: '',
@@ -207,17 +203,8 @@ const {
   openWorkflow
 } = useWorkflowList()
 
-// 用户首字母
-const userInitial = computed(() => {
-  const username = userStore.userInfo?.username || 'U'
-  return username.charAt(0).toUpperCase()
-})
-
 // 显示的工作流列表（根据筛选类型）
 const displayedWorkflows = computed(() => {
-  if (filterType.value === 'favorite') {
-    return filteredWorkflows.value.filter(w => w.isFavorite)
-  }
   return filteredWorkflows.value
 })
 

@@ -2,7 +2,7 @@
   <div class="f-base-radio-group">
     <label
       v-for="option in options"
-      :key="option.value"
+      :key="String(option.value)"
       class="f-radio-option"
       :class="{ 'is-disabled': disabled }"
     >

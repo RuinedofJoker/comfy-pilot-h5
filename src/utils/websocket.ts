@@ -32,6 +32,50 @@ interface WebSocketCallbacks {
 }
 
 /**
+ * 获取 WebSocket URL
+ * - 嵌入式模式：使用当前域名
+ * - 非嵌入式模式：使用环境变量配置的地址
+ */
+/* function getWebSocketURL(sessionCode: string, token: string): string {
+  console.log('[WebSocket] __EMBED_MODE__:', typeof __EMBED_MODE__, __EMBED_MODE__)
+
+  // 嵌入式模式：使用当前域名
+  if (typeof __EMBED_MODE__ !== 'undefined' && __EMBED_MODE__) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = window.location.host
+    const url = `${protocol}//${host}/api/ws/chat?sessionCode=${sessionCode}&token=${token}`
+    console.log('[WebSocket] 嵌入式模式：使用当前域名', url)
+    return url
+  }
+
+  // 非嵌入式模式：使用环境变量配置的地址
+  const apiBaseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+
+  // 处理相对路径（如 /api）：使用当前页面的域名
+  let protocol: string
+  let host: string
+
+  if (apiBaseURL.startsWith('http://') || apiBaseURL.startsWith('https://')) {
+    // 完整 URL：解析协议和域名
+    const urlObj = new URL(apiBaseURL)
+    protocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:'
+    host = urlObj.host
+  } else {
+    // 相对路径：使用当前页面的协议和域名
+    protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    host = window.location.host
+  }
+
+  // WebSocket 路径需要额外加 /api 前缀（因为 Vite 代理会 rewrite 去掉 /api）
+  // 前端: ws://localhost:3000/api/api/ws/chat
+  // Vite rewrite: /api/api/ws/chat -> /api/ws/chat
+  // 后端: ws://localhost:8080/api/ws/chat ✅
+  const wsUrl = `${protocol}//${host}/api/api/ws/chat?sessionCode=${sessionCode}&token=${token}`
+  console.log('[WebSocket] 非嵌入式模式：使用环境变量', wsUrl)
+  return wsUrl
+} */
+
+/**
  * Agent WebSocket 管理器类
  */
 export class AgentWebSocketManager {
@@ -51,7 +95,8 @@ export class AgentWebSocketManager {
    */
   connect(): void {
     // sessionCode 和 token 都通过查询参数传递
-    const url = `ws://localhost:8080/ws/chat?sessionCode=${this.sessionCode}&token=${this.token}`
+    // const url = getWebSocketURL(this.sessionCode, this.token)
+    const url = `ws://localhost:8080/api/ws/chat?sessionCode=${this.sessionCode}&token=${this.token}`
 
     console.log(`[WebSocket] 正在连接: ${this.sessionCode}`)
 
@@ -131,7 +176,6 @@ export class AgentWebSocketManager {
    */
   sendMessage(
     content: string,
-    workflowContent: string,
     toolSchemas?: any[],
     multimodalContents?: any[],
     mcpConfig?: string,

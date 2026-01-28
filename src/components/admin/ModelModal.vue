@@ -224,7 +224,7 @@
 import { ref, watch, computed } from 'vue'
 import { showToast } from 'vant'
 import { modelProviderApi, aiModelApi } from '@/services/model'
-import type { ModelProvider, AiModel, ModelCallingType, ProviderType } from '@/types/model'
+import type { ModelProvider, ModelCallingType, ProviderType } from '@/types/model'
 import JsonEditor from '@/components/base/JsonEditor.vue'
 
 // Props 定义

@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 
 interface Props {
   modelValue: string
@@ -62,7 +62,7 @@ const emit = defineEmits<{
   'remove-attachment': [index: number]
 }>()
 
-const textareaRef = ref<HTMLTextAreaElement | null>(null)
+// const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
 const canSend = computed(() => {
   return props.modelValue.trim().length > 0 || props.isSending

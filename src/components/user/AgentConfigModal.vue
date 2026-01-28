@@ -159,12 +159,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { toast } from '@/utils/toast'
 import { agentRuntimeApi } from '@/services/agent'
 import { aiModelApi } from '@/services/model'
 import { useUserAgentConfigStore } from '@/stores/userAgentConfig'
-import type { AgentRuntimeConfig, AgentConfigDefinition, UserAgentConfig } from '@/types/agent'
+import type { AgentRuntimeConfig, AgentConfigDefinition } from '@/types/agent'
 import type { AiModel } from '@/types/model'
 
 // Props

@@ -151,7 +151,13 @@ const registerJsonCompletion = (schema: Record<string, any>) => {
           detail: typeof value === 'string' ? value : JSON.stringify(value),
           documentation: `建议值: ${valueStr}`,
           sortText: `0${key}`,
-          filterText: key // 用于过滤匹配
+          filterText: key, // 用于过滤匹配
+          range: {
+            startLineNumber: position.lineNumber,
+            startColumn: position.column,
+            endLineNumber: position.lineNumber,
+            endColumn: position.column
+          }
         }
       })
 

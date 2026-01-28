@@ -258,7 +258,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import { showToast, showConfirmDialog } from 'vant'
-import { ref, computed } from 'vue'
 import TopNavBar from '@/components/user/TopNavBar.vue'
 import AgentConfigModal from '@/components/user/AgentConfigModal.vue'
 import { useUserStore } from '@/stores/user'

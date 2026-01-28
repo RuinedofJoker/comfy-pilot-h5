@@ -86,7 +86,10 @@ export const useUserAgentConfigStore = defineStore('userAgentConfig', () => {
 
     const currentIndex = configured.findIndex(config => config.agentCode === selectedAgentCode.value)
     const nextIndex = (currentIndex + 1) % configured.length
-    selectAgent(configured[nextIndex].agentCode)
+    const nextAgent = configured[nextIndex]
+    if (nextAgent) {
+      selectAgent(nextAgent.agentCode)
+    }
   }
 
   /**
