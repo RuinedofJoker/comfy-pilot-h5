@@ -41,7 +41,13 @@
         <!-- AI/系统/Agent计划/Agent消息 - 带小点和连接线 -->
         <div v-else class="f-message-assistant-wrapper">
           <div class="f-message-indicator">
-            <div class="f-indicator-dot" :class="{ 'f-indicator-dot--green': message.role === 'AGENT_PLAN' }"></div>
+            <div
+              class="f-indicator-dot"
+              :class="{
+                'f-indicator-dot--green': message.role === 'AGENT_PLAN',
+                'f-indicator-dot--red': message.role === 'AGENT_ERROR'
+              }"
+            ></div>
             <div
               v-if="shouldShowConnectLine(index)"
               class="f-indicator-line"
@@ -54,9 +60,35 @@
             :todos-json="message.content"
           />
 
-          <!-- Agent 消息块 -->
-          <div v-else-if="message.role === 'AGENT_MESSAGE'" class="f-agent-message-block">
+          <!-- Agent 错误消息 -->
+          <div v-else-if="message.role === 'AGENT_ERROR'" class="f-agent-error-block">
             {{ message.content }}
+          </div>
+
+          <!-- Agent 消息块 -->
+          <div
+            v-else-if="message.role === 'AGENT_MESSAGE'"
+            class="f-agent-message-block"
+            :class="{ 'is-collapsed': collapsibleMessages[message.id] && !isMessageExpanded(message.id) }"
+            :data-message-id="message.id"
+          >
+            <div class="f-agent-message-content">
+              {{ message.content }}
+            </div>
+            <button
+              v-if="collapsibleMessages[message.id] && !isMessageExpanded(message.id)"
+              class="f-expand-btn"
+              @click="toggleMessageExpand(message.id)"
+            >
+              Show more
+            </button>
+            <button
+              v-else-if="collapsibleMessages[message.id] && isMessageExpanded(message.id)"
+              class="f-expand-btn f-expand-btn--expanded"
+              @click="toggleMessageExpand(message.id)"
+            >
+              Show less
+            </button>
           </div>
 
           <!-- 普通 AI 消息 -->
@@ -275,6 +307,12 @@ const isShowingCommandSuggestion = computed(() => {
 // 本地消息列表（包含历史消息 + 新消息）
 const localMessages = ref<ChatMessage[]>([])
 
+// AGENT_MESSAGE 折叠状态管理（key: message.id, value: 是否展开）
+const expandedMessages = ref<Record<string, boolean>>({})
+
+// AGENT_MESSAGE 是否需要折叠功能（key: message.id, value: 是否需要折叠）
+const collapsibleMessages = ref<Record<string, boolean>>({})
+
 // 过滤掉内容为空的消息（AI 调用工具时可能产生空消息）
 const filteredMessages = computed(() => {
   return localMessages.value.filter(message => {
@@ -491,10 +529,31 @@ function handlePromptEvent(requestId: string, promptType: AgentPromptType, messa
     return
   }
 
-  // ERROR 类型的处理取决于是否已收到 STARTED
+  // ERROR 类型：创建错误消息并显示
   if (promptType === 'ERROR') {
     const errorMsg = message || AGENT_PROMPT_DEFAULT_MESSAGES[promptType]
-    toast.error(errorMsg)
+    console.log('[ChatDialog] 处理 ERROR 事件，创建错误消息')
+    const wasAtBottom = isScrollAtBottom()
+
+    // 创建错误消息
+    const errorMessage: ChatMessage = {
+      id: `error-${Date.now()}`,
+      sessionId: props.sessionCode || '',
+      role: 'AGENT_ERROR',
+      content: errorMsg,
+      createTime: new Date().toISOString(),
+      updateTime: new Date().toISOString()
+    }
+
+    // 添加到本地消息列表
+    localMessages.value.push(errorMessage)
+
+    // 如果用户在底部，滚动到新的底部
+    nextTick(() => {
+      if (wasAtBottom) {
+        scrollToBottom()
+      }
+    })
 
     // 如果还未收到 STARTED，说明是启动前的错误，需要中断执行
     if (!isAgentStarted.value) {
@@ -1141,14 +1200,52 @@ watch(() => props.messages, (newMessages) => {
     } else {
       scrollToBottomIfNeeded()
     }
+
+    // 检测 AGENT_MESSAGE 高度
+    checkAgentMessageHeights()
   })
 }, { deep: true, immediate: true })
+
+/**
+ * 检测 AGENT_MESSAGE 高度，判断是否需要折叠功能
+ */
+function checkAgentMessageHeights(): void {
+  // 使用 setTimeout 确保 DOM 完全渲染
+  setTimeout(() => {
+    if (!chatMessages.value) return
+
+    const agentMessageBlocks = chatMessages.value.querySelectorAll('.f-agent-message-block')
+
+    agentMessageBlocks.forEach((block) => {
+      const messageId = (block as HTMLElement).dataset.messageId
+      if (!messageId) return
+
+      const contentEl = block.querySelector('.f-agent-message-content') as HTMLElement
+      if (!contentEl) return
+
+      const height = contentEl.scrollHeight
+
+      // 只有高度超过 150px 的消息才需要折叠功能
+      if (height > 150) {
+        collapsibleMessages.value[messageId] = true
+      } else {
+        collapsibleMessages.value[messageId] = false
+      }
+    })
+  }, 100)
+}
 
 // 监听 localMessages 变化，自动滚动到底部
 watch(() => localMessages.value.length, async () => {
   await nextTick()
   scrollToBottomIfNeeded()
 })
+
+// 监听 localMessages 变化，检测 AGENT_MESSAGE 高度
+watch(() => localMessages.value, async () => {
+  await nextTick()
+  checkAgentMessageHeights()
+}, { deep: true })
 
 // 检查滚动条是否在底部（允许一定误差）
 function isScrollAtBottom(): boolean {
@@ -1212,6 +1309,20 @@ function getMessageDisplayContent(message: ChatMessage): string {
 }
 
 /**
+ * 切换消息的展开/折叠状态
+ */
+function toggleMessageExpand(messageId: string): void {
+  expandedMessages.value[messageId] = !expandedMessages.value[messageId]
+}
+
+/**
+ * 检查消息是否展开
+ */
+function isMessageExpanded(messageId: string): boolean {
+  return expandedMessages.value[messageId] || false
+}
+
+/**
  * 渲染消息内容为 HTML（Markdown）
  */
 function renderMessageContent(message: ChatMessage): string {
@@ -1239,7 +1350,8 @@ function shouldShowConnectLine(index: number): boolean {
   }
 
   const nextMessage = filteredMessages.value[index + 1]
-  return nextMessage?.role !== 'USER'
+  // 下一条消息是用户消息（USER 或 USER_ORDER）时，不显示连接线
+  return nextMessage?.role !== 'USER' && nextMessage?.role !== 'USER_ORDER'
 }
 
 // 拖动相关状态
@@ -1754,6 +1866,10 @@ onUnmounted(() => {
   &--green {
     background: #4ade80;
   }
+
+  &--red {
+    background: #ef4444;
+  }
   z-index: 1;
 }
 
@@ -1779,13 +1895,93 @@ onUnmounted(() => {
 
 // Agent 消息块样式
 .f-agent-message-block {
-  width: calc(100% - 16px); // 左右各留 8px 外边距
-  margin: 0 8px;
+  flex: 1;
+  position: relative;
   padding: 12px 16px;
   background: rgb(49, 49, 49);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: #e5e5e5;
+  font-size: 13px;
+  line-height: 1.6;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+
+  // 折叠状态
+  &.is-collapsed {
+    max-height: 150px;
+    overflow: hidden;
+
+    .f-agent-message-content {
+      max-height: 150px;
+      overflow: hidden;
+      position: relative;
+
+      // 渐变遮罩效果
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: linear-gradient(to bottom, transparent, rgb(49, 49, 49));
+        pointer-events: none;
+      }
+    }
+
+    // 鼠标悬停时显示 Show more 按钮
+    .f-expand-btn {
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    &:hover .f-expand-btn {
+      opacity: 1;
+    }
+  }
+}
+
+// Agent 消息内容容器
+.f-agent-message-content {
+  position: relative;
+}
+
+// 展开/折叠按钮
+.f-expand-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #cccccc;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+  }
+
+  // 展开状态的按钮始终显示
+  &--expanded {
+    opacity: 1 !important;
+  }
+}
+
+// Agent 错误消息块样式
+.f-agent-error-block {
+  flex: 1;
+  padding: 12px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  color: #fca5a5;
   font-size: 13px;
   line-height: 1.6;
   word-wrap: break-word;
