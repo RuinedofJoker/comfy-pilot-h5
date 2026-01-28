@@ -83,6 +83,12 @@
         </div>
       </div>
     </div>
+
+    <!-- 退出登录确认弹窗 -->
+    <LogoutConfirmModal
+      v-model:visible="showLogoutModal"
+      @confirm="handleConfirmLogout"
+    />
   </div>
 </template>
 
@@ -91,7 +97,7 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAuthStore } from '@/stores/auth'
-import { showConfirmDialog } from 'vant'
+import LogoutConfirmModal from './LogoutConfirmModal.vue'
 
 interface Emits {
   (e: 'open-mcp-config'): void
@@ -106,6 +112,7 @@ const userStore = useUserStore()
 const authStore = useAuthStore()
 
 const showDropdown = ref(false)
+const showLogoutModal = ref(false)
 
 // 计算属性：判断是否在工作流编辑器页面
 const isWorkflowEditorPage = computed(() => {
@@ -156,22 +163,21 @@ function goToProfile(): void {
   router.push('/profile')
 }
 
-// 退出登录
-async function handleLogout(): Promise<void> {
+// 退出登录 - 显示确认弹窗
+function handleLogout(): void {
   showDropdown.value = false
+  showLogoutModal.value = true
+}
 
+// 确认退出登录
+async function handleConfirmLogout(): Promise<void> {
   try {
-    await showConfirmDialog({
-      title: '确认退出',
-      message: '确定要退出登录吗？',
-      confirmButtonText: '退出',
-      cancelButtonText: '取消'
-    })
-
     await authStore.logout()
+    showLogoutModal.value = false
     router.push('/login')
-  } catch {
-    // 用户取消
+  } catch (error) {
+    console.error('退出登录失败:', error)
+    showLogoutModal.value = false
   }
 }
 </script>

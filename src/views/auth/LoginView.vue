@@ -29,7 +29,7 @@
             <input v-model="formData.rememberMe" type="checkbox" />
             <span>记住我</span>
           </label>
-          <router-link to="/forgot-password" class="g-login-view__link">
+          <router-link to="/forgot-password" class="g-login-view__link" v-if="false">
             忘记密码？
           </router-link>
         </div>
@@ -45,7 +45,7 @@
         </BaseButton>
       </form>
 
-      <div class="g-login-view__footer">
+      <div class="g-login-view__footer" v-if="false">
         <span class="g-login-view__footer-text">还没有账户？</span>
         <router-link to="/register" class="g-login-view__link">
           立即注册

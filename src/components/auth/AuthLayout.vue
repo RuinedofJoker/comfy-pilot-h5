@@ -12,7 +12,7 @@
 
       <div class="f-auth-layout__footer">
         <p class="f-auth-layout__copyright">
-          © 2024 Comfy Pilot. All rights reserved.
+          
         </p>
       </div>
     </div>

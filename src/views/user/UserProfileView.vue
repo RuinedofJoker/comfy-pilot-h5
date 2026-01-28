@@ -6,6 +6,13 @@
     <!-- Agent 配置弹窗 -->
     <AgentConfigModal v-model:visible="showAgentConfigModal" />
 
+    <!-- 删除账号确认弹窗 -->
+    <DeleteAccountModal
+      v-model:visible="showDeleteAccountModal"
+      :step="deleteAccountStep"
+      @confirm="handleConfirmDeleteAccount"
+    />
+
     <!-- 主内容区 -->
     <div class="m-main-container">
       <!-- 个人信息头部 -->
@@ -158,7 +165,7 @@
       </div>
 
       <!-- 危险操作 -->
-      <div class="m-profile-section">
+      <div class="m-profile-section" v-if="false">
         <div class="f-section-header">
           <h2 class="f-section-title">
             <svg class="f-icon f-icon-lg" viewBox="0 0 24 24" fill="currentColor">
@@ -257,17 +264,24 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
-import { showToast, showConfirmDialog } from 'vant'
+import { useRouter } from 'vue-router'
+import { showToast } from 'vant'
 import TopNavBar from '@/components/user/TopNavBar.vue'
 import AgentConfigModal from '@/components/user/AgentConfigModal.vue'
+import DeleteAccountModal from '@/components/user/DeleteAccountModal.vue'
 import { useUserStore } from '@/stores/user'
 import { useAuthStore } from '@/stores/auth'
 
+const router = useRouter()
 const userStore = useUserStore()
 const authStore = useAuthStore()
 
 // Agent 配置弹窗状态
 const showAgentConfigModal = ref(false)
+
+// 删除账号弹窗状态
+const showDeleteAccountModal = ref(false)
+const deleteAccountStep = ref(1) // 1: 第一次确认, 2: 第二次确认
 
 // 状态管理
 const showPasswordModal = ref(false)
@@ -419,33 +433,31 @@ async function handleUpdatePassword(): Promise<void> {
   }
 }
 
-// 删除账号
-async function handleDeleteAccount(): Promise<void> {
-  try {
-    await showConfirmDialog({
-      title: '⚠️ 危险操作',
-      message: '删除账号后，所有工作流、会话和数据将被永久删除，且无法恢复。\n\n确定要删除账号吗？',
-      confirmButtonText: '确认删除',
-      cancelButtonText: '取消',
-      confirmButtonColor: '#e74c3c'
-    })
+// 删除账号 - 显示第一次确认弹窗
+function handleDeleteAccount(): void {
+  deleteAccountStep.value = 1
+  showDeleteAccountModal.value = true
+}
 
-    // 二次确认
-    await showConfirmDialog({
-      title: '⚠️ 最后确认',
-      message: '真的要删除账号吗？此操作不可逆！',
-      confirmButtonText: '确认删除',
-      cancelButtonText: '取消',
-      confirmButtonColor: '#e74c3c'
-    })
+// 确认删除账号
+async function handleConfirmDeleteAccount(): Promise<void> {
+  if (deleteAccountStep.value === 1) {
+    // 第一次确认后，显示第二次确认
+    deleteAccountStep.value = 2
+  } else {
+    // 第二次确认后，执行删除操作
+    try {
+      // TODO: 调用删除账号 API
+      showToast({ type: 'success', message: '账号已删除' })
+      showDeleteAccountModal.value = false
 
-    // TODO: 调用删除账号 API
-    showToast({ type: 'success', message: '账号已删除' })
-    
-    // 登出并跳转到登录页
-    await authStore.logout()
-  } catch {
-    // 用户取消操作
+      // 登出并跳转到登录页
+      await authStore.logout()
+      router.push('/login')
+    } catch (error) {
+      showToast({ type: 'fail', message: '删除账号失败，请重试' })
+      showDeleteAccountModal.value = false
+    }
   }
 }
 </script>
