@@ -373,6 +373,7 @@ const currentRequestId = ref<string>('') // 当前请求ID
 const isAgentExecuting = ref(false) // Agent 是否正在执行（用于控制发送按钮状态）
 const isAgentStarted = ref(false) // Agent 是否已开始执行（收到 STARTED 事件）
 const shouldForceScrollOnNextUpdate = ref(false) // 标记下次消息更新时是否强制滚动
+const isTerminalOutputActive = ref(false) // 标记终端输出是否正在进行中
 
 // Token 使用统计
 const tokenStats = ref<{
@@ -565,6 +566,9 @@ function handlePromptEvent(requestId: string, promptType: AgentPromptType, messa
     console.log('[ChatDialog] 处理 TERMINAL_OUTPUT_START 事件，创建终端消息')
     const wasAtBottom = isScrollAtBottom()
 
+    // 标记终端输出开始
+    isTerminalOutputActive.value = true
+
     // 创建终端消息
     const terminalMessage: ChatMessage = {
       id: `terminal-${Date.now()}`,
@@ -593,7 +597,8 @@ function handlePromptEvent(requestId: string, promptType: AgentPromptType, messa
   // TERMINAL_OUTPUT_END 类型表示终端输出结束
   if (promptType === 'TERMINAL_OUTPUT_END') {
     console.log('[ChatDialog] 处理 TERMINAL_OUTPUT_END 事件，终端输出结束')
-    // 终端输出结束，不需要特殊处理，流式输出会自然停止
+    // 标记终端输出结束，后续的流式消息将作为普通 AI 消息处理
+    isTerminalOutputActive.value = false
     return
   }
 
@@ -675,34 +680,12 @@ function handleStreamEvent(requestId: string, content: string): void {
     isShowingPrompt.value = false
   }
 
-  // 检查最后一条消息是否是 AGENT_TERMINAL 类型
+  // 检查是否是终端输出（必须同时满足：终端输出激活 且 最后一条消息是 AGENT_TERMINAL）
   const lastMessage = localMessages.value[localMessages.value.length - 1]
-  if (lastMessage && lastMessage.role === 'AGENT_TERMINAL') {
-    // 提取颜色标识（前两个字符：'0 ' 或 '1 '）
-    const colorFlag = content.substring(0, 2)
-    const actualContent = content.substring(2)
-
-    // 判断颜色类型：'0 ' = 正常绿色，'1 ' = 红色
-    const isError = colorFlag === '1 '
-
-    // 更新 AGENT_TERMINAL 消息内容
-    const newContent = lastMessage.content + actualContent
-    lastMessage.content = processTerminalContent(newContent)
+  if (isTerminalOutputActive.value && lastMessage && lastMessage.role === 'AGENT_TERMINAL') {
+    // 后端已经处理好颜色标记（HTML 标签），直接累加原始内容
+    lastMessage.content += content
     lastMessage.updateTime = new Date().toISOString()
-
-    // 存储终端片段数据到 metadata
-    if (!lastMessage.metadata) {
-      lastMessage.metadata = { terminalSegments: [] }
-    }
-    if (!lastMessage.metadata.terminalSegments) {
-      lastMessage.metadata.terminalSegments = []
-    }
-
-    // 添加新的终端片段
-    lastMessage.metadata.terminalSegments.push({
-      content: actualContent,
-      isError: isError
-    })
 
     // 触发响应式更新
     localMessages.value = [...localMessages.value]
@@ -1336,53 +1319,67 @@ function checkAgentMessageHeights(): void {
 }
 
 /**
- * 处理终端输出内容（处理 \r 回车符）
- * \r 会覆盖当前行的内容，类似终端的行为
+ * 渲染终端内容（处理 \r 回车符，同时保留 HTML 标签）
  */
-function processTerminalContent(content: string): string {
-  // 按行分割内容
-  const lines = content.split('\n')
+function renderTerminalContent(message: ChatMessage): string {
+  // 后端已经添加了 <span class="f-terminal-error"> 标签
+  // 前端需要处理 \r 回车符覆盖逻辑，同时保留 HTML 标签
+  return processTerminalWithCarriageReturn(message.content)
+}
+
+/**
+ * 处理终端内容的 \r 回车符，同时保留 HTML 标签
+ */
+function processTerminalWithCarriageReturn(content: string): string {
+  // 策略：先提取 HTML 标签，处理纯文本的 \r，再重新插入标签
+
+  // 步骤 1: 提取所有 HTML 标签，用占位符替换
+  const tagPlaceholders: string[] = []
+  let processedContent = content.replace(/(<span[^>]*>|<\/span>)/g, (match) => {
+    const placeholder = `__TAG_${tagPlaceholders.length}__`
+    tagPlaceholders.push(match)
+    return placeholder
+  })
+
+  // 步骤 2: 按行处理 \r 回车符
+  const lines = processedContent.split('\n')
   const processedLines: string[] = []
 
   for (const line of lines) {
-    // 如果行中包含 \r，处理回车符覆盖逻辑
     if (line.includes('\r')) {
+      // 按 \r 分割
       const parts = line.split('\r')
-      // \r 会覆盖之前的内容，所以只保留最后一部分
-      const lastPart = parts[parts.length - 1]
-      processedLines.push(lastPart || '')
+      let currentLine = ''
+
+      for (const part of parts) {
+        if (part.length === 0) continue
+
+        // 覆盖当前行开头
+        if (part.length >= currentLine.length) {
+          currentLine = part
+        } else {
+          currentLine = part + currentLine.substring(part.length)
+        }
+      }
+
+      processedLines.push(currentLine)
     } else {
       processedLines.push(line)
     }
   }
 
-  return processedLines.join('\n')
+  processedContent = processedLines.join('\n')
+
+  // 步骤 3: 恢复 HTML 标签
+  processedContent = processedContent.replace(/__TAG_(\d+)__/g, (_match, index) => {
+    return tagPlaceholders[parseInt(index)] || ''
+  })
+
+  return processedContent
 }
 
 /**
- * 渲染带颜色的终端内容
- */
-function renderTerminalContent(message: ChatMessage): string {
-  // 如果没有终端片段数据，直接返回普通内容
-  if (!message.metadata?.terminalSegments || message.metadata.terminalSegments.length === 0) {
-    return message.content
-  }
-
-  // 重新组合终端片段，应用颜色
-  let result = ''
-  for (const segment of message.metadata.terminalSegments) {
-    if (segment.isError) {
-      result += `<span class="f-terminal-error">${escapeHtml(segment.content)}</span>`
-    } else {
-      result += escapeHtml(segment.content)
-    }
-  }
-
-  return result
-}
-
-/**
- * HTML 转义
+ * HTML 转义（保留用于其他地方可能的使用）
  */
 function escapeHtml(text: string): string {
   const div = document.createElement('div')
@@ -2182,9 +2179,9 @@ onUnmounted(() => {
   word-wrap: normal;
   overflow-wrap: normal;
 
-  // 终端错误文本（红色）
-  .f-terminal-error {
-    color: #ff4444;
+  // 终端错误文本（红色）- 使用深度选择器穿透 scoped 样式
+  :deep(.f-terminal-error) {
+    color: #ff4444 !important;
   }
 }
 
