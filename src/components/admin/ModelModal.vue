@@ -477,6 +477,7 @@ const handleSubmit = async () => {
       await aiModelApi.createModel({
         modelName: formData.value.modelName,
         modelIdentifier: formData.value.modelIdentifier || undefined,
+        modelDisplayName: formData.value.modelDisplayName,
         modelCallingType: formData.value.modelCallingType as ModelCallingType,
         providerId: formData.value.providerId || undefined,
         apiBaseUrl: formData.value.apiBaseUrl || undefined,
@@ -495,6 +496,7 @@ const handleSubmit = async () => {
 
       await aiModelApi.updateModel(props.modelId, {
         modelName: formData.value.modelName,
+        modelDisplayName: formData.value.modelDisplayName,
         modelCallingType: formData.value.modelCallingType as ModelCallingType,
         providerId: formData.value.providerId || undefined,
         apiBaseUrl: formData.value.apiBaseUrl || undefined,
