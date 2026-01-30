@@ -210,6 +210,7 @@
               <!-- Token 使用率显示 -->
               <TokenUsageIndicator
                 :percentage="usagePercentage"
+                :token-stats="tokenStats"
               />
             </div>
             <div class="f-controls-right">
@@ -391,10 +392,12 @@ const terminalPendingContent = ref<string>('')
 
 // Token 使用统计
 const tokenStats = ref<{
-  maxTokens?: number
-  maxMessages?: number
+  inputTokens?: number
+  outputTokens?: number
   totalTokens?: number
+  maxTokens?: number
   messageCount?: number
+  maxMessages?: number
 }>({})
 
 // 计算使用率百分比
@@ -765,10 +768,12 @@ async function handleCompleteEvent(requestId: string, data?: import('@/types/web
   // 更新 token 统计数据
   if (data) {
     tokenStats.value = {
-      maxTokens: data.maxTokens,
-      maxMessages: data.maxMessages,
+      inputTokens: data.inputTokens,
+      outputTokens: data.outputTokens,
       totalTokens: data.totalTokens,
-      messageCount: data.messageCount
+      maxTokens: data.maxTokens,
+      messageCount: data.messageCount,
+      maxMessages: data.maxMessages
     }
   }
 
@@ -814,10 +819,12 @@ function handleTokenUsageEvent(requestId: string, data?: import('@/types/websock
   // 更新 token 统计数据
   if (data) {
     tokenStats.value = {
-      maxTokens: data.maxTokens,
-      maxMessages: data.maxMessages,
+      inputTokens: data.inputTokens,
+      outputTokens: data.outputTokens,
       totalTokens: data.totalTokens,
-      messageCount: data.messageCount
+      maxTokens: data.maxTokens,
+      messageCount: data.messageCount,
+      maxMessages: data.maxMessages
     }
   }
 }
