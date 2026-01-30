@@ -21,6 +21,7 @@ export type WebSocketMessageType =
   | 'AGENT_PROMPT'              // Agent状态提示
   | 'AGENT_STREAM'              // Agent流式输出
   | 'AGENT_COMPLETE'            // Agent完成
+  | 'AGENT_TOKEN_USAGE'         // Token使用统计
   | 'AGENT_TOOL_CALL_REQUEST'   // 工具调用请求
   | 'PONG'                      // 心跳响应
 
@@ -35,6 +36,7 @@ export const WebSocketMessageTypeValues = {
   AGENT_PROMPT: 'AGENT_PROMPT' as const,
   AGENT_STREAM: 'AGENT_STREAM' as const,
   AGENT_COMPLETE: 'AGENT_COMPLETE' as const,
+  AGENT_TOKEN_USAGE: 'AGENT_TOKEN_USAGE' as const,
   AGENT_TOOL_CALL_REQUEST: 'AGENT_TOOL_CALL_REQUEST' as const,
   PONG: 'PONG' as const
 }
@@ -268,6 +270,9 @@ export type AgentStreamMessage = WebSocketMessage<VoidMessageData>;
 
 /** Agent完成消息 */
 export type AgentCompleteMessage = WebSocketMessage<AgentCompleteResponseData>;
+
+/** Agent Token使用统计消息 */
+export type AgentTokenUsageMessage = WebSocketMessage<AgentCompleteResponseData>;
 
 /** 工具调用请求消息 */
 export type ToolCallRequestMessage = WebSocketMessage<AgentToolCallRequestData>;

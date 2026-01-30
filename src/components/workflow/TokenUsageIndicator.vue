@@ -61,8 +61,8 @@ const progressColorClass = computed(() => {
   return 'f-progress-normal'
 })
 
-// 检查是否有数据
-const hasData = computed(() => props.percentage > 0)
+// 检查是否有数据（-1 表示没有数据）
+const hasData = computed(() => props.percentage >= 0)
 
 // 显示文本：有数据显示百分比，无数据显示问号+百分号
 const displayText = computed(() => {

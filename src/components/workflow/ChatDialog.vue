@@ -402,14 +402,16 @@ const tokenStats = ref<{
 // 计算使用率百分比
 const usagePercentage = computed(() => {
   // 优先使用 token 占比
-  if (tokenStats.value.totalTokens && tokenStats.value.maxTokens) {
-    return Math.round((tokenStats.value.totalTokens / tokenStats.value.maxTokens) * 100)
+  if (tokenStats.value.maxTokens !== undefined) {
+    const total = tokenStats.value.totalTokens || 0
+    return Math.round((total / tokenStats.value.maxTokens) * 100)
   }
   // 降级使用消息数占比
-  if (tokenStats.value.messageCount && tokenStats.value.maxMessages) {
-    return Math.round((tokenStats.value.messageCount / tokenStats.value.maxMessages) * 100)
+  if (tokenStats.value.maxMessages !== undefined) {
+    const count = tokenStats.value.messageCount || 0
+    return Math.round((count / tokenStats.value.maxMessages) * 100)
   }
-  return 0
+  return -1 // 返回 -1 表示没有数据
 })
 
 /**
@@ -439,6 +441,10 @@ function initWebSocket(sessionCode: string): void {
 
   wsManager.on('complete', (requestId, data) => {
     handleCompleteEvent(requestId, data)
+  })
+
+  wsManager.on('tokenUsage', (requestId, data) => {
+    handleTokenUsageEvent(requestId, data)
   })
 
   wsManager.on('toolRequest', async (requestId, data) => {
@@ -792,6 +798,26 @@ async function handleCompleteEvent(requestId: string, data?: import('@/types/web
   setTimeout(() => {
     emit('refresh-messages')
   }, 500)
+}
+
+/**
+ * 处理 Token 使用统计事件
+ */
+function handleTokenUsageEvent(requestId: string, data?: import('@/types/websocket').AgentCompleteResponseData): void {
+  // 验证 requestId 是否匹配
+  if (requestId !== currentRequestId.value) {
+    return
+  }
+
+  // 更新 token 统计数据
+  if (data) {
+    tokenStats.value = {
+      maxTokens: data.maxTokens,
+      maxMessages: data.maxMessages,
+      totalTokens: data.totalTokens,
+      messageCount: data.messageCount
+    }
+  }
 }
 
 /**
