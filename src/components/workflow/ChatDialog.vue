@@ -574,7 +574,7 @@ function handlePromptEvent(requestId: string, promptType: AgentPromptType, messa
       id: `terminal-${Date.now()}`,
       sessionId: props.sessionCode || '',
       role: 'AGENT_TERMINAL',
-      content: message || '',
+      content: '',
       createTime: new Date().toISOString(),
       updateTime: new Date().toISOString()
     }
