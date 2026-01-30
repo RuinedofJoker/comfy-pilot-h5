@@ -100,7 +100,7 @@
           <!-- Agent 终端输出 -->
           <div v-else-if="message.role === 'AGENT_TERMINAL'" class="f-agent-terminal-block">
             <pre class="f-terminal-content">
-              <div v-for="(line, index) in terminalLines" :key="index" v-html="line"></div>
+              <div v-for="(line, index) in (message.metadata?.terminalLines || [])" :key="index" v-html="line"></div>
             </pre>
           </div>
 
@@ -382,8 +382,6 @@ const isAgentStarted = ref(false) // Agent 是否已开始执行（收到 STARTE
 const shouldForceScrollOnNextUpdate = ref(false) // 标记下次消息更新时是否强制滚动
 const isTerminalOutputActive = ref(false) // 标记终端输出是否正在进行中
 
-// 终端输出行数组（每个元素代表一行）
-const terminalLines = ref<string[]>([])
 // 终端输出缓冲区（用于累积未完成的行）
 const terminalBuffer = ref<string>('')
 // 终端输出节流定时器
@@ -404,12 +402,14 @@ const usagePercentage = computed(() => {
   // 优先使用 token 占比
   if (tokenStats.value.maxTokens !== undefined) {
     const total = tokenStats.value.totalTokens || 0
-    return Math.round((total / tokenStats.value.maxTokens) * 100)
+    const percentage = Math.round((total / tokenStats.value.maxTokens) * 100)
+    return Math.min(percentage, 100) // 限制最大值为 100
   }
   // 降级使用消息数占比
   if (tokenStats.value.maxMessages !== undefined) {
     const count = tokenStats.value.messageCount || 0
-    return Math.round((count / tokenStats.value.maxMessages) * 100)
+    const percentage = Math.round((count / tokenStats.value.maxMessages) * 100)
+    return Math.min(percentage, 100) // 限制最大值为 100
   }
   return -1 // 返回 -1 表示没有数据
 })
@@ -590,19 +590,21 @@ function handlePromptEvent(requestId: string, promptType: AgentPromptType, messa
     // 标记终端输出开始
     isTerminalOutputActive.value = true
 
-    // 清空终端行数组和缓冲区
-    terminalLines.value = []
+    // 清空缓冲区（每条终端消息有独立的行数组，不需要清空全局状态）
     terminalBuffer.value = ''
     terminalPendingContent.value = ''
 
-    // 创建终端消息
+    // 创建终端消息，在 metadata 中存储独立的行数组
     const terminalMessage: ChatMessage = {
       id: `terminal-${Date.now()}`,
       sessionId: props.sessionCode || '',
       role: 'AGENT_TERMINAL',
       content: '',
       createTime: new Date().toISOString(),
-      updateTime: new Date().toISOString()
+      updateTime: new Date().toISOString(),
+      metadata: {
+        terminalLines: [] // 每条终端消息有自己的行数组
+      }
     }
 
     // 添加到本地消息列表
@@ -1388,6 +1390,20 @@ function checkAgentMessageHeights(): void {
  * @param isForceFlush 是否强制刷新（终端输出结束时）
  */
 function processTerminalContent(content: string, isForceFlush: boolean): void {
+  // 获取最后一条终端消息
+  const lastMessage = localMessages.value[localMessages.value.length - 1]
+  if (!lastMessage || lastMessage.role !== 'AGENT_TERMINAL') {
+    return
+  }
+
+  // 确保 metadata 存在
+  if (!lastMessage.metadata) {
+    lastMessage.metadata = {}
+  }
+  if (!lastMessage.metadata.terminalLines) {
+    lastMessage.metadata.terminalLines = []
+  }
+
   // 步骤 1: 移除 ANSI 转义序列
   const cleanedContent = content.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '')
 
@@ -1413,12 +1429,14 @@ function processTerminalContent(content: string, isForceFlush: boolean): void {
   }
 
   // 步骤 4: 处理每一行的 \r
+  const messageLines = lastMessage.metadata.terminalLines as string[]
+
   for (let i = 0; i < linesToProcess.length; i++) {
     let line = linesToProcess[i] || ''
 
     // 如果是第一行且不是第一批数据，需要拼接到最后一行
-    if (i === 0 && terminalLines.value.length > 0) {
-      const lastLine = terminalLines.value[terminalLines.value.length - 1] || ''
+    if (i === 0 && messageLines.length > 0) {
+      const lastLine = messageLines[messageLines.length - 1] || ''
       line = lastLine + line
     }
 
@@ -1435,15 +1453,15 @@ function processTerminalContent(content: string, isForceFlush: boolean): void {
     }
 
     // 更新或添加行
-    if (i === 0 && terminalLines.value.length > 0) {
-      terminalLines.value[terminalLines.value.length - 1] = line
+    if (i === 0 && messageLines.length > 0) {
+      messageLines[messageLines.length - 1] = line
     } else {
-      terminalLines.value.push(line)
+      messageLines.push(line)
     }
   }
 
   // 触发响应式更新
-  terminalLines.value = [...terminalLines.value]
+  localMessages.value = [...localMessages.value]
 }
 
 // 监听 localMessages 变化，自动滚动到底部
