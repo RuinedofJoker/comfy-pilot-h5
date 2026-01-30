@@ -715,7 +715,7 @@ function handleStreamEvent(requestId: string, content: string): void {
     // 累积待处理的内容
     terminalPendingContent.value += content
 
-    // 使用节流处理（200ms），避免频繁更新
+    // 使用节流处理（50ms），避免频繁更新
     if (terminalThrottleTimer) {
       clearTimeout(terminalThrottleTimer)
     }
@@ -726,7 +726,7 @@ function handleStreamEvent(requestId: string, content: string): void {
         terminalPendingContent.value = ''
       }
       terminalThrottleTimer = null
-    }, 200)
+    }, 50)
   } else {
     // 普通 ASSISTANT 消息的流式输出
     currentStreamingMessage.value += content
