@@ -2,6 +2,10 @@
 
 ComfyUI 工作流管理和 AI 辅助编辑系统的移动端 H5 应用。
 
+## 后端仓库地址
+
+[后端仓库地址](https://github.com/RuinedofJoker/comfy-pilot-backend)
+
 ## 功能概述
 
 - **统一管理**: 集中管理多个 ComfyUI 服务实例
@@ -49,7 +53,7 @@ npm run preview
 
 ### Skills 配置
 
-Skills 配置在后端服务中完成，详见后端 [Skills 快速指南](../comfy-pilot-backend/docs/Skills快速指南.md)。
+Skills 配置在后端服务中完成，详见后端 [Skills 快速指南](https://github.com/RuinedofJoker/comfy-pilot-backend/blob/main/docs/Skills%E5%BF%AB%E9%80%9F%E6%8C%87%E5%8D%97.md)。
 
 ### ComfyUI 服务配置
 
