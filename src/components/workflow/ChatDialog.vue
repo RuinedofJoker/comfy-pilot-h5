@@ -99,7 +99,9 @@
 
           <!-- Agent 终端输出 -->
           <div v-else-if="message.role === 'AGENT_TERMINAL'" class="f-agent-terminal-block">
-            <pre class="f-terminal-content" v-html="renderTerminalContent(message)"></pre>
+            <pre class="f-terminal-content">
+              <div v-for="(line, index) in (message.metadata?.terminalLines || [])" :key="index" v-html="line"></div>
+            </pre>
           </div>
 
           <!-- 普通 AI 消息 -->
@@ -208,6 +210,7 @@
               <!-- Token 使用率显示 -->
               <TokenUsageIndicator
                 :percentage="usagePercentage"
+                :token-stats="tokenStats"
               />
             </div>
             <div class="f-controls-right">
@@ -343,6 +346,11 @@ const filteredMessages = computed(() => {
       return true
     }
 
+    // AGENT_TERMINAL 消息不过滤（即使 content 为空，也要显示）
+    if (message.role === 'AGENT_TERMINAL') {
+      return true
+    }
+
     // 其他消息需要有内容
     const content = getMessageDisplayContent(message)
     return content && content.trim().length > 0
@@ -373,26 +381,40 @@ const currentRequestId = ref<string>('') // 当前请求ID
 const isAgentExecuting = ref(false) // Agent 是否正在执行（用于控制发送按钮状态）
 const isAgentStarted = ref(false) // Agent 是否已开始执行（收到 STARTED 事件）
 const shouldForceScrollOnNextUpdate = ref(false) // 标记下次消息更新时是否强制滚动
+const isTerminalOutputActive = ref(false) // 标记终端输出是否正在进行中
+
+// 终端输出缓冲区（用于累积未完成的行）
+const terminalBuffer = ref<string>('')
+// 终端输出节流定时器
+let terminalThrottleTimer: ReturnType<typeof setTimeout> | null = null
+// 终端输出待处理的消息队列
+const terminalPendingContent = ref<string>('')
 
 // Token 使用统计
 const tokenStats = ref<{
-  maxTokens?: number
-  maxMessages?: number
+  inputTokens?: number
+  outputTokens?: number
   totalTokens?: number
+  maxTokens?: number
   messageCount?: number
+  maxMessages?: number
 }>({})
 
 // 计算使用率百分比
 const usagePercentage = computed(() => {
   // 优先使用 token 占比
-  if (tokenStats.value.totalTokens && tokenStats.value.maxTokens) {
-    return Math.round((tokenStats.value.totalTokens / tokenStats.value.maxTokens) * 100)
+  if (tokenStats.value.maxTokens !== undefined) {
+    const total = tokenStats.value.totalTokens || 0
+    const percentage = Math.round((total / tokenStats.value.maxTokens) * 100)
+    return Math.min(percentage, 100) // 限制最大值为 100
   }
   // 降级使用消息数占比
-  if (tokenStats.value.messageCount && tokenStats.value.maxMessages) {
-    return Math.round((tokenStats.value.messageCount / tokenStats.value.maxMessages) * 100)
+  if (tokenStats.value.maxMessages !== undefined) {
+    const count = tokenStats.value.messageCount || 0
+    const percentage = Math.round((count / tokenStats.value.maxMessages) * 100)
+    return Math.min(percentage, 100) // 限制最大值为 100
   }
-  return 0
+  return -1 // 返回 -1 表示没有数据
 })
 
 /**
@@ -422,6 +444,10 @@ function initWebSocket(sessionCode: string): void {
 
   wsManager.on('complete', (requestId, data) => {
     handleCompleteEvent(requestId, data)
+  })
+
+  wsManager.on('tokenUsage', (requestId, data) => {
+    handleTokenUsageEvent(requestId, data)
   })
 
   wsManager.on('toolRequest', async (requestId, data) => {
@@ -562,20 +588,27 @@ function handlePromptEvent(requestId: string, promptType: AgentPromptType, messa
 
   // TERMINAL_OUTPUT_START 类型表示终端输出开始，创建终端消息
   if (promptType === 'TERMINAL_OUTPUT_START') {
-    console.log('[ChatDialog] 处理 TERMINAL_OUTPUT_START 事件，创建终端消息')
     const wasAtBottom = isScrollAtBottom()
 
-    // 创建终端消息
+    // 标记终端输出开始
+    isTerminalOutputActive.value = true
+
+    // 清空缓冲区（每条终端消息有独立的行数组，不需要清空全局状态）
+    terminalBuffer.value = ''
+    terminalPendingContent.value = ''
+
+    // 创建终端消息，在 metadata 中存储独立的行数组
     const terminalMessage: ChatMessage = {
       id: `terminal-${Date.now()}`,
       sessionId: props.sessionCode || '',
       role: 'AGENT_TERMINAL',
-      content: message || '',
+      content: '',
       createTime: new Date().toISOString(),
-      updateTime: new Date().toISOString()
+      updateTime: new Date().toISOString(),
+      metadata: {
+        terminalLines: [] // 每条终端消息有自己的行数组
+      }
     }
-
-    console.log('[ChatDialog] 终端消息已创建:', terminalMessage)
 
     // 添加到本地消息列表
     localMessages.value.push(terminalMessage)
@@ -592,8 +625,20 @@ function handlePromptEvent(requestId: string, promptType: AgentPromptType, messa
 
   // TERMINAL_OUTPUT_END 类型表示终端输出结束
   if (promptType === 'TERMINAL_OUTPUT_END') {
-    console.log('[ChatDialog] 处理 TERMINAL_OUTPUT_END 事件，终端输出结束')
-    // 终端输出结束，不需要特殊处理，流式输出会自然停止
+    // 清理节流定时器
+    if (terminalThrottleTimer) {
+      clearTimeout(terminalThrottleTimer)
+      terminalThrottleTimer = null
+    }
+
+    // 处理剩余的待处理内容
+    if (terminalPendingContent.value) {
+      processTerminalContent(terminalPendingContent.value, true)
+      terminalPendingContent.value = ''
+    }
+
+    // 标记终端输出结束，后续的流式消息将作为普通 AI 消息处理
+    isTerminalOutputActive.value = false
     return
   }
 
@@ -675,37 +720,24 @@ function handleStreamEvent(requestId: string, content: string): void {
     isShowingPrompt.value = false
   }
 
-  // 检查最后一条消息是否是 AGENT_TERMINAL 类型
+  // 检查是否是终端输出（必须同时满足：终端输出激活 且 最后一条消息是 AGENT_TERMINAL）
   const lastMessage = localMessages.value[localMessages.value.length - 1]
-  if (lastMessage && lastMessage.role === 'AGENT_TERMINAL') {
-    // 提取颜色标识（前两个字符：'0 ' 或 '1 '）
-    const colorFlag = content.substring(0, 2)
-    const actualContent = content.substring(2)
+  if (isTerminalOutputActive.value && lastMessage && lastMessage.role === 'AGENT_TERMINAL') {
+    // 累积待处理的内容
+    terminalPendingContent.value += content
 
-    // 判断颜色类型：'0 ' = 正常绿色，'1 ' = 红色
-    const isError = colorFlag === '1 '
-
-    // 更新 AGENT_TERMINAL 消息内容
-    const newContent = lastMessage.content + actualContent
-    lastMessage.content = processTerminalContent(newContent)
-    lastMessage.updateTime = new Date().toISOString()
-
-    // 存储终端片段数据到 metadata
-    if (!lastMessage.metadata) {
-      lastMessage.metadata = { terminalSegments: [] }
-    }
-    if (!lastMessage.metadata.terminalSegments) {
-      lastMessage.metadata.terminalSegments = []
+    // 使用节流处理（50ms），避免频繁更新
+    if (terminalThrottleTimer) {
+      clearTimeout(terminalThrottleTimer)
     }
 
-    // 添加新的终端片段
-    lastMessage.metadata.terminalSegments.push({
-      content: actualContent,
-      isError: isError
-    })
-
-    // 触发响应式更新
-    localMessages.value = [...localMessages.value]
+    terminalThrottleTimer = setTimeout(() => {
+      if (terminalPendingContent.value) {
+        processTerminalContent(terminalPendingContent.value, false)
+        terminalPendingContent.value = ''
+      }
+      terminalThrottleTimer = null
+    }, 50)
   } else {
     // 普通 ASSISTANT 消息的流式输出
     currentStreamingMessage.value += content
@@ -736,10 +768,12 @@ async function handleCompleteEvent(requestId: string, data?: import('@/types/web
   // 更新 token 统计数据
   if (data) {
     tokenStats.value = {
-      maxTokens: data.maxTokens,
-      maxMessages: data.maxMessages,
+      inputTokens: data.inputTokens,
+      outputTokens: data.outputTokens,
       totalTokens: data.totalTokens,
-      messageCount: data.messageCount
+      maxTokens: data.maxTokens,
+      messageCount: data.messageCount,
+      maxMessages: data.maxMessages
     }
   }
 
@@ -771,6 +805,28 @@ async function handleCompleteEvent(requestId: string, data?: import('@/types/web
   setTimeout(() => {
     emit('refresh-messages')
   }, 500)
+}
+
+/**
+ * 处理 Token 使用统计事件
+ */
+function handleTokenUsageEvent(requestId: string, data?: import('@/types/websocket').AgentCompleteResponseData): void {
+  // 验证 requestId 是否匹配
+  if (requestId !== currentRequestId.value) {
+    return
+  }
+
+  // 更新 token 统计数据
+  if (data) {
+    tokenStats.value = {
+      inputTokens: data.inputTokens,
+      outputTokens: data.outputTokens,
+      totalTokens: data.totalTokens,
+      maxTokens: data.maxTokens,
+      messageCount: data.messageCount,
+      maxMessages: data.maxMessages
+    }
+  }
 }
 
 /**
@@ -1336,58 +1392,83 @@ function checkAgentMessageHeights(): void {
 }
 
 /**
- * 处理终端输出内容（处理 \r 回车符）
- * \r 会覆盖当前行的内容，类似终端的行为
+ * 处理终端流式内容
+ * @param content 新接收到的内容
+ * @param isForceFlush 是否强制刷新（终端输出结束时）
  */
-function processTerminalContent(content: string): string {
-  // 按行分割内容
-  const lines = content.split('\n')
-  const processedLines: string[] = []
+function processTerminalContent(content: string, isForceFlush: boolean): void {
+  // 获取最后一条终端消息
+  const lastMessage = localMessages.value[localMessages.value.length - 1]
+  if (!lastMessage || lastMessage.role !== 'AGENT_TERMINAL') {
+    return
+  }
 
-  for (const line of lines) {
-    // 如果行中包含 \r，处理回车符覆盖逻辑
+  // 确保 metadata 存在
+  if (!lastMessage.metadata) {
+    lastMessage.metadata = {}
+  }
+  if (!lastMessage.metadata.terminalLines) {
+    lastMessage.metadata.terminalLines = []
+  }
+
+  // 步骤 1: 移除 ANSI 转义序列
+  const cleanedContent = content.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '')
+
+  // 步骤 2: 将新内容添加到缓冲区
+  terminalBuffer.value += cleanedContent
+
+  // 步骤 3: 按 \n 分割处理
+  const parts = terminalBuffer.value.split('\n')
+
+  // 如果不是强制刷新，保留最后一个未完成的部分
+  let linesToProcess: string[]
+  if (isForceFlush) {
+    linesToProcess = parts
+    terminalBuffer.value = ''
+  } else {
+    if (parts.length === 1) {
+      // 只有一个部分，说明没有 \n，全部保留在缓冲区
+      return
+    }
+    // 保留最后一个未完成的部分
+    linesToProcess = parts.slice(0, -1)
+    terminalBuffer.value = parts[parts.length - 1] || ''
+  }
+
+  // 步骤 4: 处理每一行的 \r
+  const messageLines = lastMessage.metadata.terminalLines as string[]
+
+  for (let i = 0; i < linesToProcess.length; i++) {
+    let line = linesToProcess[i] || ''
+
+    // 如果是第一行且不是第一批数据，需要拼接到最后一行
+    if (i === 0 && messageLines.length > 0) {
+      const lastLine = messageLines[messageLines.length - 1] || ''
+      line = lastLine + line
+    }
+
+    // 处理行内的 \r：按 \r 分割，只保留最后一个非空部分
     if (line.includes('\r')) {
-      const parts = line.split('\r')
-      // \r 会覆盖之前的内容，所以只保留最后一部分
-      const lastPart = parts[parts.length - 1]
-      processedLines.push(lastPart || '')
+      const parts = line.split('\r').filter(p => p !== undefined)
+      let finalPart = ''
+      for (const part of parts) {
+        if (part && part.length > 0) {
+          finalPart = part
+        }
+      }
+      line = finalPart
+    }
+
+    // 更新或添加行
+    if (i === 0 && messageLines.length > 0) {
+      messageLines[messageLines.length - 1] = line
     } else {
-      processedLines.push(line)
+      messageLines.push(line)
     }
   }
 
-  return processedLines.join('\n')
-}
-
-/**
- * 渲染带颜色的终端内容
- */
-function renderTerminalContent(message: ChatMessage): string {
-  // 如果没有终端片段数据，直接返回普通内容
-  if (!message.metadata?.terminalSegments || message.metadata.terminalSegments.length === 0) {
-    return message.content
-  }
-
-  // 重新组合终端片段，应用颜色
-  let result = ''
-  for (const segment of message.metadata.terminalSegments) {
-    if (segment.isError) {
-      result += `<span class="f-terminal-error">${escapeHtml(segment.content)}</span>`
-    } else {
-      result += escapeHtml(segment.content)
-    }
-  }
-
-  return result
-}
-
-/**
- * HTML 转义
- */
-function escapeHtml(text: string): string {
-  const div = document.createElement('div')
-  div.textContent = text
-  return div.innerHTML
+  // 触发响应式更新
+  localMessages.value = [...localMessages.value]
 }
 
 // 监听 localMessages 变化，自动滚动到底部
@@ -2182,9 +2263,9 @@ onUnmounted(() => {
   word-wrap: normal;
   overflow-wrap: normal;
 
-  // 终端错误文本（红色）
-  .f-terminal-error {
-    color: #ff4444;
+  // 终端错误文本（红色）- 使用深度选择器穿透 scoped 样式
+  :deep(.f-terminal-error) {
+    color: #ff4444 !important;
   }
 }
 

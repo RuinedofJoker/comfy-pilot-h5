@@ -144,6 +144,8 @@ export interface CreateModelRequest {
   modelName: string
   /** 模型标识符(可选) */
   modelIdentifier?: string
+  /** 模型显示名 */
+  modelDisplayName: string
   /** 模型调用方式 */
   modelCallingType: ModelCallingType
   /** API基础URL */
@@ -168,6 +170,8 @@ export interface CreateModelRequest {
 export interface UpdateModelRequest {
   /** 模型名称 */
   modelName: string
+  /** 模型显示名 */
+  modelDisplayName: string
   /** 模型调用方式 */
   modelCallingType: ModelCallingType
   /** API基础URL */

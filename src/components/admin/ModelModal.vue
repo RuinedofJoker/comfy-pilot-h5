@@ -70,7 +70,7 @@
               <option value="">请选择模型调用方式</option>
               <option value="api_llm">API调用 - LLM模型</option>
               <option value="api_embedding">API调用 - Embedding模型</option>
-              <option value="sentence_transformers_embedding">Sentence Transformers Embedding</option>
+              <option value="sentence_transformers_embedding">Python sentence-transformers 框架调用的Embedding模型</option>
             </select>
             <span v-if="errors.modelCallingType" class="f-error-text">
               {{ errors.modelCallingType }}
@@ -94,7 +94,9 @@
 
           <!-- API基础URL -->
           <div class="f-form-item">
-            <label class="f-label">API基础URL</label>
+            <label class="f-label">
+              API基础URL <span class="f-required" v-if="formData.modelCallingType == 'api_llm' || formData.modelCallingType == 'api_embedding'">*</span>
+            </label>
             <input
               v-model="formData.apiBaseUrl"
               type="text"
@@ -106,7 +108,9 @@
 
           <!-- API密钥 -->
           <div class="f-form-item">
-            <label class="f-label">API密钥</label>
+            <label class="f-label">
+              API密钥 <span class="f-required" v-if="formData.modelCallingType == 'api_llm' || formData.modelCallingType == 'api_embedding'">*</span>
+            </label>
             <div class="f-input-wrapper">
               <input
                 v-model="formData.apiKey"
@@ -134,7 +138,9 @@
 
           <!-- 提供协议类型 -->
           <div class="f-form-item">
-            <label class="f-label">提供协议类型</label>
+            <label class="f-label">
+              提供协议类型 <span class="f-required" v-if="formData.modelCallingType == 'api_llm'">*</span>
+            </label>
             <select
               v-model="formData.providerType"
               class="f-select"
@@ -142,7 +148,7 @@
             >
               <option value="">请选择协议类型</option>
               <option value="openai">OpenAI</option>
-              <option value="anthropic">Anthropic</option>
+              <!-- <option value="anthropic">Anthropic</option> -->
             </select>
           </div>
 
@@ -262,7 +268,15 @@ const formData = ref({
   apiBaseUrl: '',
   apiKey: '',
   providerType: '' as ProviderType | '',
-  modelConfig: '',
+  modelConfig: JSON.stringify({
+    "maxTokens": 32_000,
+    "maxMessages": 500,
+    "timeout": 60 * 60,
+    "supportImageMultimodal": false,
+    "supportVideoMultimodal": false,
+    "supportAudioMultimodal": false,
+    "supportPdfFileMultimodal": false
+  }, null, 2),
   description: '',
   isEnabled: true
 })
@@ -477,6 +491,7 @@ const handleSubmit = async () => {
       await aiModelApi.createModel({
         modelName: formData.value.modelName,
         modelIdentifier: formData.value.modelIdentifier || undefined,
+        modelDisplayName: formData.value.modelDisplayName,
         modelCallingType: formData.value.modelCallingType as ModelCallingType,
         providerId: formData.value.providerId || undefined,
         apiBaseUrl: formData.value.apiBaseUrl || undefined,
@@ -495,6 +510,7 @@ const handleSubmit = async () => {
 
       await aiModelApi.updateModel(props.modelId, {
         modelName: formData.value.modelName,
+        modelDisplayName: formData.value.modelDisplayName,
         modelCallingType: formData.value.modelCallingType as ModelCallingType,
         providerId: formData.value.providerId || undefined,
         apiBaseUrl: formData.value.apiBaseUrl || undefined,
