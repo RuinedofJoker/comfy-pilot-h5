@@ -101,6 +101,9 @@ export class ComfyUIToolSet implements McpToolSet {
   async executeToolByName(_toolCallId: string, name: string, args: any): Promise<any> {
     const baseUrl = this.serviceStore.selectedService?.baseUrl || 'http://localhost:8188'
 
+    console.log(name);
+    console.log(args);
+    
     switch (name) {
       case 'execute_workflow':
         return await this.executeWorkflow(baseUrl, args.batchCount || 1)
@@ -109,10 +112,10 @@ export class ComfyUIToolSet implements McpToolSet {
         return await this.getWorkflow()
 
       case 'set_workflow':
-        return await this.setWorkflow(args.workflow)
+        return await this.setWorkflow(args.workflowJson)
 
       case 'load_workflow':
-        return await this.loadWorkflow(args.content)
+        return await this.loadWorkflow(args.workflow)
 
       case 'check_service_available':
         return await this.checkServiceAvailable()
