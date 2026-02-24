@@ -63,7 +63,7 @@ export interface SshConfig {
   username: string
   authType: SshAuthType
   password?: string
-  privateKeyPath?: string
+  privateKeyContent?: string
 }
 
 /**

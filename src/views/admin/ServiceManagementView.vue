@@ -225,7 +225,7 @@
           <template v-if="formData.sshAuthType === 'KEY'">
             <BaseFormGroup label="私钥路径">
               <BaseInput
-                v-model="formData.sshPrivateKeyPath"
+                v-model="formData.sshPrivateKeyContent"
                 placeholder="/path/to/private_key"
               />
             </BaseFormGroup>
@@ -318,7 +318,7 @@ const formData = reactive({
   sshUsername: '',
   sshAuthType: 'PASSWORD',
   sshPassword: '',
-  sshPrivateKeyPath: '',
+  sshPrivateKeyContent: '',
   osType: '',
   workingDirectory: '~',
   environmentInitScript: '',
@@ -400,7 +400,7 @@ async function handleEdit(service: ComfyUIService): Promise<void> {
         formData.sshUsername = advanced.sshConfig.username || ''
         formData.sshAuthType = advanced.sshConfig.authType || 'PASSWORD'
         formData.sshPassword = advanced.sshConfig.password || ''
-        formData.sshPrivateKeyPath = advanced.sshConfig.privateKeyPath || ''
+        formData.sshPrivateKeyContent = advanced.sshConfig.privateKeyContent || ''
       }
 
       // 目录配置
@@ -510,7 +510,7 @@ async function handleConfirm(): Promise<void> {
           username: formData.sshUsername,
           authType: formData.sshAuthType,
           password: formData.sshAuthType === 'PASSWORD' ? formData.sshPassword : undefined,
-          privateKeyPath: formData.sshAuthType === 'KEY' ? formData.sshPrivateKeyPath : undefined
+          privateKeyContent: formData.sshAuthType === 'KEY' ? formData.sshPrivateKeyContent : undefined
         }
       }
     }
@@ -556,7 +556,7 @@ function resetForm(): void {
   formData.sshUsername = ''
   formData.sshAuthType = 'PASSWORD'
   formData.sshPassword = ''
-  formData.sshPrivateKeyPath = ''
+  formData.sshPrivateKeyContent = ''
   formData.osType = ''
   formData.workingDirectory = '~'
   formData.environmentInitScript = ''
